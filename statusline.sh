@@ -196,7 +196,8 @@ if [ -n "$effort_level" ] && [ "$effort_level" != "null" ]; then
     low)         ec="$GRAY" ;;
     medium|med)  ec="$BCYAN" ;;
     high)        ec="$BYELLOW" ;;
-    xhigh|max)   ec="$BRED" ;;
+    xhigh)       ec="$BRED" ;;
+    max)         ec="$BMAGENTA" ;;
     *)           ec="$WHITE" ;;
   esac
   effort_badge="${ec}⚡${effort_level}${RST}"
