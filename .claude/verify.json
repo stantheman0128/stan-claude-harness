@@ -1,0 +1,4 @@
+{
+  "command": "py local-plugins/loop-gate/scripts/selftest/run.py",
+  "timeoutSec": 180
+}
