@@ -1,0 +1,195 @@
+{
+  "version": 2,
+  "maxSuggestionsPerTurn": 3,
+  "_note": "關鍵字→skill 對照表，2026-07-10 起為 skill-routing 分流表的「編譯版」：每條 why 寫成『預設 X；情境 Y → Z』濃縮判準，skills 順序＝表的預設排第一。表變更後要重編譯本檔（見 skill-routing SKILL.md 編譯規範）。enforce:mandatory 走【強制區】：命令式、每則注入、不去重；其餘軟提醒+同session去重。skill-suggest.py 會把兩區建議記到 suggestions-<session>.jsonl 供 Stop hook 對帳。漏詞/誤觸改這檔即生效，免重開 session。",
+  "rules": [
+    {
+      "skills": ["superpowers:brainstorming", "guided-dev", "agent-skills:spec-driven-development"],
+      "priority": "high",
+      "enforce": "mandatory",
+      "keywords": ["做一個", "幫我做", "開發", "實作", "做個", "打造", "建一個", "新功能", "new feature", "build a feature", "start a project", "新專案", "從零做", "寫一個", "加功能", "做功能", "整合", "串接"],
+      "intentPatterns": ["(做|開發|建|實作|打造|生)\\s*(一)?\\s*個?.{0,10}(功能|app|應用|專案|系統|網站|工具|頁面|程式)", "build (a|an|the)\\s+\\w+", "implement (a|the)\\s"],
+      "excludePatterns": ["bug", "報錯", "修一下", "壞掉", "fix the"],
+      "why": "預設 brainstorming（先釐清意圖再動手）；整個功能請 Claude 主導、產品決策留給人 → guided-dev；要正式規格 → spec-driven-development"
+    },
+    {
+      "skills": ["agent-skills:spec-driven-development", "superpowers:writing-plans"],
+      "priority": "high",
+      "enforce": "mandatory",
+      "keywords": ["spec", "規格", "prd", "需求文件", "sdd", "規格驅動", "spec-driven"],
+      "intentPatterns": ["寫.{0,4}(規格|spec|prd)"],
+      "excludePatterns": ["respect", "inspect"],
+      "why": "預設 spec-driven-development（先寫結構化規格）；大型高風險要可執行 runbook → writing-plans（原 /to-prd 已於 2026-07-10 冰凍）"
+    },
+    {
+      "skills": ["guided-dev", "superpowers:writing-plans", "agent-skills:planning-and-task-breakdown"],
+      "priority": "high",
+      "enforce": "mandatory",
+      "keywords": ["規劃", "計畫", "拆任務", "拆解", "步驟", "roadmap", "task breakdown", "分解成", "plan it"],
+      "intentPatterns": ["(規劃|安排|拆).{0,6}(步驟|任務|計畫|流程)"],
+      "excludePatterns": [],
+      "why": "預設 guided-dev（產品決策給人、技術給 Claude）；大型高風險要可執行 runbook → writing-plans；拆可驗收小任務/估 scope → planning-and-task-breakdown；每個 slice 的實作紀律 → incremental-implementation"
+    },
+    {
+      "skills": ["superpowers:test-driven-development", "agent-skills:test-driven-development"],
+      "priority": "high",
+      "enforce": "mandatory",
+      "keywords": ["tdd", "寫測試", "單元測試", "test-first", "unit test", "加測試", "補測試", "測試覆蓋"],
+      "intentPatterns": ["(寫|加|補|跑).{0,4}測試", "write (a |the )?test"],
+      "excludePatterns": ["測試看看", "測一下", "測試版", "壓力測試計畫"],
+      "why": "預設 superpowers:TDD（鐵律 test-first，一次一個 vertical slice）；要選測試種類/金字塔/test double/瀏覽器驗證 → agent-skills:TDD"
+    },
+    {
+      "skills": ["agent-skills:debugging-and-error-recovery", "diagnosing-bugs", "superpowers:systematic-debugging"],
+      "priority": "high",
+      "enforce": "mandatory",
+      "keywords": ["bug", "debug", "壞了", "報錯", "error", "失敗", "failing", "crash", "當掉", "不會動", "跑不起來", "噴錯", "exception", "壞掉", "怎麼會這樣"],
+      "intentPatterns": ["(修|解|查|找).{0,4}(bug|錯|問題|原因)"],
+      "excludePatterns": [],
+      "why": "預設 debugging-and-error-recovery（快速 web/runtime bug triage，錯誤輸出當不可信資料）；flaky/間歇、效能回歸、多元件、第一次就猜錯 → diagnosing-bugs（先建可重現紅燈迴圈）；連 3 次修不好 → systematic-debugging 並質疑架構"
+    },
+    {
+      "skills": ["superpowers:verification-before-completion"],
+      "priority": "high",
+      "enforce": "mandatory",
+      "keywords": ["完成了", "做好了", "應該可以了", "搞定", "驗證一下", "確認沒問題", "可以了嗎", "ready to commit", "都好了"],
+      "intentPatterns": [],
+      "excludePatterns": [],
+      "why": "宣稱完成前必跑指令拿證據；任務中途高風險決策要被反方審 → doubt-driven-development"
+    },
+    {
+      "skills": ["agent-skills:code-simplification"],
+      "priority": "medium",
+      "keywords": ["重構", "refactor", "簡化", "clean up", "整理程式", "太亂", "太長", "tidy up"],
+      "intentPatterns": [],
+      "excludePatterns": [],
+      "why": "預設 code-simplification（不改行為降複雜度，Chesterton's Fence）"
+    },
+    {
+      "skills": ["agent-skills:api-and-interface-design"],
+      "priority": "medium",
+      "keywords": ["模組", "seam", "介面設計", "interface", "api 設計", "抽象", "拆檔", "deep module", "邊界", "module boundary"],
+      "intentPatterns": [],
+      "excludePatterns": [],
+      "why": "預設 api-and-interface-design（API/合約表面：error shape/版本相容/驗證位置）；deep-module/seam 深度方法論的 codebase-design 已冷藏、要用先復原"
+    },
+    {
+      "skills": ["grilling", "agent-skills:interview-me"],
+      "priority": "low",
+      "keywords": ["grill", "逼問", "壓力測試計畫", "挑戰我的", "戳破我的", "challenge my plan", "幫我想清楚"],
+      "intentPatterns": [],
+      "excludePatterns": [],
+      "why": "有粗略計畫 → grilling（一次一題逼問決策樹）；還沒計畫、要先挖意圖 who/why/success → interview-me"
+    },
+    {
+      "skills": ["humanizer", "humanizer-zh-tw"],
+      "priority": "high",
+      "keywords": ["繳交", "交出去", "對外", "發布", "貼文", "threads", "email", "公開", "定稿", "po 文", "發文", "投稿", "作業", "報告定稿", "寄出", "上線文案"],
+      "intentPatterns": [],
+      "excludePatterns": ["human ", "humanize ", "humanity"],
+      "why": "對外/繳交文字定稿前清 AI 痕跡：英文 → humanizer、繁中 → humanizer-zh-tw"
+    },
+    {
+      "skills": ["impeccable", "agent-skills:frontend-ui-engineering"],
+      "priority": "high",
+      "keywords": ["ui", "排版", "前端", "畫面", "redesign", "重新設計", "美化", "版面", "樣式", "好看", "視覺", "畫面設計", "介面好醜"],
+      "intentPatterns": ["設計.{0,3}(畫面|頁面|介面|ui|樣式)", "(畫面|版面|ui).{0,4}(設計|改|調)"],
+      "excludePatterns": ["api 設計", "資料庫設計", "系統設計", "架構設計"],
+      "why": "預設 impeccable（視覺/設計品質，硬規則+slop test）；純元件架構/狀態/React 寫法 → frontend-ui-engineering"
+    },
+    {
+      "skills": ["security-audit", "agent-skills:security-and-hardening"],
+      "priority": "medium",
+      "keywords": ["安全稽核", "漏洞", "audit", "滲透", "pentest", "security review", "資安", "vulnerab", "找洞", "安全檢查"],
+      "intentPatterns": [],
+      "excludePatterns": ["安全感", "安全帶", "安全起見"],
+      "why": "深度稽核找可利用漏洞 → security-audit（吃 token、subagent 帶 opus、小改動別用）；設計期威脅建模/供應鏈/LLM 安全 → security-and-hardening"
+    },
+    {
+      "skills": ["mineru"],
+      "priority": "medium",
+      "keywords": ["pdf", "ocr", "掃描", "轉成 markdown", "抽公式", "抽表格", "掃描檔", "辨識文字", "轉文字", "這份文件", "這份論文"],
+      "intentPatterns": ["pdf.{0,6}(轉|抽|markdown|文字)"],
+      "excludePatterns": [],
+      "why": "文件→Markdown 預設 mineru（本機、公式/表格/掃描強、CPU 慢）；雲端快線 mistral-ocr-tts 已冷藏、要用先復原"
+    },
+    {
+      "skills": ["transcribe", "video-lens"],
+      "priority": "medium",
+      "keywords": ["逐字稿", "轉錄", "字幕", "transcribe", "這支影片", "看片", "摘要影片", "影片摘要", "youtube"],
+      "intentPatterns": ["影片.{0,4}(轉|逐字|摘要|文字)"],
+      "excludePatterns": [],
+      "why": "要逐字稿 → transcribe；只要摘要/重點/時間軸 → video-lens"
+    },
+    {
+      "skills": ["agent-skills:performance-optimization", "cloudflare:web-perf"],
+      "priority": "medium",
+      "keywords": ["效能", "變慢", "太慢", "好慢", "卡頓", "很lag", "performance", "optimize", "跑很久", "加速程式"],
+      "intentPatterns": ["(變|太|好)慢", "效能.{0,4}(問題|優化|調)"],
+      "excludePatterns": [],
+      "why": "預設 performance-optimization（量到改到守，含後端/CI）；線上單頁深度稽核+有 Chrome DevTools MCP → cloudflare:web-perf；若是「改壞才變慢」的效能回歸 → diagnosing-bugs"
+    },
+    {
+      "skills": ["product-growth"],
+      "priority": "medium",
+      "keywords": ["留存", "轉換率", "漏斗", "funnel", "a/b test", "ab test", "下載量", "活躍", "啟用率", "上架優化", "aso", "用戶不回來", "沒人用", "retention", "成長實驗"],
+      "intentPatterns": ["(提升|增加).{0,6}(留存|轉換|下載|活躍|用戶)"],
+      "excludePatterns": [],
+      "why": "已上線產品的成長：先反問現況指標 → AARRR 定破口 → ICE 挑一個實驗；上線前定成功指標是 requirements-analyst、開發新功能是 guided-dev"
+    },
+    {
+      "skills": ["graphify"],
+      "priority": "low",
+      "keywords": ["看懂這個 repo", "理解這個專案", "程式碼架構", "knowledge graph", "建圖", "graphify", "搞懂整包", "別人的 repo", "這包程式"],
+      "intentPatterns": ["(看懂|理解|搞懂).{0,6}(repo|專案|程式|架構)"],
+      "excludePatterns": [],
+      "why": "大型/陌生 codebase 建知識圖（CLI 工具非 skill，ad-hoc 用 graphify extract；自己的小專案直接讀）"
+    },
+    {
+      "skills": ["skill-routing"],
+      "priority": "low",
+      "keywords": ["用哪個 skill", "哪個技能", "會不會重複", "skill 重疊", "該用哪個", "裝了新 skill"],
+      "intentPatterns": [],
+      "excludePatterns": [],
+      "why": "兩個以上重疊 skill 不確定用哪個時查分流表（完整判準與冷藏區都在表裡）"
+    }
+  ],
+  "_watchlist_note": "評估紀錄簿（EVALUATIONS.md）「重評觸發」欄的編譯版：情境關鍵字命中時由 skill-suggest.py 發軟提醒（同 session 去重、不記 suggestions 不算失手）。條目增刪跟著紀錄簿走。2026-07-11 建。",
+  "watchlist": [
+    {
+      "name": "openai/codex-plugin-cc",
+      "keywords": ["資安作業", "資安 hw", "infosec", "seed lab", "第二模型", "codex 審", "codex review"],
+      "note": "試裝觸發：官方 plugin，/codex:review 第二模型審查——這次資安任務實測一次（紀錄簿標 borderline）"
+    },
+    {
+      "name": "android/skills（Google 官方）",
+      "keywords": ["line notify", "android 測試", "compose 測試", "instrumentation", "kotlin 測試"],
+      "note": "LINE Notify+ 補測試時單點裝 testing-setup 等 1-2 支、別整包（全案現在只有 1 個 unit test）"
+    },
+    {
+      "name": "garrytan/gbrain",
+      "keywords": ["檢索層", "向量檢索", "hybrid retrieval", "rag pipeline", "合成層"],
+      "note": "Cloud Brain 進到檢索/合成層選型時回來看（agent 記憶層：HNSW＋BM25＋RRF＋synthesis）"
+    },
+    {
+      "name": "tinyhumansai/openhuman",
+      "keywords": ["cloud brain"],
+      "note": "保留條款已觸發（Windows 版其實一直有）：Cloud Brain 重啟的第一個決策＝裝來試用 vs 續建"
+    },
+    {
+      "name": "gastownhall/beads",
+      "keywords": ["長程專案", "多 session 協作", "自主連續", "多 agent 協作"],
+      "note": "跑多 agent 長程/自主連續開發、todo.md 撐不住時再看（agent 圖狀 issue tracker，25k★）"
+    },
+    {
+      "name": "akseolabs-seo/AK-Threads-booster",
+      "keywords": ["threads 帳號", "經營 threads", "threads 貼文"],
+      "note": "開始經營 Threads 時回來拿（創作者內容決策系統，工程品質不錯）"
+    },
+    {
+      "name": "googleworkspace/cli（gws）",
+      "keywords": ["gmail 自動", "行事曆同步", "google sheets", "google calendar", "workspace 自動"],
+      "note": "官方 Workspace CLI（Gmail/Calendar/Sheets/Docs 全套）：需求真出現時先花 5 分鐘實測學校帳號 OAuth 過不過（Testing 模式 token 7 天過期是主要摩擦）"
+    }
+  ]
+}
