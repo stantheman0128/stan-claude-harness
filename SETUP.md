@@ -36,6 +36,62 @@
   寫 verify.json → `py Projects\project-sweep-plugin\loop-gate\scripts\trust_manifest.py <專案根>`。
 - 改 plugin 的 hook 前後跑 selftest：`py Projects\project-sweep-plugin\loop-gate\scripts\selftest\run.py`（18 案例須全綠）。
 
+## 附錄：逐項清單（2026-07-11 全面盤點）
+
+### A. 自製/收編 Skills（`skills\`，37 資料夾 = 19 現役 + 18 冷藏）
+
+**現役**：skill-routing（分流表+評估紀錄簿）、new-skill（工具評估流程）、guided-dev、
+diagnosing-bugs、grilling、handoff、research-mode、security-audit、product-growth、
+humanizer / humanizer-zh-tw（各為獨立 git repo，本地 v2.10.0）、transcribe、video-lens、
+mineru、colonist-postmortem、cutting-demo-videos、write-like-joyce、prototype、writing-great-skills。
+
+**冷藏**（`settings.json → skillOverrides: off`，還原=把該行刪掉）：adversarial-review、
+analyze-forks、careful、codebase-design、context-compression、context-optimization、
+domain-modeling、grill-me、memory-systems、mistral-ocr-tts、report-verifier、
+setup-pre-commit、shadcn、to-issues、to-prd、triage、upstream-insights-report、video-lens-gallery。
+
+### B. Commands（`commands\`，17 支，**全數冷藏**）
+
+reels、new-task、adversarial-review、industry-report + api/×3 + misc/×6 + supabase/×2 + ui/×2。
+
+### C. Agents（`agents\`，pilotfish 分工制）
+
+scout（haiku 唯讀偵察）、mech-executor（規格化機械活）、executor（要判斷的實作）、
+security-executor（安全敏感）、verifier（鎖寫入對抗複驗）、quant-analyst（量化專題）。
+
+### D. Hooks（`hooks\` 11 支 + loop-gate plugin 3 支）
+
+- skill 觸發系統：skill-suggest.py（UserPromptSubmit 關鍵字→提醒/🔒強制）、
+  skill-usage-log.py（Stop，記真實載入供對帳）、skill-routing-watch.py（SessionStart）＋ skill-rules.json
+- 守門：careful_guard.py（PreToolUse:Bash）、research_guard.py（PreToolUse 寫入類）
+- session 中文名：twify-session-name.py（UserPromptSubmit+Stop）
+- claude-mem 套件 5 支（SessionStart×3+Stop 同步）
+- loop-gate（plugin 自帶）：verify_gate（Stop）、failure_log（PostToolUseFailure）、report_health（SessionStart）
+
+### E. Plugins（12 個 marketplace、22 enabled）
+
+自製：**project-sweep**、**loop-gate**（皆在 stan-local-plugins）。
+主力第三方：superpowers、impeccable、agent-skills(addy)、claude-mem、hookify、ralph-loop、
+document-skills、cloudflare、zeabur、github、context7、playwright、security-guidance、
+兩個 output-style、5 個 LSP。已停用約 20 個（重複/殭屍，判準見 skill-routing EVALUATIONS）。
+
+### F. 自動化迴圈（會自己跑的東西）
+
+| 迴圈 | 觸發 | 狀態 |
+|---|---|---|
+| loop-gate 驗證 gate | 每次 Stop（掛 manifest 的專案） | 1.0.1，chrome-extensions + plugin repo 試點 |
+| drift sweep（skill 上游同步） | 排程 `ClaudeSetup-DriftSweep` 每週一 09:23 | Ready（下次 2026-07-13） |
+| skill 用量對帳 | 每次 Stop → `skill-usage\` | 運作中（57+ session logs） |
+| claude-mem 記憶同步 | SessionStart / Stop | 運作中 |
+| Bedtime Hibernate | 系統匣常駐（開機自啟） | 1.1.0 |
+| colonist watcher | 排程（未註冊，待手動 register-task.ps1） | 未啟用 |
+
+### G. MCP servers
+
+大多由 Claude Desktop 連線層提供（Windows-MCP、github、computer-use、claude-in-chrome、
+claude-mem search、visualize、preview 等），不在 settings.json 管理；
+plugin 自帶的（cloudflare/context7/playwright 等）隨 plugin 開關。
+
 ## 維護慣例
 
 - 新增/修改 hook：先用假 event JSON 餵 stdin 測過再啟用；壞了 `git checkout` 還原（validate-and-revert）。
