@@ -48,9 +48,10 @@
     "ask": [
       "Bash(git push --force *)",
       "Bash(git rebase *)"
-    ]
+    ],
+    "defaultMode": "auto"
   },
-  "model": "opus[1m]",
+  "model": "claude-fable-5[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -130,6 +131,16 @@
             "timeout": 15
           }
         ]
+      },
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py \"C:/Users/stans/.claude/hooks/skill-routing-watch.py\"",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "Stop": [
@@ -156,6 +167,15 @@
             "type": "command",
             "command": "node \"C:/Users/stans/.claude/hooks/claude-mem-sync.mjs\" upload",
             "timeout": 120
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py \"C:/Users/stans/.claude/hooks/skill-usage-log.py\"",
+            "timeout": 10
           }
         ]
       }
@@ -197,6 +217,15 @@
             "timeout": 15
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py \"C:/Users/stans/.claude/hooks/skill-suggest.py\"",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SessionEnd": [
@@ -216,50 +245,92 @@
     "padding": 1
   },
   "enabledPlugins": {
-    "frontend-design@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": false,
     "context7@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
+    "code-review@claude-plugins-official": false,
     "github@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": true,
-    "agent-sdk-dev@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": false,
+    "skill-creator@claude-plugins-official": false,
+    "agent-sdk-dev@claude-plugins-official": false,
     "clangd-lsp@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true,
-    "code-simplifier@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": false,
+    "claude-md-management@claude-plugins-official": false,
+    "code-simplifier@claude-plugins-official": false,
+    "commit-commands@claude-plugins-official": false,
     "csharp-lsp@claude-plugins-official": true,
     "explanatory-output-style@claude-plugins-official": true,
-    "gopls-lsp@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": false,
     "hookify@claude-plugins-official": true,
-    "jdtls-lsp@claude-plugins-official": true,
+    "jdtls-lsp@claude-plugins-official": false,
     "kotlin-lsp@claude-plugins-official": true,
     "learning-output-style@claude-plugins-official": true,
-    "lua-lsp@claude-plugins-official": true,
-    "php-lsp@claude-plugins-official": true,
-    "playground@claude-plugins-official": true,
-    "plugin-dev@claude-plugins-official": true,
-    "pr-review-toolkit@claude-plugins-official": true,
+    "lua-lsp@claude-plugins-official": false,
+    "php-lsp@claude-plugins-official": false,
+    "playground@claude-plugins-official": false,
+    "plugin-dev@claude-plugins-official": false,
+    "pr-review-toolkit@claude-plugins-official": false,
     "pyright-lsp@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": false,
     "security-guidance@claude-plugins-official": true,
-    "swift-lsp@claude-plugins-official": true,
+    "swift-lsp@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": true,
     "ralph-loop@claude-plugins-official": true,
     "double-shot-latte@superpowers-marketplace": false,
     "episodic-memory@superpowers-marketplace": false,
-    "superpowers-developing-for-claude-code@superpowers-marketplace": true,
-    "superpowers-chrome@superpowers-marketplace": true,
+    "superpowers-developing-for-claude-code@superpowers-marketplace": false,
+    "superpowers-chrome@superpowers-marketplace": false,
     "claude-session-driver@superpowers-marketplace": false,
     "claude-mem@thedotmack": true,
     "zeabur@zeabur": true,
     "project-sweep@stan-local-plugins": true,
+    "loop-gate@stan-local-plugins": true,
     "document-skills@anthropic-agent-skills": true,
     "superpowers@superpowers-marketplace": true,
     "cloudflare@cloudflare": true,
-    "superpowers@claude-plugins-official": true,
-    "claude-api@anthropic-agent-skills": true,
-    "playwright@claude-plugins-official": true
+    "superpowers@claude-plugins-official": false,
+    "claude-api@anthropic-agent-skills": false,
+    "playwright@claude-plugins-official": true,
+    "agent-skills@addy-agent-skills": true,
+    "chrisbanes-skills@chrisbanes-skills": false,
+    "modern-web-guidance@googlechrome": false,
+    "static-analysis@trailofbits": false,
+    "impeccable@impeccable": true
+  },
+  "skillOverrides": {
+    "adversarial-review": "off",
+    "analyze-forks": "off",
+    "careful": "off",
+    "codebase-design": "off",
+    "context-compression": "off",
+    "context-optimization": "off",
+    "domain-modeling": "off",
+    "grill-me": "off",
+    "memory-systems": "off",
+    "mistral-ocr-tts": "off",
+    "report-verifier": "off",
+    "setup-pre-commit": "off",
+    "shadcn": "off",
+    "to-issues": "off",
+    "to-prd": "off",
+    "triage": "off",
+    "upstream-insights-report": "off",
+    "video-lens-gallery": "off",
+    "api:api-new": "off",
+    "api:api-protect": "off",
+    "api:api-test": "off",
+    "industry-report": "off",
+    "misc:code-cleanup": "off",
+    "misc:code-explain": "off",
+    "misc:code-optimize": "off",
+    "misc:docs-generate": "off",
+    "misc:feature-plan": "off",
+    "misc:lint": "off",
+    "new-task": "off",
+    "reels": "off",
+    "supabase:edge-function-new": "off",
+    "supabase:types-gen": "off",
+    "ui:component-new": "off",
+    "ui:page-new": "off"
   },
   "extraKnownMarketplaces": {
     "thedotmack": {
@@ -297,11 +368,48 @@
         "source": "github",
         "repo": "cloudflare/skills"
       }
+    },
+    "addy-agent-skills": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/addyosmani/agent-skills.git"
+      }
+    },
+    "chrisbanes-skills": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/chrisbanes/skills.git"
+      }
+    },
+    "Kotlin": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/Kotlin/kotlin-agent-skills.git"
+      }
+    },
+    "googlechrome": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/GoogleChrome/modern-web-guidance.git"
+      }
+    },
+    "trailofbits": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/trailofbits/skills.git"
+      }
+    },
+    "impeccable": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/pbakaus/impeccable.git"
+      }
     }
   },
   "language": "中文",
-  "effortLevel": "medium",
+  "effortLevel": "xhigh",
   "autoUpdatesChannel": "latest",
+  "tui": "fullscreen",
   "autoDreamEnabled": true,
   "skipWorkflowUsageWarning": true,
   "theme": "light",

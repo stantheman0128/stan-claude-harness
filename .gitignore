@@ -46,3 +46,12 @@ security_warnings_state_*.json
 
 # Plugin runtime (auto-managed by marketplace)
 plugins/
+
+# Runtime state (2026-07-11)
+daemon*
+.last-*
+auto-hibernate/
+hooks/__pycache__/
+loop-gate/
+hook-health.log*
+SETUP.md.bak
