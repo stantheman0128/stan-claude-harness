@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py \"${CLAUDE_PLUGIN_ROOT}/scripts/verify_gate.py\"",
+            "timeout": 420
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py \"${CLAUDE_PLUGIN_ROOT}/scripts/failure_log.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py \"${CLAUDE_PLUGIN_ROOT}/scripts/report_health.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

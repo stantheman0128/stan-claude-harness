@@ -1,0 +1,8 @@
+{
+  "name": "burn-credits",
+  "description": "Burn remaining weekly usage limit: scan all projects for issues and batch-fix them",
+  "version": "2.0.0",
+  "author": {
+    "name": "Stan Shih"
+  }
+}

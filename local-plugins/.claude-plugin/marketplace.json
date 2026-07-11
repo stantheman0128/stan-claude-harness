@@ -1,0 +1,23 @@
+{
+  "name": "stan-local-plugins",
+  "owner": {
+    "name": "Stan Shih"
+  },
+  "metadata": {
+    "description": "Stan's custom local plugins for Claude Code (lives inside stan-claude-harness)"
+  },
+  "plugins": [
+    {
+      "name": "burn-credits",
+      "version": "2.0.0",
+      "source": "./burn-credits",
+      "description": "Burn remaining weekly usage limit: scan all projects for issues and batch-fix them"
+    },
+    {
+      "name": "loop-gate",
+      "version": "1.0.1",
+      "source": "./loop-gate",
+      "description": "Machine-enforced verification gate + fail-loud hook health for loop engineering"
+    }
+  ]
+}
