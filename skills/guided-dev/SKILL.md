@@ -1,6 +1,6 @@
 ---
 name: guided-dev
-description: Use when the user asks to build a feature, app, or project that requires 3+ steps. Triggers on "幫我做", "build this", "開發", "implement", "/guided-dev", or any non-trivial development request. This is a structured development workflow designed for users who rely on Claude for technical architecture decisions — Claude drives the spec, design, and verification while the user makes product decisions.
+description: 引導式開發全流程（spec、設計、切 slice、逐塊驗證、交付）。主動使用本 skill 當使用者要做需 3+ 步的功能、app 或新專案，講「幫我做」「幫我寫個」「開發」「build this」「implement」「做一個」「/guided-dev」，即使沒明講要走流程。本 skill 由 Claude 主導技術與架構決策、使用者只做產品決策，並內建自我挑戰與外部證據驗證。不要看到開發需求就直接動手，先用本 skill 判斷規模、設計、切 slice 再做。Do not use for trivial 1-2 file edits, or when the user explicitly wants only a plan/spec, only debugging, or only code review.
 ---
 
 # Guided Development（引導式開發）

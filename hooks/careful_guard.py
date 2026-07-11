@@ -26,6 +26,8 @@ DANGEROUS_PATTERNS = [
     (r"\bgit\s+push\s+-f\b", "git push -f"),
     (r"\bgit\s+reset\s+--hard\b", "git reset --hard"),
     (r"\bgit\s+checkout\s+--\s", "git checkout --"),
+    (r"\bgit\s+checkout\s+\.", "git checkout . (整個工作目錄丟棄)"),
+    (r"\bgit\s+restore\s+\.", "git restore . (整個工作目錄丟棄)"),
     (r"\bDROP\s+TABLE\b", "DROP TABLE"),
     (r"\bDROP\s+DATABASE\b", "DROP DATABASE"),
     (r"\bTRUNCATE\b", "TRUNCATE"),

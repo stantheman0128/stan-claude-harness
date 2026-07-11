@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Use when the user says "/handoff", "記錄一下", "寫 handoff", "session 結束", "收工", "下次繼續", "save progress", "交接", or when the conversation is about to end and significant work was done. Generates a structured handoff document that any AI tool can read to continue the work.
+description: Session 交接記錄。主動使用本 skill 當使用者要收工、結束對話、下次想接續，或講「記錄一下」「寫 handoff」「收工」「下次繼續」「交接」「save progress」「/handoff」，即使沒明講。也在對話即將結束且本次做了實質工作時主動提出。產出一份結構化 HANDOFF.md（做了什麼/決策/狀態/已知問題/下一步/給下個 AI 的提示），任何 AI 工具都能讀來接手。寫前遮蔽 .env 等敏感資訊。Do not use for：持久化跨 session 記憶資料庫（用 claude-mem）、更新 CLAUDE.md（用 revise-claude-md）、git commit/PR。
 ---
 
 # Session Handoff（工作交接記錄）
@@ -51,6 +51,9 @@ description: Use when the user says "/handoff", "記錄一下", "寫 handoff", "
 - [任何重要的 context，例如「不要用 X 框架因為 Y」]
 - [環境限制，例如「Windows 上要用 py 不是 python3」]
 
+### 建議下個 AI 用的 skill
+- [接手這份工作可能會用到的 skill，例如「改 Compose UI → chrisbanes」「逼問設計 → grilling」]
+
 ---
 
 ## Previous Session: [日期]
@@ -68,6 +71,8 @@ description: Use when the user says "/handoff", "記錄一下", "寫 handoff", "
 3. **決策要附理由**：不寫「用了 SQLite」，要寫「用了 SQLite 因為不需要額外安裝，開發階段最簡單」
 4. **下一步要可執行**：不寫「繼續開發」，要寫「實作 WebSocket 通知推送，參考 Phase 3 的 Slice 2」
 5. **追加不覆蓋**：新 session 的記錄加在最上面，舊的保留。這樣能看到完整歷史
+6. **遮蔽敏感資訊**：寫檔前移除 API key、密碼、token、PII（Stan 常貼 .env，這步別省）
+7. **不複製其他文件**：已在 PRD / plan / ADR / commit / diff 記過的內容，用路徑或 URL 引用，別整段複製進來（避免過時副本）
 
 ## Handoff 檔案位置
 

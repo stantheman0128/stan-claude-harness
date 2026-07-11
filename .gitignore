@@ -63,3 +63,11 @@ ops/check-skills-update/reports/
 .claude/loop-gate-evidence.json
 local-plugins/**/__pycache__/
 .impeccable/
+
+# Harness runtime (2026-07-12)
+/jobs/
+/security/
+/skill-usage/
+mcp-needs-auth-cache.json
+settings.json.bak-*
+skill-routing-snapshot.json

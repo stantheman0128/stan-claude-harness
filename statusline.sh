@@ -1,5 +1,11 @@
 #!/bin/bash
 # Claude Code Status Line v6
+#
+# ── Roadmap / 待考慮 ──────────────────────────────────────────────
+# - 顯示「本回合用了哪些 skill」：搭配 PostToolUse(Skill) hook 寫的
+#   ~/.claude/skill-usage/<session>.log，在狀態列加一段「⚙️ skills: …」。
+#   只在 CLI 有狀態列（Desktop App 不吃 statusLine），故當 CLI 限定的加分。
+# ──────────────────────────────────────────────────────────────────
 
 input=$(cat)
 echo "$input" > /tmp/claude-statusline-debug.json
