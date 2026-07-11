@@ -34,7 +34,7 @@ user-invocable: true
 - shadcn/ui 元件 → ❄️ `shadcn` 已冷藏，要用先復原
 - 影片轉稿 / 摘要 → `transcribe`、`video-lens`
 - 投資 / 產業研究報告 → ❄️ `report-verifier`、`upstream-insights-report`、`adversarial-review` 三件組已冷藏（2026-07-10，3+ 個月未用），寫報告前先復原
-- 去 AI 寫作痕跡 → `humanizer`（英）/ `humanizer-zh-tw`（繁中），含學術論文/研究計畫的「Academic Mode」小節（2026-07-10 harvest 自 academic-humanizer）。`Raymondhou0917/speak-human-tw` 07-11 評估不整套採用（詳見 EVALUATIONS.md），待核可 harvest AI 工具殘留物偵測（utm_source／citeturn 佔位碼）等單點
+- 去 AI 寫作痕跡 → `humanizer`（英）/ `humanizer-zh-tw`（繁中），含學術論文/研究計畫的「Academic Mode」小節（2026-07-10 harvest 自 academic-humanizer）。`Raymondhou0917/speak-human-tw` 07-11 評估不整套採用、單點 harvest 已落地（AI 工具殘留物偵測、罐頭同理心等已進兩支 SKILL.md，詳見 EVALUATIONS.md）
 - 文件處理 → document-skills（docx / pptx / pdf / xlsx）
 - 文件 → 文字 / Markdown（依需求選，兩者互補、各需輕度後處理；2026-06-29 A/B 實測過一份中文論文）：
   - **要圖檔切出 / 複雜合併表格(HTML) / 掃描檔 / 最高逐字正確(形近字) / 去頁碼雜訊 / 離線/批次/隱私 / 重公式(→LaTeX)** → `mineru`（本機，CPU 慢）。雷：底線跳脫 `f\_kol`、中英黏字「把KOL」、偶吞符號(—)，要 regex 清。
