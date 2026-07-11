@@ -38,10 +38,10 @@ Thumbs.db
 settings.local.json
 
 # Ephemeral session/runtime files
-paste-cache/
-plans/
-sessions/
-todos/
+/paste-cache/
+/plans/
+/sessions/
+/todos/
 security_warnings_state_*.json
 
 # Plugin runtime (auto-managed by marketplace)
@@ -52,6 +52,14 @@ daemon*
 .last-*
 auto-hibernate/
 hooks/__pycache__/
-loop-gate/
+/loop-gate/
 hook-health.log*
 SETUP.md.bak
+
+# Restructure 2026-07-11
+skills/humanizer/
+skills/humanizer-zh-tw/
+ops/check-skills-update/reports/
+.claude/loop-gate-evidence.json
+local-plugins/**/__pycache__/
+.impeccable/
