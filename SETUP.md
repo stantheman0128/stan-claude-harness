@@ -20,6 +20,8 @@
 | Agents | `agents\` | pilotfish 分工制：scout / mech-executor / executor / security-executor / verifier / quant-analyst |
 | Skills | `skills\` | 37 資料夾（19 現役＋18 冷藏），**全量進版控**；humanizer×2 例外見下 |
 | Overlays | `overlays\` | plugin overlay patch 檔（impeccable 5 條 harvest 等）——plugin 升版被蓋掉時的還原依據 |
+| 舊 slash commands | `commands\` | 17 支 legacy（reels、api:*、misc:*、supabase:*、ui:* 等），多數已冷藏、檔案留存 |
+| skill 狀態資料 | `skill-data\` | skill 的執行歷史檔（adversarial-review、upstream-insights-report） |
 | **自製 plugin 市集** | `local-plugins\` | marketplace 名 `stan-local-plugins`：**burn-credits** 2.0.0（`/burn` 掃全專案找問題批量修，燒剩餘額度；原名 project-sweep）＋ **loop-gate** 1.0.1（Stop hook 機器驗證 gate） |
 | **運維** | `ops\check-skills-update\` | skill 上游更新檢查（原 claude-setup / drift sweep）：排程 `CheckSkillsUpdate` 每週一 09:23，雙篩自動收錄、四硬閘門、備份回滾 |
 | 文件 | `docs\specs\`、`docs\plans\` | 設計 spec 與實作計畫（loop-gate、本次重構等） |
@@ -46,7 +48,7 @@
 | 迴圈 | 觸發 | 狀態 |
 |---|---|---|
 | loop-gate 驗證 gate | 每次 Stop（掛 manifest 的專案） | chrome-extensions + harness 自身 |
-| check-skills-update | 排程 `CheckSkillsUpdate` 每週一 09:23 | Ready |
+| check-skills-update | 排程 `CheckSkillsUpdate` 每週一 09:23；**錯過→下次開機登入後自動補跑**（StartWhenAvailable，2026-07-12 啟用） | Ready |
 | skill 用量對帳 | 每次 Stop → `skill-usage\` | 運作中 |
 | claude-mem 記憶同步 | SessionStart / Stop | 運作中 |
 | Bedtime Hibernate | 系統匣常駐（開機自啟） | 1.1.0 |
