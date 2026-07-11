@@ -282,7 +282,7 @@
     "claude-session-driver@superpowers-marketplace": false,
     "claude-mem@thedotmack": true,
     "zeabur@zeabur": true,
-    "project-sweep@stan-local-plugins": true,
+    "burn-credits@stan-local-plugins": true,
     "loop-gate@stan-local-plugins": true,
     "document-skills@anthropic-agent-skills": true,
     "superpowers@superpowers-marketplace": true,
@@ -348,7 +348,7 @@
     "stan-local-plugins": {
       "source": {
         "source": "directory",
-        "path": "C:\\Users\\stans\\Projects\\project-sweep-plugin"
+        "path": "C:\\Users\\stans\\.claude\\local-plugins"
       }
     },
     "shyuan-marketplace": {
