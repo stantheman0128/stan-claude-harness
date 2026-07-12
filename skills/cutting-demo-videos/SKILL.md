@@ -9,16 +9,21 @@ description: Use when condensing a long screen-recording demo that has voiceover
 Turn a long talking screen-demo (app/tool walkthrough with voiceover) into a tight highlight reel: remove speech pauses, fast-forward idle stretches as labeled transitions, burn subtitles. The scripts do the mechanics; the judgment below is what makes the cut *good*. Runs fine on a smaller model once the EDL is set — the taste lives in the EDL and the principles.
 
 ## Pipeline
-1. **Understand** — transcribe the audio WITH timestamps + pull a contact sheet to locate narration vs idle stretches.
+1. **Ask deliverables upfront — before touching the video.** Ask the user (AskUserQuestion if available, else in chat) which caption deliverables they want. This only affects steps 6+ (nothing about cutting changes), but asking now — not after the burned video is already delivered — avoids a second pass:
+   - **None** — skip step 6 entirely.
+   - **Burned-in only** — captions baked into the pixels. For portfolio pages, X/Twitter, anywhere without a native CC toggle.
+   - **Standalone SRT only** — deliver the clean (unburned) cut + a `.srt`. For platforms with native caption upload — **this is what YouTube's own CC slot wants**: viewers can toggle/translate/search it, which burned-in text can't do.
+   - **Both** — burned video (portfolio/social) AND clean video + `.srt` (YouTube). Three output files.
+2. **Understand** — transcribe the audio WITH timestamps + pull a contact sheet to locate narration vs idle stretches.
    `python <video-lens>/vtranscribe.py <video> --backend groq --lang auto`
    `ffmpeg -ss <start> -t <dur> -i <video> -vf "fps=25/<dur>,scale=440:-1,tile=5x5" -frames:v 1 sheet.jpg` (Read the jpg — one glance shows the structure.)
    **Only cutting a sub-range of a long source?** Add `-ss <start> -t <dur>` when extracting audio / building the sheet, so the transcript and the 25 tiles concentrate on the range you care about — not 15 tiles wasted on footage you'll discard.
-2. **Design an EDL** — decide which spans to keep, cut, or speed up. Write `edl.txt` (format below). This is where the taste goes.
-3. **Cut** — `bash scripts/cut.sh <video> edl.txt out_nosub.mp4` — precise trim → auto-editor de-silence → 1.15x + loudness-normalize + click-proof edge fades → transition speed-up + pulsing label → concat. Also writes `out_nosub.mp4.manifest.tsv` (where each segment landed in the output). Iterating on the EDL? Segments are cached — only changed lines re-render. Set `DRAFT=1` for a fast low-quality preview while tuning.
-4. **Verify cut points NOW — before subtitles** — `python scripts/verify_cuts.py out_nosub.mp4 out_nosub.mp4.manifest.tsv [lang]` auto-flags splices where a sentence was likely cut mid-thought. **Every SUSPECT must be human-reviewed** (read the printed context vs the source transcript at that spot — ASR sometimes drops a leading "And"/"So", which triggers a lowercase-start false alarm; the source transcript settles it). OK splices still deserve a spot-check of the opening and the ending. Tuned for recall: a false SUSPECT costs one glance, a missed half-sentence ships broken. Half-sentence confirmed? Fix the EDL ss/len, re-run step 3 (cache makes this cheap), verify again. **Loop until clean BEFORE step 5** — burning subs first means redoing the whole subtitle chain after any re-cut.
-5. **Subtitle** — `python scripts/make_srt.py out_nosub.mp4 sub.srt [lang]` (word-level; lang default `en`, pass `zh`/`auto` for non-English or code-switched narration) → `python scripts/polish_srt.py sub.srt sub.polished.srt [glossary.txt]` → `bash scripts/burn.sh out_nosub.mp4 sub.polished.srt out.mp4`.
-6. **Final check** — spot-check burned frames: subtitle size/position, transition label, no subs covering key UI.
-7. **Independent LLM judge** — dispatch a CLEAN-CONTEXT subagent (it must not inherit this session's editing history — no sunk cost) with [references/judge.md](references/judge.md), filling in the input paths. It re-derives evidence itself (verify_cuts, own transcript, frames) and returns SHIP/FIX against the Ship checklist. Treat any FIX item as a re-cut loop, not a debate. A smaller model (Sonnet-class) is sufficient for this role.
+3. **Design an EDL** — decide which spans to keep, cut, or speed up. Write `edl.txt` (format below). This is where the taste goes.
+4. **Cut** — `bash scripts/cut.sh <video> edl.txt out_nosub.mp4` — precise trim → auto-editor de-silence → 1.15x + loudness-normalize + click-proof edge fades → transition speed-up + pulsing label → concat. Also writes `out_nosub.mp4.manifest.tsv` (where each segment landed in the output). Iterating on the EDL? Segments are cached — only changed lines re-render. Set `DRAFT=1` for a fast low-quality preview while tuning.
+5. **Verify cut points NOW — before subtitles** — `python scripts/verify_cuts.py out_nosub.mp4 out_nosub.mp4.manifest.tsv [lang]` auto-flags splices where a sentence was likely cut mid-thought. **Every SUSPECT must be human-reviewed** (read the printed context vs the source transcript at that spot — ASR sometimes drops a leading "And"/"So", which triggers a lowercase-start false alarm; the source transcript settles it). OK splices still deserve a spot-check of the opening and the ending. Tuned for recall: a false SUSPECT costs one glance, a missed half-sentence ships broken. Half-sentence confirmed? Fix the EDL ss/len, re-run step 4 (cache makes this cheap), verify again. **Loop until clean BEFORE step 6** — burning subs first means redoing the whole subtitle chain after any re-cut.
+6. **Subtitle (skip if step 1 = None)** — `python scripts/make_srt.py out_nosub.mp4 sub.srt [lang]` (word-level; lang default `en`, pass `zh`/`auto` for non-English or code-switched narration) → `python scripts/polish_srt.py sub.srt sub.polished.srt [glossary.txt]`. Then, per step 1's answer: **Burned-in** → `bash scripts/burn.sh out_nosub.mp4 sub.polished.srt out.mp4`, deliver `out.mp4` only. **Standalone SRT** → deliver `out_nosub.mp4` (rename to the final filename) + `sub.polished.srt` as-is, do NOT run burn.sh. **Both** → do both, deliver all three files with matching base names (e.g. `demo_burned.mp4`, `demo_clean.mp4`, `demo.srt`) so it's obvious which SRT pairs with which video.
+7. **Final check** — spot-check burned frames (if any): subtitle size/position, transition label, no subs covering key UI.
+8. **Independent LLM judge** — dispatch a CLEAN-CONTEXT subagent (it must not inherit this session's editing history — no sunk cost) with [references/judge.md](references/judge.md), filling in the input paths. It re-derives evidence itself (verify_cuts, own transcript, frames) and returns SHIP/FIX against the Ship checklist. Treat any FIX item as a re-cut loop, not a debate. A smaller model (Sonnet-class) is sufficient for this role.
 
 ## Editing principles (the judgment scripts can't do)
 - **Hook fast** — first ~15s must land what it is + why it exists.
@@ -52,7 +57,7 @@ ss and len are SECONDS in the SOURCE. Line order = final order. `#` starts a com
 4. Duration within target ±10% (ffprobe)
 5. Narration de-silenced, 1.1–1.2x
 6. Each transition ≤20s real time, labeled
-7. Subtitles ≤2 lines, not covering key UI (spot-check 3 frames)
+7. Deliverables match what was asked in step 1 (None/Burned/SRT/Both — not fewer, not extra); subtitles (if any) ≤2 lines, not covering key UI (spot-check 3 frames)
 8. Proper nouns consistent (glossary + grep the SRT)
 9. No clicks at splices, loudness even across segments (cut.sh handles; re-check if sourcing from multiple recordings)
 
@@ -64,6 +69,7 @@ ss and len are SECONDS in the SOURCE. Line order = final order. `#` starts a com
 - **`-c copy` concat falls back to re-encode** → common and fine, NOT an error. Transition segments pass through extra filters (vignette/drawtext/fade), so their timebase differs enough that the demuxer refuses stream-copy; cut.sh auto-falls-back to filter_complex concat (correct output, just slower). Budget render time.
 - **Card text breaks the render** → drawtext chokes on `: ' # \` — keep card text plain words.
 - **Stale cache after re-recording** → cache keys include the video's mtime+size, so a changed file re-renders automatically; delete `.cutcache/` to force-clear.
+- **Delivered a burned video, then got asked for a plain SRT afterward** → this is why step 1 asks upfront. If it still happens: re-generate from `out_nosub.mp4` (steps 6's make_srt/polish), don't hand out an SRT whose timeline predates a later re-cut — a re-cut (step 5's loop) shifts every timestamp after the change, so a burned video and a "standalone" SRT from different cut revisions will drift out of sync.
 
 ## Requirements
 ffmpeg, `pip install --user auto-editor`, and a Groq key at `~/.groq_key` for subtitles. Reuses `~/Downloads/video-lens/vtranscribe.py` for transcription.
