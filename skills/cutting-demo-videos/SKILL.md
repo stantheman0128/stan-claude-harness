@@ -22,7 +22,7 @@ Turn a long talking screen-demo (app/tool walkthrough with voiceover) into a tig
 4. **Cut** — `bash scripts/cut.sh <video> edl.txt out_nosub.mp4` — precise trim → auto-editor de-silence → 1.15x + loudness-normalize + click-proof edge fades → transition speed-up + pulsing label → concat. Also writes `out_nosub.mp4.manifest.tsv` (where each segment landed in the output). Iterating on the EDL? Segments are cached — only changed lines re-render. Set `DRAFT=1` for a fast low-quality preview while tuning.
 5. **Verify cut points NOW — before subtitles** — `python scripts/verify_cuts.py out_nosub.mp4 out_nosub.mp4.manifest.tsv [lang]` auto-flags splices where a sentence was likely cut mid-thought. **Every SUSPECT must be human-reviewed** (read the printed context vs the source transcript at that spot — ASR sometimes drops a leading "And"/"So", which triggers a lowercase-start false alarm; the source transcript settles it). OK splices still deserve a spot-check of the opening and the ending. Tuned for recall: a false SUSPECT costs one glance, a missed half-sentence ships broken. Half-sentence confirmed? Fix the EDL ss/len, re-run step 4 (cache makes this cheap), verify again. **Loop until clean BEFORE step 6** — burning subs first means redoing the whole subtitle chain after any re-cut.
 6. **Subtitle (skip if step 1 = None)** — `python scripts/make_srt.py out_nosub.mp4 sub.srt [lang]` (word-level; lang default `en`, pass `zh`/`auto` for non-English or code-switched narration) → `python scripts/polish_srt.py sub.srt sub.polished.srt [glossary.txt]`. Then, per step 1's answer: **Burned-in** → `bash scripts/burn.sh out_nosub.mp4 sub.polished.srt out.mp4`, deliver `out.mp4` only. **Standalone SRT** → deliver `out_nosub.mp4` (rename to the final filename) + `sub.polished.srt` as-is, do NOT run burn.sh. **Both** → do both, deliver all three files with matching base names (e.g. `demo_burned.mp4`, `demo_clean.mp4`, `demo.srt`) so it's obvious which SRT pairs with which video.
-7. **Final check** — spot-check burned frames (if any): subtitle size/position, transition label, no subs covering key UI.
+7. **Final check** — spot-check burned frames (if any): subtitle size/position, transition label, no subs covering key UI. **For UI-dense content (chat panels, code, dense text/buttons)** — check more than 3 frames, specifically at moments where dense on-screen content coincides with a caption; text overlap that's harmless on a sparse background (a game board, a blank desktop) can obscure meaningful content on a busy one.
 8. **Independent LLM judge** — dispatch a CLEAN-CONTEXT subagent (it must not inherit this session's editing history — no sunk cost) with [references/judge.md](references/judge.md), filling in the input paths. It re-derives evidence itself (verify_cuts, own transcript, frames) and returns SHIP/FIX against the Ship checklist. Treat any FIX item as a re-cut loop, not a debate. A smaller model (Sonnet-class) is sufficient for this role.
 
 ## Editing principles (the judgment scripts can't do)
@@ -35,6 +35,10 @@ Turn a long talking screen-demo (app/tool walkthrough with voiceover) into a tig
 ## Cut-point rule (this is WHY step 5 exists)
 Every cut point must land where a sentence finished. After each render, re-transcribe the OUTPUT and read it line-by-line against the source. If any line starts as a half-sentence, or trails off unfinished right before a cut, the ss/len is wrong — adjust the EDL and re-run. **A clipped closing line, or a sentence cut mid-word before a transition, is the most common and most damaging mistake — and you cannot hear it reliably, you have to read the transcript.**
 
+**After EVERY re-cut, re-diff the WHOLE output against source — not just the spot you were fixing.** A fix that resolves one distortion can introduce a different one elsewhere (observed directly: raising `MARGIN` to fix a dropped word at one timestamp caused a *different* word/number swap at another timestamp, three times in a row on the same source). Spot-checking only the known trouble spot after a fix will miss this — do a full line-by-line pass every time, even on the "already fixed" areas.
+
+**Dense, fast, near-continuous narration (talking-head explainer with almost no natural pauses) is a distinct risk case.** Signal: raising `MARGIN` fixes one word-level distortion but a full re-diff finds a *new* one somewhere else. That's not a tuning problem — it means auto-editor's volume threshold is clipping into live speech regardless of buffer size (quiet trailing words/phrases fall under threshold no matter the margin). **Stop tuning margin after the second such whack-a-mole result.** Switch strategy instead: use `keep` (verbatim, speed-only, no silence-detect) for the dense span — it can't distort content since it never selectively drops audio — accepting the residual natural pauses that don't get stripped. If a specific punchline sits in a genuine silence-bounded blip (e.g. a quiet closing line after a multi-second dead-air gap), isolate *just that* few-second window in its own narrow `narr` pass so auto-editor can find and de-silence it in isolation, without touching the rest of the take (see EDL example below).
+
 ## EDL format
 ```
 # type   ss   len   [factor]
@@ -43,6 +47,9 @@ narr    0    25            # narration: de-silence + speed (factor = speed, defa
 narr    46   116
 trans   739  120   14      # transition: fast-forward factor + silence + label (default 8)
 keep    859  56    1.0     # keep as-is, optional speed
+# Dense/fast take, no de-silencing risk taken -> verbatim bulk + isolated closing-line pass:
+keep    900  33    1.15    # verbatim through the quiet trailing clause, no distortion risk
+narr    933  6     1.15    # narrow window isolates a punchline sitting after a dead-air gap
 ```
 ss and len are SECONDS in the SOURCE. Line order = final order. `#` starts a comment anywhere.
 
@@ -57,7 +64,7 @@ ss and len are SECONDS in the SOURCE. Line order = final order. `#` starts a com
 4. Duration within target ±10% (ffprobe)
 5. Narration de-silenced, 1.1–1.2x
 6. Each transition ≤20s real time, labeled
-7. Deliverables match what was asked in step 1 (None/Burned/SRT/Both — not fewer, not extra); subtitles (if any) ≤2 lines, not covering key UI (spot-check 3 frames)
+7. Deliverables match what was asked in step 1 (None/Burned/SRT/Both — not fewer, not extra); subtitles (if any) ≤2 lines, not covering key UI (spot-check 3 frames; more + targeted at dense-UI moments for chat/code/text-heavy content — see step 7)
 8. Proper nouns consistent (glossary + grep the SRT)
 9. No clicks at splices, loudness even across segments (cut.sh handles; re-check if sourcing from multiple recordings)
 
@@ -70,6 +77,8 @@ ss and len are SECONDS in the SOURCE. Line order = final order. `#` starts a com
 - **Card text breaks the render** → drawtext chokes on `: ' # \` — keep card text plain words.
 - **Stale cache after re-recording** → cache keys include the video's mtime+size, so a changed file re-renders automatically; delete `.cutcache/` to force-clear.
 - **Delivered a burned video, then got asked for a plain SRT afterward** → this is why step 1 asks upfront. If it still happens: re-generate from `out_nosub.mp4` (steps 6's make_srt/polish), don't hand out an SRT whose timeline predates a later re-cut — a re-cut (step 5's loop) shifts every timestamp after the change, so a burned video and a "standalone" SRT from different cut revisions will drift out of sync.
+- **A brief aside/interjection is audible but missing from the SRT** → the caption track isn't guaranteed to transcribe 100% of audible speech, even when the underlying audio is untouched (`keep` segments especially — verbatim audio, imperfect ASR). If a spot looks suspiciously silent in the captions, isolate just that few-second window and re-transcribe it alone (higher signal than a long-pass transcription) before assuming content was cut. Usually fine to leave as-is if it's genuine filler/disfluency, not information.
+- **Burned subtitles reported as oversized / overlapping key on-screen content on one video, despite the same `SUB_FONTSIZE` looking fine on a previous one** → root cause NOT confirmed as of this writing (a quick relative-size check found near-identical text-height-to-frame-height proportion across two different-resolution renders, which argues against a simple resolution-scaling bug — but that check was crude/unverified, don't trust it either). Working theory: the same relative subtitle size that's harmless over sparse graphics (a game board) becomes damaging over UI-dense content (chat text, buttons, code) since there's more to overlap. Until root-caused: for UI-dense screen recordings, don't rely on the same default that worked on a graphics-heavy demo — do a closer visual check (more than 3 frames, specifically at moments with dense on-screen text/UI) before shipping the burned file, and consider trying a smaller `SUB_FONTSIZE` for that content type.
 
 ## Requirements
 ffmpeg, `pip install --user auto-editor`, and a Groq key at `~/.groq_key` for subtitles. Reuses `~/Downloads/video-lens/vtranscribe.py` for transcription.
