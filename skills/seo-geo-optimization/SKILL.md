@@ -34,6 +34,8 @@ curl -s  https://<domain>/ | grep -iE '<title>|meta name="description"|rel="cano
 
 Repeat the meta/OG/canonical/JSON-LD grep on 2-3 inner pages — duplicate-title bugs live there, not just the homepage. Run the same domain's robots.txt/homepage 3-5 times in a row: a domain that answers differently between requests (different title, random 401, different theme) usually means a stale DNS/parking-page/CDN-cache conflict, not a real content bug — chase that root cause before touching SEO tags. Validate structured data at validator.schema.org and Google's Rich Results Test once tags are in place.
 
+**SPA/static-host catch-all**: on a single-page app or static host with a `/* → /index.html 200` fallback rule, an unrecognized path (a nonexistent `/sitemap.xml`, a `.well-known/` probe) often returns the homepage HTML with a 200, not a real 404. This is the actual cause behind audit lines like "returned HTML instead of JSON" or "not found at any expected location" — and it can silently mask a `/sitemap.xml` that *is* being served correctly elsewhere (check `content-type` and actual body, not just the status code). Confirm the fallback rule's scope before concluding a file is missing.
+
 ## Quick Reference — Implement
 
 | Area | Minimum | Detail |
@@ -48,7 +50,7 @@ Repeat the meta/OG/canonical/JSON-LD grep on 2-3 inner pages — duplicate-title
 | llms.txt | H1 = name/site, blockquote = one-line summary, H2 sections as link lists; not an official standard — Google ignores it, but agentic coding tools and some RAG pipelines read it | references/geo-ai-discoverability.md |
 | Content Signals | `Content-Signal: search=yes, ai-input=?, ai-train=?` on robots.txt — ask the owner's actual preference for the last two, don't decide silently | references/geo-ai-discoverability.md |
 | AI crawler allowlist | allow search/retrieval bots (OAI-SearchBot, Claude-SearchBot, PerplexityBot, Amazonbot) if the goal is ever being cited — blocking them is zero citation chance, not neutral | references/geo-ai-discoverability.md |
-| Markdown for agents | serve markdown on `Accept: text/markdown`; self-buildable from any content source, no paid feature required — see templates/seo-head.js pattern | references/geo-ai-discoverability.md |
+| Markdown for agents | serve markdown on `Accept: text/markdown`; self-buildable free of charge on any stack with a request-handling layer (edge function, server route) — see templates/seo-head.js pattern. On a *purely static* host with no such layer, this requires adding one (a Pages/Workers Function, an edge middleware) — it is not zero-code on every stack | references/geo-ai-discoverability.md |
 
 ## What NOT to Implement
 
@@ -60,6 +62,8 @@ An "AI agent readiness" audit (isitagentready.com and similar tools) checks for 
 
 Two items are conditional, not blanket-skip: an agent-skills discovery index only matters if the site actually distributes invokable skill packages; WebMCP only matters if the page has real client-side actions worth exposing (a booking widget, a meaningful filter) — a portfolio's "actions" are just links agents can already follow. Full per-item reasoning: references/agent-protocol-out-of-scope.md.
 
+**Don't skip-by-association.** A real-world audit report frequently mixes agent-protocol items (skip, per above) with genuine technical-SEO items in the same list — sitemap.xml, robots.txt, meta tags. Judge every failing item on its own category (agent-protocol-surface vs. technical-seo vs. GEO), not by "this whole report came from an AI-readiness tool, so skip all of it." Cross-check every item against `references/technical-seo-checklist.md` before dismissing it.
+
 ## Common Mistakes
 
 - **Treating llms.txt as a guaranteed citation lever.** It isn't — Google has said explicitly it doesn't use it as a signal. Do it because it costs almost nothing and some tools (agentic coding assistants, some RAG pipelines) do read it, not because it's proven to move rankings.
@@ -69,6 +73,7 @@ Two items are conditional, not blanket-skip: an agent-skills discovery index onl
 - **On Cloudflare: a fixed Edge TTL override serving stale HTML after a redeploy** — to crawlers as much as browsers, including references to deleted post-redeploy JS/CSS bundle hashes. Use `respect_origin` + proper origin `Cache-Control`, not a dashboard TTL override.
 - **Lumping all "AI bots" together.** Training crawlers (GPTBot, ClaudeBot, Google-Extended), search/retrieval crawlers (OAI-SearchBot, Claude-SearchBot, PerplexityBot), and user-triggered fetchers (ChatGPT-User, Claude-User) serve different purposes — a blanket Disallow or blanket Allow throws away a real decision the owner should get to make.
 - **Assuming apex, www, and the host's preview subdomain behave identically.** AI Crawl Control, Content Signals, and canonical all key off ONE domain — verify production traffic actually flows through it, and that a stale registrar parking page or preview subdomain isn't silently shadowing it.
+- **Reading "file not found" from an audit tool as gospel on a static host.** A SPA/static-host `/* → /index.html` fallback returns 200 HTML for unknown paths — an audit line saying a file is "missing" may just mean the probe hit the fallback, not that the file is actually absent. Verify with a direct curl before implementing.
 
 ## References
 
