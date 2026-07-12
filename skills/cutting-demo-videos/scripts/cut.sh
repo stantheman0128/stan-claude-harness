@@ -52,7 +52,7 @@ gen_speech(){ # type ss len speed seg
   local type=$1 ss=$2 len=$3 sp=$4 seg=$5
   ffmpeg -y -ss "$ss" -i "$VIDEO" -t "$len" "${VENC[@]}" "${AENC[@]}" "$TMP.raw.mp4" -loglevel error
   if [ "$type" = narr ]; then
-    auto-editor "$TMP.raw.mp4" --margin 0.2s -o "$TMP.tight.mp4" --no-open >/dev/null 2>&1
+    auto-editor "$TMP.raw.mp4" --margin "${MARGIN:-0.2s}" -o "$TMP.tight.mp4" --no-open >/dev/null 2>&1
   else mv "$TMP.raw.mp4" "$TMP.tight.mp4"; fi
   if [ "$sp" = "1.0" ] || [ "$sp" = "1" ]; then
     ffmpeg -y -i "$TMP.tight.mp4" -c:v copy -af "$LOUD" "${AENC[@]}" "$TMP.sp.mp4" -loglevel error

@@ -46,7 +46,7 @@ keep    859  56    1.0     # keep as-is, optional speed
 ```
 ss and len are SECONDS in the SOURCE. Line order = final order. `#` starts a comment anywhere.
 
-**Env knobs:** `TRANS_LABEL` (transition label, default `>> fast forward >>`) · `DEMO_FONT` (drawtext font file) · `DRAFT=1` (fast preview render) · `SOFT_CUTS=1` (0.12s dip-to-black between segments; default hard cuts — the screen-demo norm) · `CUT_CACHE` (segment cache dir) · `SUB_FONT`/`SUB_FONTSIZE` (burn.sh).
+**Env knobs:** `TRANS_LABEL` (transition label, default `>> fast forward >>`) · `DEMO_FONT` (drawtext font file) · `DRAFT=1` (fast preview render) · `SOFT_CUTS=1` (0.12s dip-to-black between segments; default hard cuts — the screen-demo norm) · `CUT_CACHE` (segment cache dir) · `SUB_FONT`/`SUB_FONTSIZE` (burn.sh) · `MARGIN` (auto-editor silence-keep buffer, default `0.2s` — bump to `0.3s`–`0.4s` for fast continuous talking-head narration with little natural breathing room; default is fine for typical demo pacing with pauses).
 
 **Fonts (Windows built-ins, pick by content):** product demo → `Segoe UI`; dev-tool/terminal demo → `Consolas`; playful content → `Comic Sans MS`. Set via `SUB_FONT` (subtitles, a font NAME) and `DEMO_FONT` (labels/cards, a font FILE path).
 
@@ -65,7 +65,7 @@ ss and len are SECONDS in the SOURCE. Line order = final order. `#` starts a com
 - **Half-sentence cuts** → re-transcribe output, compare to source (Cut-point rule). Extend len to finish the sentence.
 - **Transition ran to end of file** → in ffmpeg put `-t` BEFORE `-i` (limits the READ), not after (limits the OUTPUT, so setpts pulls in everything to EOF).
 - **Subtitles look huge** → libass Fontsize is relative to PlayResY, not pixels; for 1080p+ frames use ~16, not 40.
-- **De-silence too aggressive / speech jumps** → auto-editor `--margin 0.2s` keeps breathing room.
+- **De-silence too aggressive / speech jumps, or words visibly slur/merge (e.g. an ASR re-transcription mangles a word into a nonsense token, or a number/word silently drops)** → the 0.2s default margin is too tight for this recording's pacing. Set `MARGIN=0.3s` or higher and re-cut. Fast rapid-fire talking-head narration (little natural breathing room between phrases) needs more margin than a demo with pauses. Always re-transcribe and diff against source (Cut-point rule) — this failure mode shows up as content changes, not just short SUSPECTs.
 - **`-c copy` concat falls back to re-encode** → common and fine, NOT an error. Transition segments pass through extra filters (vignette/drawtext/fade), so their timebase differs enough that the demuxer refuses stream-copy; cut.sh auto-falls-back to filter_complex concat (correct output, just slower). Budget render time.
 - **Card text breaks the render** → drawtext chokes on `: ' # \` — keep card text plain words.
 - **Stale cache after re-recording** → cache keys include the video's mtime+size, so a changed file re-renders automatically; delete `.cutcache/` to force-clear.
