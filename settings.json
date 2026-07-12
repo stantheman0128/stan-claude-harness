@@ -178,6 +178,15 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py \"C:/Users/stans/.claude/hooks/harness-autosync.py\"",
+            "timeout": 60
+          }
+        ]
       }
     ],
     "Notification": [
