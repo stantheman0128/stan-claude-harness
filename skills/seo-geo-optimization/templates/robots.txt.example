@@ -1,0 +1,31 @@
+# TODO: replace example.com. Content Signals (contentsignals.org) express
+# usage preferences, not enforcement — compliant crawlers read them, some
+# vendors (notably Google) explicitly ignore the directive entirely.
+User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+Allow: /
+
+# Explicitly allow the search/retrieval bots that power AI-answer citations —
+# blocking them is zero chance of ever being cited, not a neutral choice.
+# (Uncomment/adjust if the default Allow: / above doesn't already cover it,
+# or to make the decision visible instead of implicit.)
+# User-agent: OAI-SearchBot
+# Allow: /
+# User-agent: Claude-SearchBot
+# Allow: /
+# User-agent: PerplexityBot
+# Allow: /
+
+# Training crawlers — make a deliberate per-vendor call, don't default to
+# blanket-block. For a public site with no proprietary/paywalled content,
+# allowing these costs nothing.
+# User-agent: GPTBot
+# Allow: /
+# User-agent: ClaudeBot
+# Allow: /
+# User-agent: Google-Extended
+# Allow: /
+# User-agent: CCBot
+# Allow: /
+
+Sitemap: https://example.com/sitemap.xml

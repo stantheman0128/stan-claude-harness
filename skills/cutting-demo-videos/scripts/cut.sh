@@ -93,7 +93,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     narr|keep)
       read -r ss len factor _ <<<"$rest"
       if [ "$type" = narr ]; then sp="${factor:-1.15}"; else sp="${factor:-1.0}"; fi
-      h=$(key "v1|$type|$ss|$len|$sp|$SOFT|$DRAFT|$VSIG"); seg="$CACHE/$h.mp4"
+      h=$(key "v1|$type|$ss|$len|$sp|$SOFT|$DRAFT|$VSIG|${MARGIN:-0.2s}"); seg="$CACHE/$h.mp4"
       [ -f "$seg" ] && echo "  [cache] $type ss=$ss len=$len" >&2 || gen_speech "$type" "$ss" "$len" "$sp" "$seg"
       ;;
     trans)

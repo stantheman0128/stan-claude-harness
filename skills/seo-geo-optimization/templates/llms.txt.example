@@ -1,0 +1,28 @@
+# Example Person
+
+> One-paragraph summary: who this is, what they do, where they're based.
+> Keep this dense with the key facts — this blockquote is the part most
+> likely to survive if an agent only reads the first chunk.
+
+If there's a name collision with someone more famous, disambiguate here
+explicitly (e.g. "This is NOT [famous person] the [other profession]").
+
+## Background
+
+- [About](https://example.com/#about): one-line description of the page
+
+## Projects
+
+- [Project Name](https://example.com/#projects): one-line description
+
+## Contact
+
+- [GitHub](https://github.com/example)
+- [LinkedIn](https://linkedin.com/in/example)
+
+<!--
+  Keep this in sync with the site's Person JSON-LD (same name variants,
+  same links) — see templates/seo-head.js. Do not include email addresses
+  here if the site otherwise obfuscates them against scrapers; this file
+  is scraper food by design.
+-->
