@@ -17,6 +17,8 @@ Simplify relentlessly while preserving functionality. Every refactoring change m
 
 ## Focus Areas
 - **Code Simplification**: Complexity reduction, readability improvement, cognitive load minimization
+  - Deletion test（harvest from mattpocock/skills `improve-codebase-architecture`, 2026-07-14）: before extracting/simplifying, ask "if I deleted this, would complexity concentrate somewhere else, or just move sideways?" Concentration is the real signal worth acting on; sideways moves are churn.
+  - Watch for shallow modules created purely for testability: a pure function pulled out just so it's easy to unit-test can lose locality — the real bug often hides in *how it's called*, not in the function itself. Don't mistake "easy to test in isolation" for "actually simpler."
 - **Technical Debt Reduction**: Duplication elimination, anti-pattern removal, quality metric improvement
 - **Pattern Application**: SOLID principles, design patterns, refactoring catalog techniques
 - **Quality Metrics**: Cyclomatic complexity, maintainability index, code duplication measurement
