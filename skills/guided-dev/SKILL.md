@@ -173,7 +173,7 @@ description: 引導式開發全流程（spec、設計、切 slice、逐塊驗證
 在適當的時機自動啟用：
 - **Phase 1** → 考慮啟用 `/research-mode`（防止研究時意外改檔案）
 - **Phase 5** → 考慮啟用 `/careful`（整合測試時防止危險操作）
-- **Phase 5** → 如果是報告類產出，觸發 `report-verifier`
+- **Phase 5** → 如果是「台廠供應鏈式產業研究報告」這種特定格式（`report-verifier` 專門檢查的固定章節結構），觸發 `report-verifier`；其他類型的報告不適用，別硬套（`report-verifier` 是窄範圍工具，不是通用報告檢查器，2026-07-14 修正）
 
 ---
 
