@@ -65,6 +65,7 @@ description: 引導式開發全流程（spec、設計、切 slice、逐塊驗證
 用 Plan subagent 設計架構，考慮：
 - 最簡單能 work 的方案（預設選這個）
 - 是否有需要更複雜方案的理由
+- **Seam-first**（取自 mattpocock to-spec，2026-07-14 harvest）：動手前先想清楚要在哪些接縫（seam）驗證這個功能，優先沿用既有接縫、用最高的接縫，接縫數量越少越好（理想＝1）。新接縫要提出來跟使用者確認符合預期，別悶頭多開
 
 **給你看的不是技術細節，而是**：
 - 「我打算這樣做：[用一句話說明方案]」
@@ -105,8 +106,9 @@ description: 引導式開發全流程（spec、設計、切 slice、逐塊驗證
 
 ### Slice 大小
 
-- 目標：每個 Slice 約 **2-5 分鐘**的工作量
+- 目標：每個 Slice 約 **2-5 分鐘**的工作量，或塞得進「一個全新 context window」（取自 mattpocock to-tickets，2026-07-14 harvest）
 - 如果一個 Slice 感覺要 10+ 分鐘 → 再切
+- **例外：大範圍機械性改動**（改欄名、重打共用 symbol 這種掃過整個 codebase、切不出能保持 CI 綠的垂直切片）→ 別硬切成 tracer bullet，改用 expand（新舊並存）→ migrate（按 blast radius 分批，每批被 expand 擋住）→ contract（刪舊，被所有 migrate 批次擋住）；批次自己也綠不了時，開一條共用 integration branch，全部擋住一張最終整合驗證 Slice（取自 mattpocock to-tickets，2026-07-14 harvest）
 
 ### 產出
 
@@ -149,7 +151,7 @@ description: 引導式開發全流程（spec、設計、切 slice、逐塊驗證
 1. 模擬完整使用流程（不只是單一功能）
 2. 測試邊界案例
 3. 確認與現有系統的整合
-4. 用 code-reviewer subagent 做最終品質檢查
+4. 用 code-reviewer subagent 做最終品質檢查，**順便回頭核對 Phase 1 的需求摘要**：有沒有漏做的需求、有沒有做超出範圍的東西（scope creep）（取自 mattpocock code-review 的 spec-conformance 軸，2026-07-14 harvest）
 
 **給你看**：
 - 「全部完成。我測過了 [X, Y, Z] 場景，都通過。」
