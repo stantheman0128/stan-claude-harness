@@ -38,6 +38,7 @@ Categories come from Phase 1, not from a template. A candidate menu is in [`refe
 Per-agent authoring rules:
 
 - **Audience**: zero-context mid-level engineer or Sonnet-class model. Imperative runbook voice, copy-pasteable commands, every term of art defined once.
+- **Show the good version, don't ban the bad one.** Anthropic's guidance is explicit that a positive example of the behavior you want outperforms a list of things not to do. A skill full of prohibitions teaches the reader what failure looks like and leaves them to invent success.
 - **Ground truth only.** Verify every command, flag, path, and version against the repo before writing it. A wrong runbook is worse than no runbook.
 - **Declare invocation and pay for it.** Each skill states whether it is model-invoked (description sits in context every turn, forever) or user-invoked (`disable-model-invocation: true`, zero context cost, but you must remember it exists). Default to user-invoked. Model-invocation is earned by a skill another skill must reach, or that must fire without being named.
 - **Each skill says when NOT to use it**, and which sibling to use instead.
