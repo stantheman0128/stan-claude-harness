@@ -39,6 +39,8 @@ Codex writes lean because OpenAI tells it to. That leanness under-specifies for 
 
 **Done when** every instruction names the set it applies to, and the brief says why the work is being done.
 
+This section is the fallback, not the plan. The fix belongs upstream: `~/.codex/skills/prompting-claude/SKILL.md` is the mirror of this skill, installed on the Codex side, and it tells Codex to supply scope and intent itself. If a Codex-written brief still arrives missing them, the mirror did not fire — say so, rather than silently patching it every time.
+
 ## AGENTS.md and CLAUDE.md
 
 Same job, different readers, and they must not become the same file.
