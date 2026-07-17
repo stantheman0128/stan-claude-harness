@@ -34,6 +34,7 @@ claude-{yyyyMMdd-HHmmssfff}
 
 ## 必做迴圈
 
+0. **PR 輪迴（挖新票前）**：查 `stantheman0128` 的 open PR。優先：`CHANGES_REQUESTED`／未回的 maintainer 留言 → CI 紅燈。在既有 fork 分支修並 push；更新 LEDGER／HANDOFF。若該 issue 的 claim 被別的 session 持有就換下一支。可做「只清 review」的 session。然後才挖新票。
 1. Check 0：掃 `claims/`，已認領勿深想。
 2. 備選 2–3 題。
 3. Check 1：原子認領
