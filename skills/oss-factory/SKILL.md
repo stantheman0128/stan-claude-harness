@@ -4,8 +4,8 @@ description: >
   Stan 的多工具 OSS Contribution Factory（路徑 C:\Users\stans\Projects\oss）。
   主動使用當使用者要做開源貢獻、挖 issue、認領 claims、開 PR（stantheman0128）、
   與 Codex/Cursor/Grok 並行協作、更新 LEDGER/HANDOFF、或提到 claude-mem / hermes-agent /
-  openclaw / OpenCC / OpenWhispr / remotion / neo / Claude for OSS。即使當前 cwd 不是 oss 也要用，
-  一律改以工廠絕對路徑作業。Do not use 於私人產品（claude-mem-sync）、skill 蒸餾、或 yt-dlp。
+  openclaw / OpenWhispr / remotion / neo / Claude for OSS。OpenCC 已凍結勿碰。即使當前 cwd 不是 oss 也要用，
+  一律改以工廠絕對路徑作業。Do not use 於私人產品（claude-mem-sync）、skill 蒸餾、yt-dlp、或 OpenCC。
 user-invocable: true
 ---
 
@@ -65,4 +65,4 @@ exit 2 → 立刻換題。只有 `CLAIM_OK` 後才重現／寫碼。
 
 ## 預設可自行發 PR 的 repo
 
-claude-mem、OpenCC、OpenWhispr、remotion、hermes-agent、openclaw。issue/PR 留言另問。禁止 yt-dlp。
+claude-mem、OpenWhispr、remotion、hermes-agent、openclaw。issue/PR 留言另問。禁止 yt-dlp。**凍結：BYVoid/OpenCC**（勿 scout／claim／開 PR）。
