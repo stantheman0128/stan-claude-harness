@@ -7,6 +7,7 @@
 - hook 與 eval 重構：用量讀不到只跳過用量那條，時間 guard 照擋；沒有任一有效 guard 時保守 HARDSTOP。
 - `/quota-pace [<N>m] …`、SKILL 支援純時間盒（可省 u0）。
 - 新參數：`QP_GRACE_MIN`(3)、`QP_NOTICE_MIN`(2)。
+- 防禦：`started`/`minutes` 非數字時安全略過（`_num`），不再拋未捕捉例外（verifier 抓出）。
 
 ## 0.1.0 — 2026-07-18
 初版。額度感知任務節奏器：邊做邊看用量、接近限制前主動收手並寫交接。只在互動式 CLI 有效。

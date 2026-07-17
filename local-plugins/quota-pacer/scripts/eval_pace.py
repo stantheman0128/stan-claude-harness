@@ -29,7 +29,7 @@ def main():
 
     verdict, trigger = pc.evaluate(usage, active)
 
-    minutes = active.get("minutes")
+    minutes = pc._num(active.get("minutes"))
     # 沒有任何有效 guard（用量讀不到且沒設時間）→ 保守停手，別盲跑
     if usage is None and not minutes:
         verdict, trigger = "HARDSTOP", "no-guard"
@@ -37,7 +37,7 @@ def main():
     parts = []
     if minutes and active.get("started"):
         parts.append("elapsed {:.0f}m/{:.0f}m".format(
-            pc.elapsed_min(active["started"]), float(minutes)))
+            pc.elapsed_min(active["started"]), minutes))
     if usage is not None:
         h5 = usage.get("five_hour", {}).get("pct")
         w = usage.get("seven_day", {}).get("pct")

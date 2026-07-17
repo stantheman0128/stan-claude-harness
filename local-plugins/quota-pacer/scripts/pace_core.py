@@ -18,6 +18,13 @@ def _f(env, default):
     except (TypeError, ValueError):
         return float(default)
 
+def _num(x):
+    """安全轉數字，壞值回 None（防 active.json 被寫壞時 float() 爆例外）。"""
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
 SOFT = _f("QP_SOFT_RATIO", 0.10)
 HARD = _f("QP_HARD_RATIO", 0.05)
 FLOOR = _f("QP_FLOOR_PP", 3)
@@ -65,15 +72,19 @@ def eval_limit(cur, u0):
     return "CONTINUE"
 
 def elapsed_min(started):
-    return (time.time() - float(started)) / 60.0
+    n = _num(started)
+    if not n or n <= 0:
+        return 0.0
+    return (time.time() - n) / 60.0
 
 def eval_time(started, minutes):
-    if not started or not minutes:
+    s, m = _num(started), _num(minutes)
+    if not s or not m or s <= 0 or m <= 0:
         return "CONTINUE"
-    e = elapsed_min(started)
-    hard_at = max(0.0, minutes - GRACE_MIN)
+    e = (time.time() - s) / 60.0
+    hard_at = max(0.0, m - GRACE_MIN)
     wind_at = max(0.0, hard_at - NOTICE_MIN)
-    if e >= minutes:
+    if e >= m:
         return "EMERGENCY"
     if e >= hard_at:
         return "HARDSTOP"
@@ -85,9 +96,8 @@ def evaluate(usage, active):
     """回 (verdict, trigger)。時間與用量兩條 guard 先到者。usage 可為 None（讀不到）。"""
     verdict, trigger = "CONTINUE", ""
 
-    minutes = active.get("minutes")
-    if minutes:
-        v = eval_time(active.get("started"), float(minutes))
+    if _num(active.get("minutes")):
+        v = eval_time(active.get("started"), active.get("minutes"))
         if RANK[v] > RANK[verdict]:
             verdict, trigger = v, "time"
 
