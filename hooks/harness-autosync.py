@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# Stop hook：session 結束時，若 harness repo 的 skills/ 或 agents/ 有變動，
+# Stop hook：session 結束時，若 harness repo 的 skills/、agents/ 或 local-plugins/ 有變動，
 # 掃描 staged 內容的秘鑰指紋後自動 commit + push，讓 stan-claude-harness 保持最新。
 #
 # 安全紀律：
 #   - 偵測到疑似秘鑰 → fail-closed：unstage、明顯告警、絕不 commit/push。
 #   - git 操作失敗（網路 / 並行 session 衝突）→ fail-open：告警但不卡 session。
-#   - 只碰 skills/ 與 agents/，其餘變動一律不動。
+#   - 只碰 skills/、agents/、local-plugins/，其餘變動一律不動。
 #   - 任何未預期例外都 exit 0，收尾不受影響。
 import sys, os, re, json, subprocess
 from datetime import datetime
@@ -17,7 +17,7 @@ except Exception:
     pass
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-WATCH = ["skills", "agents"]
+WATCH = ["skills", "agents", "local-plugins"]
 
 # 高信度秘鑰指紋：命中幾乎必為真秘鑰，不用泛型 key=value（會誤報講解文字）。
 SECRET_PATTERNS = [
@@ -98,7 +98,7 @@ def main():
         return
 
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
-    commit = git("commit", "-m", f"chore(harness): auto-sync skills/agents at session end ({ts})")
+    commit = git("commit", "-m", f"chore(harness): auto-sync skills/agents/local-plugins at session end ({ts})")
     if commit.returncode != 0:
         warn(f"git commit 失敗，略過本次同步：{commit.stderr.strip() or commit.stdout.strip()}")
         return
@@ -109,7 +109,7 @@ def main():
         warn(f"  git 訊息：{push.stderr.strip()}")
         return
 
-    sys.stderr.write(f"\n[harness-autosync] 已同步 skills/agents 變動到 harness repo（{ts}）。\n")
+    sys.stderr.write(f"\n[harness-autosync] 已同步 skills/agents/local-plugins 變動到 harness repo（{ts}）。\n")
 
 
 if __name__ == "__main__":
