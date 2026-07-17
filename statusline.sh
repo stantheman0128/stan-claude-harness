@@ -10,6 +10,13 @@
 input=$(cat)
 echo "$input" > /tmp/claude-statusline-debug.json
 
+# Quota Pacer：正式的用量狀態檔（不依賴上面的 debug dump），供 quota-pacer 讀取
+echo "$input" | jq -c --argjson ts "$(date +%s)" '{
+  five_hour: {pct: .rate_limits.five_hour.used_percentage, resets_at: .rate_limits.five_hour.resets_at},
+  seven_day: {pct: .rate_limits.seven_day.used_percentage, resets_at: .rate_limits.seven_day.resets_at},
+  ts: $ts
+}' > "$HOME/.claude/usage-state.json" 2>/dev/null
+
 # ── Colors ──────────────────────────────────────────
 RST='\033[0m'
 BOLD='\033[1m'

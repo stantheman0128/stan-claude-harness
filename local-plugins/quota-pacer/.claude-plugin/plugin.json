@@ -1,0 +1,8 @@
+{
+  "name": "quota-pacer",
+  "description": "額度感知的任務節奏器：邊做邊看用量，接近限制前主動收手並寫交接（Stan harness）",
+  "version": "0.1.0",
+  "author": {
+    "name": "Stan Shih"
+  }
+}
