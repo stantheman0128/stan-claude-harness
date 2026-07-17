@@ -1,9 +1,12 @@
 """Quota Pacer 核心：讀用量、讀 active 基準、算裁決。hook 與 eval CLI 共用。
 
-門檻模型見 docs/specs/2026-07-18-quota-pacer-design.md。
-每條限制在 session 起點記一次基準 U0，把當下還剩的正規化成 available=100-U0，
-再取 soft/hard 比例與 FLOOR 地板。EMERGENCY 是給 hook 的最後保險，低於 hard-stop，
-確保寫交接的那段 buffer 不會被 hook 擋掉。
+兩條 guard，先到者觸發：
+- 用量 guard：每條限制 session 起點記 U0，available=100-U0，正規化門檻。
+- 時間 guard：從 started 起算 elapsed 分鐘，minutes 為上限；只靠牆鐘，不碰用量資料，
+  所以在讀不到 usage 的環境（SDK / 桌面 App）照樣有效。
+
+門檻與時間盒模型見 docs/specs/2026-07-18-quota-pacer-design.md。
+EMERGENCY 是給 hook 的最後保險，低於 hard-stop，確保寫交接的 buffer 不會被 hook 擋掉。
 """
 import json
 import os
@@ -21,6 +24,8 @@ FLOOR = _f("QP_FLOOR_PP", 3)
 GAP = _f("QP_NOTICE_GAP_PP", 1)
 EMERGENCY = _f("QP_EMERGENCY_PP", 1)
 STALE = _f("QP_STALE_SEC", 90)
+GRACE_MIN = _f("QP_GRACE_MIN", 3)
+NOTICE_MIN = _f("QP_NOTICE_MIN", 2)
 
 USAGE_STATE = os.environ.get("QP_USAGE_STATE") or os.path.join(
     os.path.expanduser("~"), ".claude", "usage-state.json")
@@ -59,16 +64,42 @@ def eval_limit(cur, u0):
         return "WINDDOWN"
     return "CONTINUE"
 
+def elapsed_min(started):
+    return (time.time() - float(started)) / 60.0
+
+def eval_time(started, minutes):
+    if not started or not minutes:
+        return "CONTINUE"
+    e = elapsed_min(started)
+    hard_at = max(0.0, minutes - GRACE_MIN)
+    wind_at = max(0.0, hard_at - NOTICE_MIN)
+    if e >= minutes:
+        return "EMERGENCY"
+    if e >= hard_at:
+        return "HARDSTOP"
+    if e >= wind_at:
+        return "WINDDOWN"
+    return "CONTINUE"
+
 def evaluate(usage, active):
-    """回 (verdict, trigger)。先到者：取所有啟用限制中最嚴重的。"""
-    mode = active.get("mode", "both")
-    u0 = active.get("u0", {})
-    names = ["weekly"] if mode == "5h-override" else ["5h", "weekly"]
+    """回 (verdict, trigger)。時間與用量兩條 guard 先到者。usage 可為 None（讀不到）。"""
     verdict, trigger = "CONTINUE", ""
-    for name in names:
-        key = LIMITS[name]
-        cur = usage.get(key, {}).get("pct")
-        v = eval_limit(cur, u0.get(key))
+
+    minutes = active.get("minutes")
+    if minutes:
+        v = eval_time(active.get("started"), float(minutes))
         if RANK[v] > RANK[verdict]:
-            verdict, trigger = v, name
+            verdict, trigger = v, "time"
+
+    if usage is not None:
+        mode = active.get("mode", "both")
+        u0 = active.get("u0", {})
+        names = ["weekly"] if mode == "5h-override" else ["5h", "weekly"]
+        for name in names:
+            key = LIMITS[name]
+            cur = usage.get(key, {}).get("pct")
+            v = eval_limit(cur, u0.get(key))
+            if RANK[v] > RANK[verdict]:
+                verdict, trigger = v, name
+
     return verdict, trigger

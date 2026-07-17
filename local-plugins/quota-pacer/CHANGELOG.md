@@ -1,5 +1,13 @@
 # Quota Pacer CHANGELOG
 
+## 0.2.0 — 2026-07-18
+新增時間 guard（time-box）：跟用量 guard 並存、先到者觸發。
+- 時間 guard 只靠牆鐘，不碰 statusline/用量，所以在讀不到 usage 的環境（SDK/桌面 App）照樣有效。
+- `active.json` 可帶 `minutes`（時間上限）：wind-down 在 `minutes−GRACE−NOTICE`、hard-stop 在 `minutes−GRACE`（留 GRACE 分寫交接）、emergency 在 `minutes` 整（hook 硬擋死線）。
+- hook 與 eval 重構：用量讀不到只跳過用量那條，時間 guard 照擋；沒有任一有效 guard 時保守 HARDSTOP。
+- `/quota-pace [<N>m] …`、SKILL 支援純時間盒（可省 u0）。
+- 新參數：`QP_GRACE_MIN`(3)、`QP_NOTICE_MIN`(2)。
+
 ## 0.1.0 — 2026-07-18
 初版。額度感知任務節奏器：邊做邊看用量、接近限制前主動收手並寫交接。只在互動式 CLI 有效。
 

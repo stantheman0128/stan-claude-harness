@@ -1,10 +1,10 @@
 """Quota Pacer PreToolUse 硬保險（最後一層）。
 
-只有當 pacer session 啟用（active.json 存在）且用量已燒穿到 EMERGENCY 層
-（連寫交接的 buffer 都快沒了）時，才擋新工具呼叫。正常的 hard-stop 收尾寫交接
-不在此擋，交由 skill 處理，否則會把 Write 一起擋掉。
-
-fail-open：讀不到用量、資料過舊、或 pacer 未啟用時一律放行，不憑舊數字硬卡。
+active.json 存在時：
+- 時間 guard 一律評（只靠牆鐘）：超過 minutes 死線 → EMERGENCY → 擋。
+- 用量 guard 只在用量可讀且不過舊時才評：燒穿到 EMERGENCY 層 → 擋。
+刻意不擋在 hard-stop（那層留給 skill 寫交接，否則會把 Write 一起擋掉）。
+讀不到用量不影響時間 guard；沒有任一有效 guard 時放行（交給 skill 判斷）。
 """
 import json
 import os
@@ -23,18 +23,22 @@ def main():
         sys.exit(0)  # pacer 未啟用
 
     try:
-        usage = pc.load_usage()
         active = pc.load_active()
     except (OSError, ValueError):
-        sys.exit(0)  # 讀不到 → fail-open
+        sys.exit(0)
 
-    if usage.get("_age", 0) > pc.STALE:
-        sys.exit(0)  # 資料過舊 → 不憑舊數字硬擋
+    usage = None
+    try:
+        u = pc.load_usage()
+        if u.get("_age", 0) <= pc.STALE:
+            usage = u  # 過舊就當讀不到，時間 guard 仍生效
+    except (OSError, ValueError):
+        usage = None
 
     verdict, trigger = pc.evaluate(usage, active)
     if verdict == "EMERGENCY":
-        print(f"[quota-pacer] EMERGENCY：{trigger} 額度已見底，連收尾 buffer 都快耗盡。"
-              f"停止一切工具呼叫，立刻結束本輪。", file=sys.stderr)
+        print(f"[quota-pacer] EMERGENCY：{trigger} 死線已到，停止一切工具呼叫，立刻結束本輪。",
+              file=sys.stderr)
         sys.exit(2)  # 擋這次工具呼叫
     sys.exit(0)
 

@@ -68,6 +68,18 @@ buffer 要蓋住兩件事：兩次檢查間的過衝（每個工具呼叫前用 
 
 誠實註記：override 只是「本工具不再對 5h 自我節制」。若真把 5h 用到 100%，平台仍會硬切，這不是本工具能擋的。使用時機正是判斷這個短間隔內衝不破 5h、不值得為它管控。
 
+## 時間 guard（time-box，v0.2.0）
+
+跟用量 guard 並存，先到者觸發。只靠牆鐘，不碰 statusline/用量，所以在讀不到 usage 的環境（SDK / 桌面 App）照樣有效——這是它相對用量 guard 的關鍵優勢。
+
+- `active.json` 帶 `started`(epoch) 與 `minutes`(上限)，`elapsed = (now − started)/60`。
+- wind-down：`elapsed ≥ minutes − GRACE − NOTICE`
+- hard-stop：`elapsed ≥ minutes − GRACE`（留 GRACE 分寫交接）
+- emergency：`elapsed ≥ minutes`（hook 硬擋死線）
+- 參數：`GRACE_MIN`(預設 3)、`NOTICE_MIN`(預設 2)。`minutes < GRACE` 時門檻夾到 0（短計時器→很快停）。
+
+`evaluate()` 同時算時間與用量兩條、回最嚴重者。`usage` 為 None（讀不到 / 過舊）時只跳過用量那條，時間照算——所以 hook 在讀不到用量時仍能執行時間死線。純用量模式若讀不到用量又沒設時間 → eval 回保守 `HARDSTOP no-guard`。
+
 ## 收尾行為
 
 wind-down：停止開新的工作塊，把手上這塊做完，引導 agent 收束到乾淨停止點。
