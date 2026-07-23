@@ -58,6 +58,11 @@ exit 2 → 立刻換題。只有 `CLAIM_OK` 後才重現／寫碼。
 
 scout 一波後：在最好的 1–2 個 affinity repo（Windows／zh-TW／台灣作者／日常 MCP）各做到 2–3 支高品質 PR，再等 review／merge；不要對十個新家各丟一支。加深目標例：`open-slide`、`toolhive`、`arozos`/`zoraxy`、`taiwan-md`（滿 3 open 就停）。
 
+## @mention 與 case study
+
+- 人類 @`stantheman0128`：**一律回覆**（ack + 立場）。既有 factory PR 的 standing autonomy 涵蓋這類回覆。
+- 被 credit／fold-into／因超集關閉：當日追加 `handoff/CASE-STUDIES.md`（漏了什麼 + 下一題怎麼做滿）。見 `AGENTS.md` Merge completeness bar。
+
 ## CI triage
 
 - Vercel「Authorization required」= maintainer 端，不是我們的程式債。
