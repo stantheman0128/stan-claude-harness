@@ -49,7 +49,7 @@ exit 2 → 立刻換題。只有 `CLAIM_OK` 後才重現／寫碼。
 4. `LEDGER.md` 加 `in-progress`。
 5. 只在 `<repo>-wt/<item>/` 改碼。禁止寫 `FROZEN.md` 路徑與 `_archive/`。
 6. Check 2：`claim.ps1 -VerifyOnly` + 串行 `gh` 查覆蓋 PR。
-7. 品質閘見 `AGENTS.md`（AI 政策、HEAD 重現、測試、Evidence）。**M/L 另過「Merge completeness bar」**（同檔）：同一 state machine 的 race／persist／sibling 失敗要蓋滿，或明確寫進 What was not tested；被 credit／競合時 24h 內比 diff，擴到對等或讓路。
+7. 品質閘見 `AGENTS.md`（AI 政策、HEAD 重現、測試、Evidence）。**M/L 另過「Merge completeness bar」**（同檔）：同一 state machine 的 race／persist／sibling 失敗要蓋滿，或明確寫進 What was not tested；被 credit／競合時 24h 內比 diff，擴到對等或讓路。**UI／設定頁／daemon 類 bug：Evidence 必須含 product path（截圖／跑起來的 API／實際 click-through），不可只有 helper unit test；若 What was not tested 就是使用者會看到的那條路，先補測再開 PR（arozos #289 教訓）。**
 8. Check 3 後自行發佈（預設池）：fork `stantheman0128` → push → `gh pr create`（neo base=`dev`）。
 9. claim 補 `pr:`；LEDGER → `published`；收工用 handoff skill 寫 `HANDOFF.md` 一節。
 
