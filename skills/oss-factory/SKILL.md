@@ -18,12 +18,12 @@ user-invocable: true
 
 ## 開場必讀（依序）
 
-1. `AGENTS.md`
-2. `HANDOFF.md`（最新一節）
-3. `LEDGER.md`
-4. `claims/` + `claims/README.md`
-5. `CANDIDATES.md`
-6. 若存在：`FACTORY-TARGET.md`（目標是 **100 merged**，不是 published）
+1. `README.md`（短地圖）→ `AGENTS.md`
+2. `HANDOFF.md`（**只讀最新 1–2 節**；不要讀 `handoff/archive/`）
+3. `LEDGER.md`（最近列）
+4. `claims/` 檔名（認領時再讀 `claims/README.md`）
+5. `CANDIDATES.md`（`open` / `claimed` / `blocked`）
+6. `FACTORY-TARGET.md`（目標 **100 merged|integrated**，不算 published）
 
 ## Session id
 
