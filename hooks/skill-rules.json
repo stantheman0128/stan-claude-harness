@@ -4,6 +4,14 @@
   "_note": "關鍵字→skill 對照表，2026-07-10 起為 skill-routing 分流表的「編譯版」：每條 why 寫成『預設 X；情境 Y → Z』濃縮判準，skills 順序＝表的預設排第一。表變更後要重編譯本檔（見 skill-routing SKILL.md 編譯規範）。enforce:mandatory 走【強制區】：命令式、每則注入、不去重；其餘軟提醒+同session去重。skill-suggest.py 會把兩區建議記到 suggestions-<session>.jsonl 供 Stop hook 對帳。漏詞/誤觸改這檔即生效，免重開 session。",
   "rules": [
     {
+      "skills": ["write-like-shasha77"],
+      "priority": "medium",
+      "keywords": ["志祺", "志祺七七", "shasha77", "仿志祺"],
+      "intentPatterns": [],
+      "excludePatterns": [],
+      "why": "志祺七七主線腳本生成(四段式:提案/大綱/逐字稿/標題配圖);規則單一真相源在 Projects/shasha77/style-spec 四檔;2026-07-17 煉成,盲評騙過率 70%"
+    },
+    {
       "skills": ["superpowers:brainstorming", "guided-dev", "agent-skills:spec-driven-development"],
       "priority": "high",
       "enforce": "mandatory",
@@ -72,6 +80,32 @@
       "intentPatterns": [],
       "excludePatterns": [],
       "why": "預設 api-and-interface-design（API/合約表面：error shape/版本相容/驗證位置）；deep-module/seam 深度方法論的 codebase-design 已冷藏、要用先復原"
+    },
+    {
+      "skills": ["agent-skills:git-workflow-and-versioning", "resolving-merge-conflicts"],
+      "priority": "medium",
+      "keywords": ["commit", "branch", "分支", "merge conflict", "衝突", "rebase", "git log", "版本控制", "撞衝突", "衝突解不開"],
+      "intentPatterns": [],
+      "excludePatterns": [],
+      "why": "預設 git-workflow-and-versioning（commit/branch/訊息準則）；卡在 merge/rebase 衝突中 → resolving-merge-conflicts（mattpocock vendor，2026-07-14）；要開隔離 worktree/收尾分支 → using-git-worktrees/finishing-a-development-branch"
+    },
+    {
+      "skills": ["project-skill-library"],
+      "priority": "medium",
+      "enforce": "soft",
+      "keywords": ["skill 庫", "skill library", "固化知識", "部落知識", "succession", "怕忘記怎麼運作", "交接這個專案", "onboard", "接手這個 repo", "把知識寫下來"],
+      "intentPatterns": ["(建|做|寫).{0,6}skill\\s*(庫|library)", "(固化|保存|記錄).{0,8}(知識|經驗|坑)"],
+      "excludePatterns": [],
+      "why": "把一個專案的部落知識固化成 skill 庫。**先過 Phase 0 閘門**：要同時有部落知識＋夭折路線史＋還會繼續做，三缺一就只寫 HANDOFF.md（多數專案不該建庫，建了＝sediment）。內建 Phase 4：拿真實任務對 Sonnet A/B，贏不了 baseline 的 skill 刪掉"
+    },
+    {
+      "skills": ["cross-model-handoff"],
+      "priority": "medium",
+      "enforce": "soft",
+      "keywords": ["codex", "agents.md", "交給 codex", "派給 codex", "叫 codex", "丟給 codex", "gpt-5", "openai 那邊", "hand to codex", "另一個 ai", "兩邊一起"],
+      "intentPatterns": ["(交|派|丟|給|叫).{0,6}codex", "codex.{0,10}(做|寫|跑|審|改)", "agents\\.md"],
+      "excludePatterns": [],
+      "why": "Claude 與 Codex 的 prompt 形狀互相有害：叫 Codex「先給計畫/回報進度」會害它 rollout 中途早停（OpenAI 官方明文）；Codex 寫的精簡 prompt 對字面理解的 Opus 4.8 則是 under-specify。寫 brief 給 Codex、接 Codex 寫的 prompt、或動 AGENTS.md 時載入"
     },
     {
       "skills": ["grilling", "agent-skills:interview-me"],
@@ -190,6 +224,16 @@
       "name": "googleworkspace/cli（gws）",
       "keywords": ["gmail 自動", "行事曆同步", "google sheets", "google calendar", "workspace 自動"],
       "note": "官方 Workspace CLI（Gmail/Calendar/Sheets/Docs 全套）：需求真出現時先花 5 分鐘實測學校帳號 OAuth 過不過（Testing 模式 token 7 天過期是主要摩擦）"
+    },
+    {
+      "name": "chrisbanes-skills",
+      "keywords": ["android", "kotlin", "compose", "jetpack compose", "notify+", "line notify"],
+      "note": "已冷藏（2026-07-10 零用量）：Android/Kotlin/Compose UI 工作出現時提醒復原（skillOverrides 改回 true 即可）"
+    },
+    {
+      "name": "modern-web-guidance",
+      "keywords": ["chrome 擴充功能", "chrome extension", "manifest v3", "mv3"],
+      "note": "已冷藏（2026-07-10 零用量）：Chrome 擴充功能（MV3）工作出現時提醒復原（enabledPlugins 改回 true 即可）"
     }
   ]
 }
