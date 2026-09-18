@@ -36,6 +36,7 @@ user-invocable: true
 - docx / pptx / pdf / xlsx 生成或編輯 → 桌面 app 內建 anthropic-skills（`document-skills` plugin 已停用）
 - 把專案部落知識固化成 skill 庫 → `project-skill-library`（Phase 0 閘門：部落知識、夭折路線史、還會繼續做，三缺一就只寫 HANDOFF.md）
 - Claude ↔ Codex 交接 → `cross-model-handoff`（給 Codex 的 brief 剝掉「先給計畫、回報進度」；AGENTS.md 只放硬約束與驗證指令）
+- 用 TypeSafe API（typed 判斷／機率，不生成文字）做路由、排序、抽取、驗證 → `typesafe:typesafe-ai`（2026-09-19 裝；要 `TYPESAFE_API_KEY`）
 - 理解大型不熟的 codebase → `graphify` CLI（ad-hoc `graphify extract <程式碼子集>` 建圖再 `explain`/`affected`；別跑 `graphify install`，會寫常駐 hook）
 - 冷藏中、情境出現先復原：Android → ❄️ `chrisbanes-skills`；Chrome 擴充 → ❄️ `modern-web-guidance`；DDD → ❄️ `domain-modeling`；pre-commit → ❄️ `setup-pre-commit`；拋棄式原型 → ❄️ `prototype`；成長 / AARRR → ❄️ `product-growth`；12-factor agent 系統 → ❄️ `12-factor-*`；投研報告 → ❄️ `report-verifier` / `upstream-insights-report` / `adversarial-review`
 

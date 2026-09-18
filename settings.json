@@ -451,7 +451,8 @@
     "modern-web-guidance@googlechrome": false,
     "static-analysis@trailofbits": false,
     "impeccable@impeccable": true,
-    "i-have-adhd@i-have-adhd": false
+    "i-have-adhd@i-have-adhd": false,
+    "typesafe@typesafe-ai": true
   },
   "extraKnownMarketplaces": {
     "thedotmack": {
@@ -530,6 +531,12 @@
       "source": {
         "source": "github",
         "repo": "ayghri/i-have-adhd"
+      }
+    },
+    "typesafe-ai": {
+      "source": {
+        "source": "github",
+        "repo": "typesafe-ai/skills"
       }
     }
   },
