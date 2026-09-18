@@ -1,12 +1,6 @@
 ---
 name: video-lens-gallery
-description: >
-  Open or rebuild the video-lens gallery index — your personal library of saved video summaries.
-  Use this whenever the user wants to browse, open, or search saved video reports:
-  "show my gallery", "open video library", "browse saved videos", "build gallery",
-  "what videos have I saved", "show my video notes", "my video summaries",
-  "find my saved summary for [topic]", "rebuild the index", "show video-lens index",
-  "backfill metadata", "update index".
+description: "Browse, search, open, or maintain saved video-lens reports. Use for the video-summary library, rebuilding its index, or requested metadata backfills."
 license: MIT
 allowed-tools: Bash Read
 metadata:

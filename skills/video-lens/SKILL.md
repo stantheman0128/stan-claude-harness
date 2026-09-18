@@ -1,6 +1,6 @@
 ---
 name: video-lens
-description: Fetch a YouTube transcript and generate an executive summary, key points, and timestamped topic list as a polished HTML report. Activate on YouTube URLs or requests like "summarize this video", "what's this about", "give me the highlights", "TL;DR this", "digest this video", "watch this for me", "I watched this and want a breakdown", or "make notes on this talk". Supports non-English videos, language selection, and yt-dlp enrichment for chapters, video description, and richer metadata. Falls back to local Whisper transcription when a video has no captions.
+description: "Summarize YouTube URLs or video IDs from transcripts into HTML reports with key points and timestamps. Use for video summaries, talk notes, or breakdowns; supports transcript-language selection."
 license: MIT
 compatibility: "Requires Python 3 and youtube-transcript-api >=0.6.3. Optional but recommended: yt-dlp and deno for enriched metadata and chapters. Local transcription fallback (videos without captions) additionally requires mlx-whisper, ffmpeg, and yt-dlp (Apple Silicon only)."
 allowed-tools: Bash Read
