@@ -1,6 +1,6 @@
 ---
 name: diagnosing-bugs
-description: 硬 bug 與效能退化的系統化診斷流程：先建一個會「紅」的 repro loop 再查因。主動使用本 skill 當使用者說 debug、diagnose、「幫我看一下這個 bug／壞了／報錯／當掉／跑超慢／時好時壞」，或貼 stack trace、錯誤訊息、failing test、效能變慢的現象，即使沒明講要走流程。不要看到錯誤就直接猜原因動手改，先用本 skill 建立可重現的紅燈訊號再診斷。Do not use for 純功能開發或一般 code review。
+description: 硬 bug 的診斷紀律（mattpocock vendor）：先建一個會紅、跑得快、agent 能自己跑的 repro loop，再縮小、列假設、量測、修、加回歸測試。適用 flaky／間歇、效能退化、跨多元件、或第一次猜因就錯的 bug；一般 web bug 的快速 triage 走 agent-skills:debugging-and-error-recovery。
 ---
 
 # Diagnosing Bugs

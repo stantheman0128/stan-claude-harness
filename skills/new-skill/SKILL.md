@@ -1,6 +1,6 @@
 ---
 name: new-skill
-description: 評估一個新工具該不該納入（New Skill）。主動使用本 skill 當使用者給一個 skill / plugin / agent 集合 / repo 的網址或名稱，並表達要評估或納入的意圖，例如「評估這個 / 要不要加 / 值不值得裝 / 我裝了 X / 這跟現有的重不重複 / 幫我納進來」。流程：先查是不是已經有了 → clone 後跑 SkillSpector 機器掃描 → 全 repo 深讀（不只 README/SKILL.md，含覆蓋率申報）→ 逐條判定掃描結果真偽（分數不當判決，誤報率高）→ 跟現有 skill/agent 比品質（重疊不等於較差，要實讀）→ 對抗式複查 → 分類 → 安全的自動寫回 skill-routing，破壞性的（取代 / 停用舊 skill / 改 settings.json / 裝 plugin / 複製檔案）先問。Do not use 當只是貼網址參考、沒有評估意圖時；也不要用在「某個任務該用哪個 skill」那種日常分流（那是 skill-routing 的事）。
+description: 評估一個新 skill／plugin／agent 集合／repo 該不該納入、以什麼形式納入。Stan 給網址或名稱並表達評估意圖時用（評估這個、要不要加、我裝了 X、跟現有的重不重複）。流程與踩過的坑都在本檔：查重、clone 後全 repo 深讀（README 不可盡信）、掃描結果逐條驗真偽、跟現有 skill 實讀比品質、對抗式複查、分類、寫回 skill-routing。只是貼網址參考、或問「某任務該用哪個 skill」時不用。
 user-invocable: true
 ---
 
@@ -156,7 +156,7 @@ sed -n '<start_line>,<end_line>p' <clone路徑>/<file>
 
 - **自動做（含原「破壞性」大部分）**：加 routing 列、補變更紀錄、套用差集 harvest、複製 skill/agent 檔進 setup、改 skillOverrides/enabledPlugins、取代或停用舊 skill——**做了之後在回覆裡醒目報告＋確保可一鍵回滾**（備份或 git）。Stan 的角色是事後否決，不是事前批准。
 - **仍要先問的四類**：執行任何不可信腳本（install.sh 之類）、建立上游信任通道（自動更新機制）、要花錢或給憑證授權、刪除性操作。
-- 寫回一律進 `skill-routing`（分流表 + 變更紀錄一行：日期 + 做了什麼 + 為什麼），**並在 `EVALUATIONS.md` 追加或更新一列**（repo、評估日期、評時版本 commit/release、四象限判定、一句話理由、harvest、重評觸發條件、SkillSpector 結果）。掃描欄位格式：`<score>/100 <severity>｜真N 誤M`，判定為真的那幾條列規則 ID。重評時分數變動就是重讀那幾個檔的訊號。
+- 寫回一律進 `skill-routing`（SKILL.md 分流表加或改一列；同目錄 `CHANGELOG.md` 頂端加一行：日期 + 做了什麼 + 為什麼），**並在 `EVALUATIONS.md` 追加或更新一列**（repo、評估日期、評時版本 commit/release、四象限判定、一句話理由、harvest、重評觸發條件、SkillSpector 結果）。掃描欄位格式：`<score>/100 <severity>｜真N 誤M`，判定為真的那幾條列規則 ID。重評時分數變動就是重讀那幾個檔的訊號。
 - 有改到 skill / plugin / 設定 → 提醒使用者重開 session 生效。
 
 ## 反模式
