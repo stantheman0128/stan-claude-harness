@@ -7,7 +7,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 ## Overview
 
-任務分類器：輸入任務描述，輸出「模型 + effort + 一行理由 + 雷點」。資料來源為 2026-09-23 官方 docs（models overview、choosing-a-model、effort、fast-mode、Opus 5.5 what's-new / prompting 指南、Claude Code model-config / changelog）與 Opus 5.5 發佈文，逐條有據。Opus 5.5 system card 太大抓不下來，card 內的細項數字本檔沒有。
+任務分類器：輸入任務描述，輸出「模型 + effort + 一行理由 + 雷點」。資料來源為 2026-09-23 官方 docs（models overview、choosing-a-model、effort、fast-mode、Opus 5.5 what's-new / prompting 指南、Claude Code model-config / changelog）與 Opus 5.5 發佈文，逐條有據。Opus 5.5 System Card（230 頁，2026-09-22）已讀 §2–6 與 §8，摘要在下方「System Card 摘要」節，每條附頁碼。
 
 ## 分類流程
 
@@ -33,9 +33,9 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 ### Fable 5.1 還值得選的情境（誠實版）
 
-官方 benchmark 全部 Opus 5.5 領先或持平，且官方自己說「差距比分數看起來更小」。剩下的理由都是情境性的：
+發佈文的 benchmark 全部 Opus 5.5 領先或持平，且官方自己說「差距比分數看起來更小」。System Card 翻遍 §8 只找到這幾個 Fable/Mythos 5.1 還贏的點（全是小差距）：OfficeQA 80.2 vs 78.9、OfficeQA Pro 69.0 vs 67.7（p208）；Toolathlon Pass3 73.1 vs 72.2（p210）；Mythos 5.1 在 LatchBio SpatialBench 77.6 vs 72.0、BioMysteryBench Human Solvable 90.3 vs 89.3（p217）。剩下的理由都是情境性的：
 
-1. **Opus 5.5 @ xhigh/max 評測仍不及格**的深推理或長程任務：官方唯一明示的升級路徑。
+1. **Opus 5.5 @ xhigh/max 評測仍不及格**的深推理或長程任務：官方唯一明示的升級路徑。Card 裡沒有任何 coding/agentic benchmark 是 Fable 贏的，所以這條要「先量再換」。
 2. **對話中途升級不丟推理**：Fable 5.1 讀得懂 Opus 5.5 的 thinking block，反向不行。Opus 5.5 → Fable 5.1 保留整段推理；Opus 5.5 → Sonnet/Opus 5、或 Fable → Opus 5.5 都會丟掉切換前的推理。
 3. **已校準的 Fable prompt/評測不想重跑**：Opus 5.5 同檔位思考量比 Opus 5 多，換模型要重掃 effort。
 4. **額度桶**：Max 方案上 Fable 有獨立 weekly 額度（quota-pacer 已納管）；Opus 5.5 是否與 Opus 5 同桶未查證。Opus 桶快爆時 Fable 是備援算力。
@@ -48,7 +48,8 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 - 是行為訊號不是硬預算，影響所有 token（thinking、tool call 數、前後言）。
 - `xhigh`：Fable 5.1 / Mythos 5.1 / Fable 5 / Opus 5.5 / Opus 5 / Opus 4.8 / 4.7 / Sonnet 5；Opus 4.6 / Sonnet 4.6 只有 low/medium/high/max。
 - 檔位名跨模型不等值：Opus 5.5 medium ≈ Opus 5 high；同檔位 Opus 5.5 思考量 > Opus 5，xhigh/max 差最多。官方要求「重掃 effort，別沿用舊設定」。
-- 舊實測曲線（Opus 5，僅供比例參考）：FrontierBench low 25% → high 39% → xhigh 44.4% → max 43%（不再漲）。Opus 5.5 沒有公開曲線。
+- 舊實測曲線（Opus 5，僅供比例參考）：FrontierBench low 25% → high 39% → xhigh 44.4% → max 43%（不再漲）。
+- **Opus 5.5 官方曲線（System Card §8）**：CursorBench medium 52.5% / high 56.0% / max 57.8%，high 每題約 $4 已勝過 Fable 5.1 max 且只花其四分之一（p179）；GDPval-AA xhigh 1820 ≈ max 1846 但 output token 少 51%（p209）；AA-Briefcase xhigh 少 41% token（p210）；Terminal-Bench 4.0 xhigh 66.4 vs max 64.8「在雜訊內」（p178）；**FrontierCode 在 medium 最高（54.6），medium 以上反而下降**，因為高 effort 會改超出範圍的東西被扣分（p176）。結論：coding 給 medium~high，只有明確要更多推理的評測才上 xhigh，max 幾乎沒有理由。
 - 官方立場：「調 effort 常比換模型更好的槓桿」。
 
 ## 模型特性速查
@@ -70,7 +71,7 @@ Opus 5 降為 legacy（$5/$25、預設 high、thinking 可關到 high、fast mod
 
 1. **安全/攻防/漏洞任務不用 Fable**：Fable 5.1 與 Opus 5.5 分類器同級，用 Fable 只是多付錢。原始碼層級找漏洞 Opus 5.5 允許；exploit/攻防類會被改送 Opus 4.8，看到 refusal 或降級跡象改 Opus 5。
 2. **一段對話固定一檔（Claude Code）**：`/effort` 改頂層 effort 會重寫 rendered prompt、cache 全滅。API 端 Opus 5.5 / Fable 5.1 / Opus 5 有 per-message effort beta（`mid-conversation-output-config-2026-07-01`）可保 cache；Claude Code 是否走這條未查證，當作會滅。
-3. **max 先測再用**：官方原話「Reserve xhigh and max for work where you've measured a quality gain」；Opus 5 實測 max 不比 xhigh 高分，Opus 5.5 在 xhigh/max 思考量又更大。預設給 medium 或 high，xhigh 要理由，max 要證據。
+3. **max 先測再用**：官方原話「Reserve xhigh and max for work where you've measured a quality gain」；Opus 5 實測 max 不比 xhigh 高分，Opus 5.5 System Card 更直接：FrontierCode 在 medium 以上下降、Terminal-Bench max 不比 xhigh 高、GDPval xhigh 與 max 同分但省一半 token。預設給 medium 或 high，xhigh 要理由，max 要證據。
 4. **Opus 5.5 預設 medium，不是 high**：舊的 `effortLevel` 設定對 Opus 5.5 及之後的模型**不生效**（CC v2.1.280 起），要在 `modelSettings["claude-opus-5-5"].effort` 明寫。以為在跑 high 其實在跑 medium 是新雷。
 5. **ultracode 不是 effort 檔位**：是 Claude Code 設定＝送 xhigh + 自動 workflow 編排，session-only；`effortLevel` 與 `CLAUDE_CODE_EFFORT_LEVEL` 都不收 max/ultracode。
 6. **xhigh/max 要配大 max_tokens**：API 端 Opus 5.5 官方實測長 agentic turn 直接給 128k（模型上限）；Opus 5 起點 64k。thinking 算進 max_tokens，即使沒回傳。
@@ -89,6 +90,17 @@ Opus 5 降為 legacy（$5/$25、預設 high、thinking 可關到 high、fast mod
 - **前端不要只說「別像 AI」**：要點名具體模式（奶油底色、斜體標題強調字、01/02/03 章節號、等寬標籤、藥丸按鈕），它才會換掉。
 - **chat 多輪回頭想**：Opus 5.5 會在後續短問時重審前一答；要它當已定案就在 system prompt 末尾加兩句（官方範本），但這也會讓它較少主動指出前答錯誤。
 - **視覺輸入**：先拔掉為舊模型做的 vision 鷹架再測；最密的圖給高解析度 + crop 工具仍有幫助，高 effort 對工程圖有用、對圖表沒用。
+
+## System Card 摘要（Claude Opus 5.5 System Card，2026-09-22，230 頁）
+
+讀法：Google Docs Viewer 轉文字 + 三個 subagent 分段摘錄，數字皆附頁碼；未列的章節（§7 model welfare、§2.2 CB 細節）沒讀。
+
+**能力（§8，p174–221）**
+- Table 8.1.A（p174，Opus 5.5 多以 max effort 跑）：SWE-bench Pro 89.9 vs Fable 5.1 81.2；Terminal-Bench 4.0 66.4 vs 55.8；FrontierCode 54.4 vs 50.3；HLE with tools 67.7 vs 65.6；OSWorld 2.0 81.8/48.7 vs 80.7/42.8；GDPval-AA 1846 vs 1735；AutomationBench 40.0 vs 31.4。GPT-6 Astra 在 Terminal-Bench-Science 64.6 與 AutomationBench 41.4 領先 Opus 5.5。
+- Mythos 5.1 不在主表，只出現在生科與多 agent 章節；上面「Fable 還值得選」節列出全部落後項。
+- 長 context：ProgramBench 1M 視窗 91.2 vs Fable 87.6（p183）。
+- 多 agent（p189–199）：固定 5 人小隊比單 agent 快 2.7x 達同分；短任務不給時間壓力時多 agent 反而更慢（協調成本）；緊時限下 async subagent 會退化成單 agent，預先開好的固定小隊撐得住平行；100 agent 小隊在 Lean 任務自組出 12 個 sub-lead。實務：要快就固定小隊 + 時間訊號，不趕就單 agent。
+- 分類器會吃掉分數：Toolathlon 有 1.9% 被 harness 的 sandbox-escape 監控中止、0.3% 被生產分類器擋，全算失敗（p210）；HealthBench 是開著分類器 + fallback Opus 5 跑的（p213）。
 
 ## Claude Code 現況（v2.1.280，2026-09-22）
 
@@ -122,4 +134,4 @@ Effort：<檔位>
 
 ## 資料時效
 
-2026-09-23 調研（Opus 5.5 發佈次日）。未驗證項：Opus 5.5 system card 內容、Max 方案 Opus 5.5 額度桶歸屬、Claude Code `/effort` 是否走 per-message effort。Sonnet 5.5 / Haiku 5.5 發佈後，先查 platform.claude.com/docs 的 models overview 與 effort 頁再回答，數字過期就別引用。
+2026-09-23 調研（Opus 5.5 發佈次日）。未驗證項：Max 方案 Opus 5.5 額度桶歸屬、Claude Code `/effort` 是否走 per-message effort。Sonnet 5.5 / Haiku 5.5 發佈後，先查 platform.claude.com/docs 的 models overview 與 effort 頁再回答，數字過期就別引用。
