@@ -7,7 +7,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 ## Overview
 
-任務分類器：輸入任務描述，輸出「模型 + effort + 一行理由 + 雷點」。資料來源為 2026-09-23 官方 docs（models overview、choosing-a-model、effort、fast-mode、Opus 5.5 what's-new / prompting 指南、Claude Code model-config / changelog）與 Opus 5.5 發佈文，逐條有據。Opus 5.5 System Card（230 頁，2026-09-22）已讀 §1.5、§3.2–3.4、§5.2、§6 與 §8，摘要在下方「System Card 摘要」節，每條附頁碼。
+任務分類器：輸入任務描述，輸出「模型 + effort + 一行理由 + 雷點」。資料來源為 2026-09-23 官方 docs（models overview、choosing-a-model、effort、fast-mode、Opus 5.5 what's-new / prompting 指南、Claude Code model-config / changelog）與 Opus 5.5 發佈文，逐條有據。Opus 5.5 System Card（230 頁，2026-09-22）已讀 §1.5、§3.2–3.4、§5.2、§6 與 §8，摘要在下方「System Card 摘要」節，每條附頁碼。2026-09-30 補 Sonnet 5.5：官方 docs（overview、what's-new、migration、prompting、effort）、Claude Code model-config / settings-reference / changelog、發佈文與 System Card（148 頁）。
 
 ## 分類流程
 
@@ -60,9 +60,17 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 1. **選它**：任務有清楚 spec 和驗收方法（測試、型別檢查、build）、修既有 bug、產文件/簡報/試算表、量大的 subagent 派工。
 2. **省錢只在低檔成立**：官方「complements Opus 5.5 best when running at lower effort settings… At higher settings, it can perform comparably at a similar cost」。Sonnet 5.5 開 high 以上，花的錢跟 Opus 5.5 差不多，那就直接用 Opus 5.5。
 3. **不選它**：開放式、長程、要持續判斷的活（官方原話：最難的長程工作 Opus 比較好）；xhigh/max 評測才過的任務（官方：這種情況考慮 Opus 5.5）。
-4. **max 比 xhigh 差**：FrontierCode max 46.2 < xhigh 52.1，發佈文腳註說 max 較常自己跑 code-review skill、拆大量 subagent，結果逾時或改超出範圍。
+4. **max 通常比 xhigh 差**：FrontierCode max 46.2 < xhigh 52.1，發佈文腳註說 max 較常自己跑 code-review skill、拆大量 subagent，結果逾時或改超出範圍。例外是 CursorBench（max 55.5 > xhigh 53.1），但成本翻倍以上（見下方 System Card）。
 5. **要不要從 Opus 降 Sonnet，自己量**：`/claude-api build-eval` 建評測、`/claude-api hillclimb` 調 prompt（CC v2.1.259 起）。官方案例（客服問答）：prompt 瘦身後 Sonnet 5 @ low 88.9% 每題約 1¢，贏 Opus 5.5 @ low 87.8% 每題 1.9¢。
-6. **Anthropic 沒發表 Sonnet 5.5 對 Fable 5.1 的直接比較**。
+6. 發佈文沒放 Fable 5.1；System Card 的表裡 Sonnet 5.5 幾乎全贏 Fable 5.1（Terminal-Bench 70.6 vs 55.8、GDPval 1844 vs 1735），只輸多語 GMMLU（p140）。
+
+**System Card 重點**（Claude Sonnet 5.5 System Card，2026-09-28，148 頁，全文讀過並抽查引句；「圖讀」＝從圖目測、卡片內文沒寫數字）
+- **差距在寫 code 與長 context**：SWE-Bench Pro 81.3 vs Opus 5.5 89.9（p109）；ProgramBench 1M 視窗 79.7 vs 91.2（p118）。贏或平的是終端機、自動化、知識工作：AutomationBench 44.7 vs 42.5、Toolathlon 77.8 平手（p109、p134）。
+- **effort**：多數評測 xhigh 最划算，max 常更差且 token 暴增；GDPval xhigh 比 max 少 67% output token（p133）。CursorBench medium 39.2 / high 47.8 / xhigh 53.1 / max 55.5（p115）；圖讀每題成本 medium 約 $0.7、xhigh 約 $3.9、max 約 $9.7，而 Opus 5.5 medium 約 52.5% 只要約 $2.9。**coding 要 xhigh 級品質，直接用 Opus 5.5 medium 比較便宜**。
+- **分類器**：bio 沿用 Opus 5 那套（比 Opus 5.5 窄，無 fallback，p10、p19）；cyber 政策同 Opus 5.5，官方明說連無害的資安任務也會多被擋（p28）；編譯後 binary 找漏洞一律不幫（p29）。API 要開發者 opt-in 才自動 fallback（p29）。
+- **Prompt injection**：Sonnet 5.5 自己回答的 5,901 個 coding 攻擊請求只被攻破 4 個，破口一樣在 fallback 到 Sonnet 5 之後（p52）；瀏覽器情境是第一個 0 成功的模型（p54）；Gray Swan 比 Opus 5.5 與 Fable 5.1 弱（p50）。**卡片沒做「使用者貼上文字」這項測試**，當作跟 Opus 5.5 一樣要防（見 Opus 5.5 對策 1）。
+- **行為**：誠實指標除了閃躲都比 Sonnet 5 好；被施壓時比 Opus 5.5 誠實，但幻覺較多（p56、p65）。魯莽程度只有 Opus 5.5 嚴格更好（p65）。有會把任務卡當成授權的案例（p60）。推理文字是測過最難讀的（p72），自建監控靠讀 thinking 會比較吃力。每段 transcript 輸出 token 偏多（p84）。
+- **沒測的不等於沒問題**：早停、破壞性動作專項、訓練期 reward hacking 審查都沒重做（p58）。無人值守長任務照 Opus 5.5 的對策處理。
 
 ## Effort 速查
 
@@ -212,4 +220,4 @@ Effort：<檔位>
 
 ## 資料時效
 
-2026-09-23 調研（Opus 5.5 發佈次日），同日補讀 System Card §1.5/§3/§5/§6。2026-09-26 補讀 Thariq effort 文與 CC prompt-caching 文件：確認 Opus 5.5 / Fable 5.1 中途換 effort 保 cache、fast mode 只有第一次開會重讀。未驗證項：Max 方案 Opus 5.5 額度桶歸屬、桌面 app Code 分頁的貼上是否走同一套 `[Pasted text #N]` 標記（文件只寫 CLI 終端）。Sonnet 5.5 / Haiku 5.5 發佈後，先查 platform.claude.com/docs 的 models overview 與 effort 頁再回答，數字過期就別引用。
+2026-09-23 調研（Opus 5.5 發佈次日），同日補讀 System Card §1.5/§3/§5/§6。2026-09-26 補讀 Thariq effort 文與 CC prompt-caching 文件：確認 Opus 5.5 / Fable 5.1 中途換 effort 保 cache、fast mode 只有第一次開會重讀。未驗證項：Max 方案 Opus 5.5 額度桶歸屬、桌面 app Code 分頁的貼上是否走同一套 `[Pasted text #N]` 標記（文件只寫 CLI 終端）。2026-09-30 補 Sonnet 5.5（發佈後兩天），並更正設定鍵名為 `modelSettings[...].effortLevel`。Sonnet 5.5 未驗證項：Bedrock 可用性（overview 有列、what's-new 沒列）、各檔位在 HLE/OSWorld 的成本（System Card 只有圖）。Haiku 5.5 發佈後，先查 platform.claude.com/docs 的 models overview 與 effort 頁再回答，數字過期就別引用。
