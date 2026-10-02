@@ -5,4 +5,5 @@
 - 新增 `agent.spawn` hook：Agent 工具明確帶含 `haiku` 的 model 時回 `{ deny }`，subagent 不啟動，Claude 收到改派指示。fork 不擋（fork 忽略 model 參數）。
 - 沒帶 model、由 agent 定義 pin 到 haiku 的派工照常啟動，只在 transcript 記一行提醒。
 - 已知限制：hook 出錯時 Claude Code 會略過它、照常啟動 subagent（fail-open）。型別依據是 Claude Code 2.1.277 產生的 `mods/types/claude-code.d.ts`，目標版本 v2.1.287。
-- 尚未完成：`hooks/register.js` 被 auto mode 以「自我修改」擋下，等 Stan 核可後建立。之後才能跑 `claude plugin validate`、`claude plugin test` 和實機派工驗證。
+- `hooks/register.js` 第一次寫入被 auto mode 以「自我修改」擋下，Stan 在對話中核可後建立。
+- 尚未驗證：`claude plugin validate`、`claude plugin test`、實機派工。
