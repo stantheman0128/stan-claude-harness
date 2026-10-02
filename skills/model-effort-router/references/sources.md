@@ -12,4 +12,4 @@
 
 2026-09-23 調研（Opus 5.5 發佈次日），同日補讀 System Card §1.5/§3/§5/§6。2026-09-26 補讀 Thariq effort 文與 CC prompt-caching 文件：確認 Opus 5.5 / Fable 5.1 中途換 effort 保 cache、fast mode 只有第一次開會重讀。未驗證項：Max 方案 Opus 5.5 額度桶歸屬、桌面 app Code 分頁的貼上是否走同一套 `[Pasted text #N]` 標記（文件只寫 CLI 終端）。2026-09-30 補 Sonnet 5.5（發佈後兩天），並更正設定鍵名為 `modelSettings[...].effortLevel`。Sonnet 5.5 未驗證項：Bedrock 可用性（overview 有列、what's-new 沒列）、各檔位在 HLE/OSWorld 的成本（System Card 只有圖）。Haiku 5.5 發佈後，先查 platform.claude.com/docs 的 models overview 與 effort 頁再回答，數字過期就別引用。2026-10-02 加升階路徑：訊號與梯子由本檔既有官方數據和 Thariq 文推導，停損次數與「非安全題 Opus @ high 在主 session 做」是自訂規則；同日依 Stan 決定禁用 Haiku，agent 定義改成 scout→sonnet、verifier→high。
 
-2026-10-03：新增 `executor-high` agent（Opus 5.5 @ high），補上升階路徑裡「非安全題 Opus @ high」的角色，上一段那條自訂規則因此作廢。同日把 SKILL.md 拆成本體加 `references/` 五個檔，內容逐行核對沒有遺漏。
+2026-10-03：新增 `executor-high` agent（Opus 5.5 @ high），補上升階路徑裡「非安全題 Opus @ high」的角色，上一段那條自訂規則因此作廢。同日把 SKILL.md 拆成本體加 `references/` 五個檔；連結全部指得到檔案，破折號沒有新增，舊版逐行比對還沒跑（本機 CPU 滿載排隊中）。
