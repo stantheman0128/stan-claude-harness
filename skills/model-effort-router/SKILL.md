@@ -73,6 +73,56 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 - **行為**：誠實指標除了閃躲都比 Sonnet 5 好；被施壓時比 Opus 5.5 誠實，但幻覺較多（p56、p65）。魯莽程度只有 Opus 5.5 嚴格更好（p65）。有會把任務卡當成授權的案例（p60）。推理文字是測過最難讀的（p72），自建監控靠讀 thinking 會比較吃力。每段 transcript 輸出 token 偏多（p84）。
 - **沒測的不等於沒問題**：早停、破壞性動作專項、訓練期 reward hacking 審查都沒重做（p58）。無人值守長任務照 Opus 5.5 的對策處理。
 
+## 升階路徑（起點不夠時）
+
+決策表給的是起點，跑起來不夠才照這裡升，一次一格。依據：Thariq 實測（effort 多買的是驗證與邊界覆蓋）、官方「調 effort 常比換模型更好的槓桿」、Sonnet 5.5 高檔花費接近 Opus 5.5、Fable 只在 Opus 5.5 高檔評測仍不夠時才上。停損次數是 Stan 的自訂規則，不是官方數字。
+
+```
+Sonnet 5.5 @ low
+  ↓
+Sonnet 5.5 @ medium
+  ↓ 範圍明確、只是難 → Sonnet 5.5 @ high（Sonnet 最多到這）
+  ↓ 要判斷、長程、越做越大 → 直接跳下一格
+Opus 5.5 @ medium
+  ↓
+Opus 5.5 @ high
+  ↓
+Opus 5.5 @ xhigh
+  ↓ 只限深推理、研究級數學、數小時單一 agent，且 xhigh 量過仍不夠；安全題不走這格
+Fable 5.1 @ high
+```
+
+max 不在梯子上，量到增益才用（硬規則 3）。
+
+**升 effort（同模型上一格）的訊號**：effort 主要多買驗證與邊界覆蓋，看到這類失敗就升。
+- 邊界情況掛掉、修 A 壞 B、測試只測正常路徑。
+- 修 bug 前沒先重現、沒拿獨立方法對照驗證（Thariq 的 Opus 5.5 三個例子 0/5 → 4/5 以上，差別都在這兩件事）。
+- 回報完成但 transcript 沒有測試或 build 輸出。Sonnet 5.5 @ low 先套硬規則 13 的段落，還是跳過才升 medium。
+- 任務在最吃 effort 的領域（資安、硬體、修既有 codebase 的 bug）：起點直接 high，不必等失敗。
+- coding 從 Opus 5.5 medium 升 high 時，派工單把範圍寫死：FrontierCode 在 medium 以上下降，原因是高檔會改到範圍外（p176）。
+
+**升模型的訊號**：
+- 同模型已到頂仍失敗：Sonnet 5.5 到 high、Opus 5.5 到 xhigh。
+- 任務性質變了：本來範圍明確，做下去變成要持續判斷、跨很多檔、spec 邊做邊補。Sonnet 換 Opus（官方：開放式長程工作 Opus「clearly stronger」）。
+- 要在很長的 context 裡精準找東西：ProgramBench 1M 視窗 Sonnet 5.5 79.7、Opus 5.5 91.2（p118）。
+- Sonnet 5.5 要開 xhigh/max 才過：直接 Opus 5.5 @ medium，CursorBench 上分數較高也較便宜（見上方 System Card 重點）。
+
+**不要升的情況**（升了沒用，甚至更糟）：
+- **讀錯題、方向錯**：Fable 5.1 從 low 到 max，「選錯解讀」由 25 增加到 47。訊號是成品很完整，但回答了別的問題。改 spec、叫它先訪談你或先複述任務，再用原檔位重跑。
+- **被分類器擋**：不是能力問題，照硬規則 1。
+- **環境壞了**：依賴沒裝、指令起不來、權限不足。先修環境。
+- **Opus 5.5 做一半用純文字停下**：這是早停，接法在硬規則 8，升檔不會好。
+
+**停損**（自訂）：同一格最多試 2 次。到 Opus 5.5 @ xhigh 還是同一個失敗，就停下來，把失敗樣本和試過的檔位回報 Stan，不自己往 Fable 或 max 爬。
+
+**怎麼升**：
+- 主 session 升 effort：`/effort high` 後按 `s` 只套這個 session，按 Enter 會存成之後的預設。Opus 5.5 / Sonnet 5.5 / Fable 5.1 換檔保 cache（硬規則 2）。
+- 主 session 換模型：整段 context 重讀。盡量在任務交界換；中途需要時，把難的那塊切出去派 subagent。已知保留推理的方向只有 Opus 5.5 → Fable 5.1，其他方向（包含 Sonnet 5.5 → Opus 5.5）沒查到，當作會丟。
+- subagent：Agent 工具能指定 model、不能指定 effort，所以升 effort 就是換角色 agent。現況：scout、mech-executor 是 Sonnet 5.5 @ low；executor 是 Opus 5.5 @ medium；security-executor、verifier 是 Opus 5.5 @ high。非安全題需要 Opus 5.5 @ high 實作時目前沒有對應角色，在主 session 做（內建 general-purpose 的 effort 從哪來未查證）。
+- 照階段排檔（Thariq 推薦迴圈）：先叫它訪談你補 spec，再用 low 或 medium 實作，最後交 verifier（Opus 5.5 @ high）驗。這是事先排好的升階，不用等失敗。
+
+**降階**：問題解決後，下一個新任務回到決策表起點，別整個 session 留在高檔。effort 隨時可降（保 cache）；模型只在任務交界降，Fable 5.1 → Opus 5.5 會丟掉切換前的推理。
+
 ## Effort 速查
 
 - 五檔：`low` / `medium` / `high` / `xhigh` / `max`。沒有「extrahigh」。
@@ -124,6 +174,7 @@ Opus 5 降為 legacy（$5/$25、預設 high、thinking 可關到 high、fast mod
 11. **fast mode 是速度不是智力**：同模型同權重，只快輸出（OTPS），首 token 不快。訂閱方案走 usage credits 不算訂閱額度；開啟當下要付整段 context 的未快取 input 價，所以要開就 session 一開始開。只有一段對話第一次開 fast 會整段重讀；之後關掉、被限流自動退回標準速度、再打開都保 cache。
 12. Sonnet 5.5 / Sonnet 5 / Fable 5.1 / Opus 5.5 都是新 tokenizer，同文字比 Opus 4.7 前 +30% token：從 4.6 搬來的 max_tokens/成本估算要重算（Sonnet 5 → 5.5 同 tokenizer，不用重算）。
 13. **Sonnet 5.5 低檔要逼它驗證**：官方承認 low 有時沒跑能驗到改動的檢查就回報完成（例如依賴沒裝就跳過測試）；low/medium 長任務會停下來問本來可以自己決定的事。對策：派工單或 system prompt 貼官方那段「改了能跑的程式就先跑真的測試、型別檢查或 build 再回報；跑不了就說哪個沒跑、為什麼」，要它做完再停就加官方「Keep working until everything the user asked for is done…」段（會讓 low/medium 跑更久、花更多）。
+14. **不路由到 Haiku**（Stan 2026-10-02：「現在 haiku 超級爛」）：最便宜的一格是 Sonnet 5.5 @ low。Haiku 4.5 不支援 effort、只有 200K context、退役日不早於 2026-10-15。agent 定義、Workflow `agent()`、派工時的 `model` 參數都不寫 haiku；ocx-* agent 說明裡的 `"haiku"` 佔位符直接省略。Haiku 5.5 發佈後要 Stan 點頭才解禁。
 
 ## Opus 5.5 專屬 prompt 技巧（官方指南摘錄）
 
@@ -189,7 +240,7 @@ Opus 5 降為 legacy（$5/$25、預設 high、thinking 可關到 high、fast mod
 - effort 解析順序：`CLAUDE_CODE_EFFORT_LEVEL` / `--effort` / `/effort` → `modelSettings` 逐模型 → 頂層 `effortLevel`（**Opus 5.5 / Sonnet 5.5 不吃 user settings 那個**）→ 模型預設（Opus 5.5 / Sonnet 5.5 = medium）。
 - 不支援的檔位自動退到該模型最高可用檔（xhigh 在 Opus 4.6 跑成 high）。
 - `/fast` 預設模型 Opus 5.5；目前模型不支援 fast 時會自動切到 Opus。
-- Haiku 5.5 官方預告「in the coming weeks」，還沒發佈；現行 Haiku 4.5（$1/$5、200K、不支援 effort）退役日不早於 2026-10-15，路由到 Haiku 的設定要準備換。
+- Haiku 5.5 官方預告「in the coming weeks」，還沒發佈；現行 Haiku 4.5（$1/$5、200K、不支援 effort）退役日不早於 2026-10-15。Stan 已決定不路由到 Haiku（硬規則 14）。
 - `/checkup prompt-audit [路徑]`（v2.1.283 起，`/doctor` 的別名）：掃 CLAUDE.md、rules、skills、commands、subagents、output styles，找過時路徑、互相矛盾、「CRITICAL/MUST」施壓語氣、「think harder」這類對永遠開 thinking 的模型無效的句子、寫死的模型名。只提案不改檔；不讀 settings/hooks/MCP 設定。兩份官方文件對預設是否掃 `~/.claude/` 說法不一，路徑要自己給。
 
 ## 輸出格式
@@ -199,6 +250,7 @@ Opus 5 降為 legacy（$5/$25、預設 high、thinking 可關到 high、fast mod
 Effort：<檔位>
 理由：<一行，引用上表依據>
 雷點：<命中的硬規則，無則省略>
+下一格：<不夠時往哪升、看到什麼訊號才升；已到頂就寫停損>
 ```
 
 ## 常見錯誤
@@ -214,6 +266,9 @@ Effort：<檔位>
 | 把 Sonnet 5.5 開 high/xhigh 當便宜版 Opus | 高檔 Sonnet 5.5 的花費跟 Opus 5.5 差不多；省錢只在 low/medium。xhigh/max 才過的任務官方叫你考慮 Opus 5.5 |
 | Sonnet 5.5 開 max 求穩 | FrontierCode max 46.2 反而低於 xhigh 52.1：max 會自己開 review 輪、拆 subagent，逾時或越界 |
 | Sonnet 5.5 @ low 回報「完成」就收 | low 可能沒跑測試；看 transcript 有沒有測試或 build 輸出，沒有就套硬規則 13 的官方段落 |
+| 便宜的活派 Haiku | 最低一格是 Sonnet 5.5 @ low（硬規則 14） |
+| 失敗就一路往上加到 max 或 Fable | 照升階路徑一次一格、每格最多兩次；到 Opus 5.5 @ xhigh 還失敗就停下回報 |
+| 派 subagent 時想在 Agent 工具指定 effort | 只能指定 model；要不同 effort 就換角色 agent |
 | 以為開 max 能修掉方向錯誤 | 高 effort 減少漏邊界，不修正讀錯題：Fable 5.1 low→max「選錯解讀」25→47 反而變多。方向問題靠訪談與 spec |
 | 開 `/fast` 想省額度 | 反向：fast 走 usage credits 真金白銀，且中途開要付整段 context |
 | 從 Fable 5.1 降回 Opus 5.5 想省錢 | 切換後推理全丟；要降就在新任務起點降，別在對話中間 |
@@ -221,4 +276,4 @@ Effort：<檔位>
 
 ## 資料時效
 
-2026-09-23 調研（Opus 5.5 發佈次日），同日補讀 System Card §1.5/§3/§5/§6。2026-09-26 補讀 Thariq effort 文與 CC prompt-caching 文件：確認 Opus 5.5 / Fable 5.1 中途換 effort 保 cache、fast mode 只有第一次開會重讀。未驗證項：Max 方案 Opus 5.5 額度桶歸屬、桌面 app Code 分頁的貼上是否走同一套 `[Pasted text #N]` 標記（文件只寫 CLI 終端）。2026-09-30 補 Sonnet 5.5（發佈後兩天），並更正設定鍵名為 `modelSettings[...].effortLevel`。Sonnet 5.5 未驗證項：Bedrock 可用性（overview 有列、what's-new 沒列）、各檔位在 HLE/OSWorld 的成本（System Card 只有圖）。Haiku 5.5 發佈後，先查 platform.claude.com/docs 的 models overview 與 effort 頁再回答，數字過期就別引用。
+2026-09-23 調研（Opus 5.5 發佈次日），同日補讀 System Card §1.5/§3/§5/§6。2026-09-26 補讀 Thariq effort 文與 CC prompt-caching 文件：確認 Opus 5.5 / Fable 5.1 中途換 effort 保 cache、fast mode 只有第一次開會重讀。未驗證項：Max 方案 Opus 5.5 額度桶歸屬、桌面 app Code 分頁的貼上是否走同一套 `[Pasted text #N]` 標記（文件只寫 CLI 終端）。2026-09-30 補 Sonnet 5.5（發佈後兩天），並更正設定鍵名為 `modelSettings[...].effortLevel`。Sonnet 5.5 未驗證項：Bedrock 可用性（overview 有列、what's-new 沒列）、各檔位在 HLE/OSWorld 的成本（System Card 只有圖）。Haiku 5.5 發佈後，先查 platform.claude.com/docs 的 models overview 與 effort 頁再回答，數字過期就別引用。2026-10-02 加升階路徑：訊號與梯子由本檔既有官方數據和 Thariq 文推導，停損次數與「非安全題 Opus @ high 在主 session 做」是自訂規則；同日依 Stan 決定禁用 Haiku，agent 定義改成 scout→sonnet、verifier→high。
