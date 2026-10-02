@@ -126,7 +126,7 @@ sed -n '<start_line>,<end_line>p' <clone路徑>/<file>
 評估時一定要查的四個現實點：
 
 - **授權**：沒有 LICENSE 檔 = 保留一切權利，**不能把它的檔抄進我們的 setup**，只能取點子自己寫。MIT / Apache 之類才能直接抄（保留版權聲明）。
-- **模型 pin**：frontmatter 若 pin 在 sonnet / haiku，違反 opus 規則；真要收就改成 `model: opus`。
+- **模型 pin**：frontmatter pin 在 haiku 的一律改掉（Stan 2026-10-02 全面禁用 haiku）。查找、機械活可以 pin `sonnet`；要判斷的實作或複驗改成 `model: opus`。
 - **subagent 限制**：subagent 不能用 AskUserQuestion / plan mode。會「反問使用者再動手」的 persona（Prototyper / Grower 那類）要做成 skill 或主 session agent，不要做成 fire-and-forget subagent。
 - **膨脹**：別為了集合裡的 1-2 個好東西整包裝；挑那幾個單獨收。
 

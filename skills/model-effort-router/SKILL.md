@@ -1,19 +1,20 @@
 ---
 name: model-effort-router
-description: Use when 需要決定一個任務該用哪個 Claude 模型與哪個 effort 檔位，或被問「用哪個模型」「opus 還是 sonnet 還是 fable」「opus 5.5 還是 fable」「sonnet 5.5 還是 opus 5.5」「effort 設多少」「subagent 用什麼檔」「ultracode 是什麼」「fast mode 要不要開」「這樣跑會不會太貴」時。也用於審視既有的模型/effort 選擇是否踩雷（安全稽核用錯模型、對話中途換檔、max 濫用、Opus 5.5 預設 medium 沒調）。純分類與建議，不執行任務本身。
+description: Use when 需要決定一個任務該用哪個 Claude 模型與哪個 effort 檔位，或被問「用哪個模型」「opus 還是 sonnet 還是 fable」「opus 5.5 還是 fable」「sonnet 5.5 還是 opus 5.5」「effort 設多少」「什麼時候升 effort」「跑不好要不要換大模型」「subagent 用什麼檔」「ultracode 是什麼」「fast mode 要不要開」「這樣跑會不會太貴」時。也用於審視既有的模型/effort 選擇是否踩雷（安全稽核用錯模型、對話中途換檔、max 濫用、Opus 5.5 預設 medium 沒調）。純分類與建議，不執行任務本身。
 ---
 
 # Model / Effort Router
 
 ## Overview
 
-任務分類器：輸入任務描述，輸出「模型 + effort + 一行理由 + 雷點」。資料來源為 2026-09-23 官方 docs（models overview、choosing-a-model、effort、fast-mode、Opus 5.5 what's-new / prompting 指南、Claude Code model-config / changelog）與 Opus 5.5 發佈文，逐條有據。Opus 5.5 System Card（230 頁，2026-09-22）已讀 §1.5、§3.2–3.4、§5.2、§6 與 §8，摘要在下方「System Card 摘要」節，每條附頁碼。2026-09-30 補 Sonnet 5.5：官方 docs（overview、what's-new、migration、prompting、effort）、Claude Code model-config / settings-reference / changelog、發佈文與 System Card（148 頁）。
+任務分類器：輸入任務描述，輸出「模型 + effort + 一行理由 + 雷點」。資料來源為 2026-09-23 官方 docs（models overview、choosing-a-model、effort、fast-mode、Opus 5.5 what's-new / prompting 指南、Claude Code model-config / changelog）與 Opus 5.5 發佈文，逐條有據。Opus 5.5 System Card（230 頁，2026-09-22）已讀 §1.5、§3.2–3.4、§5.2、§6 與 §8，摘要在下方「System Card 摘要」節，每條附頁碼。2026-09-30 補 Sonnet 5.5：官方 docs（overview、what's-new、migration、prompting、effort）、Claude Code model-config / settings-reference / changelog、發佈文與 System Card（148 頁）。2026-10-02 加「升階路徑」與禁用 Haiku（Stan 決定）。
 
 ## 分類流程
 
 1. 對照下方決策表選出模型與 effort 起點。
 2. 逐條檢查硬規則，命中就修正。
 3. 按輸出格式回答，不展開長篇。
+4. 跑起來不夠時照「升階路徑」，一次升一格。
 
 ## 決策表
 
