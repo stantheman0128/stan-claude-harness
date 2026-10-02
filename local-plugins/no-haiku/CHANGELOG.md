@@ -8,4 +8,5 @@
 - `hooks/register.js` 第一次寫入被 auto mode 以「自我修改」擋下，Stan 在對話中核可後建立。
 - 2026-10-03 Stan 在 CC 2.1.287 實跑：`claude plugin validate` 通過（`hooks: agent.spawn`、`calls: $.ui.log`），`claude plugin test` 3 pass 0 fail，已用 user scope 安裝。
 - 紅燈驗證：同一份測試對一份判斷反轉、拿掉 log 的複本跑出 0 pass 3 fail，三個都死在預期的斷言上，測試不是恆真式。
-- 尚未驗證：新 session 裡實際派一次帶 haiku 的 subagent。
+- 實機驗證（2026-10-03，新 session）：派 Explore 帶 `model: "haiku"`，Agent 工具回 `Subagent spawn denied by a plugin: Stan 不用 haiku。…`（is_error），Claude 讀到後改帶 `model: "opus"` 重派成功。
+- 尚未驗證：agent 定義 pin 到 haiku 時的那一行 log（目前沒有這種 agent 可測）。
