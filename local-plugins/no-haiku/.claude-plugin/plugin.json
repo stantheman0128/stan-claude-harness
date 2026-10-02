@@ -1,0 +1,8 @@
+{
+  "name": "no-haiku",
+  "version": "0.1.0",
+  "description": "擋下明確帶 haiku 的 subagent 派工；agent 定義 pin 到 haiku 的只記一行提醒（Stan harness mod）",
+  "author": {
+    "name": "Stan Shih"
+  }
+}
