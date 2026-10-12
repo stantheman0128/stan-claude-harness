@@ -133,7 +133,7 @@ max 不在梯子上，量到增益才用（硬規則 3）。
 11. **fast mode 是速度不是智力**：同模型同權重，只快輸出（OTPS），首 token 不快。訂閱方案走 usage credits 不算訂閱額度；開啟當下要付整段 context 的未快取 input 價，所以要開就 session 一開始開。只有一段對話第一次開 fast 會整段重讀；之後關掉、被限流自動退回標準速度、再打開都保 cache。
 12. Sonnet 5.5 / Sonnet 5 / Fable 5.1 / Opus 5.5 都是新 tokenizer，同文字比 Opus 4.7 前 +30% token：從 4.6 搬來的 max_tokens/成本估算要重算（Sonnet 5 → 5.5 同 tokenizer，不用重算）。
 13. **Sonnet 5.5 低檔要逼它驗證**：官方承認 low 有時沒跑能驗到改動的檢查就回報完成（例如依賴沒裝就跳過測試）；low/medium 長任務會停下來問本來可以自己決定的事。對策：派工單或 system prompt 貼官方那段「改了能跑的程式就先跑真的測試、型別檢查或 build 再回報；跑不了就說哪個沒跑、為什麼」，要它做完再停就加官方「Keep working until everything the user asked for is done…」段（會讓 low/medium 跑更久、花更多）。
-14. **不路由到 Haiku**（Stan 2026-10-02：「現在 haiku 超級爛」）：最便宜的一格是 Sonnet 5.5 @ low。Haiku 4.5 不支援 effort、只有 200K context、退役日不早於 2026-10-15。agent 定義、Workflow `agent()`、派工時的 `model` 參數都不寫 haiku；ocx-* agent 說明裡的 `"haiku"` 佔位符直接省略。Haiku 5.5 發佈後要 Stan 點頭才解禁。
+14. **Haiku 只用 5.5**（2026-10-02 因 Haiku 4.5 太弱而禁用；2026-10-13 Stan 解禁 Haiku 5.5）：查找、盤點、機械活、背景長時間批次可以派 Haiku 5.5；要判斷的實作、安全、複驗仍走 Sonnet／Opus。Haiku 5.5 的價格、context、effort 支援尚未查證，回答數字前先查 platform.claude.com/docs 的 models overview 與 effort 頁。Haiku 4.5 不再使用。
 
 ## 輸出格式
 
@@ -158,7 +158,7 @@ Effort：<檔位>
 | 把 Sonnet 5.5 開 high/xhigh 當便宜版 Opus | 高檔 Sonnet 5.5 的花費跟 Opus 5.5 差不多；省錢只在 low/medium。xhigh/max 才過的任務官方叫你考慮 Opus 5.5 |
 | Sonnet 5.5 開 max 求穩 | FrontierCode max 46.2 反而低於 xhigh 52.1：max 會自己開 review 輪、拆 subagent，逾時或越界 |
 | Sonnet 5.5 @ low 回報「完成」就收 | low 可能沒跑測試；看 transcript 有沒有測試或 build 輸出，沒有就套硬規則 13 的官方段落 |
-| 便宜的活派 Haiku | 最低一格是 Sonnet 5.5 @ low（硬規則 14） |
+| 要判斷的活派 Haiku 5.5，或還在用 Haiku 4.5 | Haiku 5.5 只接查找／機械活（硬規則 14） |
 | 失敗就一路往上加到 max 或 Fable | 照升階路徑一次一格、每格最多兩次；到 Opus 5.5 @ xhigh 還失敗就停下回報 |
 | 派 subagent 時想在 Agent 工具指定 effort | 只能指定 model；要不同 effort 就換角色 agent |
 | 以為開 max 能修掉方向錯誤 | 高 effort 減少漏邊界，不修正讀錯題：Fable 5.1 low→max「選錯解讀」25→47 反而變多。方向問題靠訪談與 spec |

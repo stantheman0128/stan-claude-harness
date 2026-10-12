@@ -26,7 +26,7 @@ Opus 5 降為 legacy（$5/$25、預設 high、thinking 可關到 high、fast mod
 - effort 解析順序：`CLAUDE_CODE_EFFORT_LEVEL` / `--effort` / `/effort` → `modelSettings` 逐模型 → 頂層 `effortLevel`（**Opus 5.5 / Sonnet 5.5 不吃 user settings 那個**）→ 模型預設（Opus 5.5 / Sonnet 5.5 = medium）。
 - 不支援的檔位自動退到該模型最高可用檔（xhigh 在 Opus 4.6 跑成 high）。
 - `/fast` 預設模型 Opus 5.5；目前模型不支援 fast 時會自動切到 Opus。
-- Haiku 5.5 官方預告「in the coming weeks」，還沒發佈；現行 Haiku 4.5（$1/$5、200K、不支援 effort）退役日不早於 2026-10-15。Stan 已決定不路由到 Haiku（硬規則 14）。
+- Haiku 5.5 已發佈（model ID `claude-haiku-5-5`），價格、context、effort 支援尚未查證。Haiku 4.5（$1/$5、200K、不支援 effort）退役日不早於 2026-10-15，不再使用。Stan 2026-10-13 解禁 Haiku 5.5（硬規則 14）。
 - `/checkup prompt-audit [路徑]`（v2.1.283 起，`/doctor` 的別名）：掃 CLAUDE.md、rules、skills、commands、subagents、output styles，找過時路徑、互相矛盾、「CRITICAL/MUST」施壓語氣、「think harder」這類對永遠開 thinking 的模型無效的句子、寫死的模型名。只提案不改檔；不讀 settings/hooks/MCP 設定。兩份官方文件對預設是否掃 `~/.claude/` 說法不一，路徑要自己給。
 
 ## Opus 5.5 專屬 prompt 技巧（官方指南摘錄）
