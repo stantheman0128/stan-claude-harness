@@ -10,14 +10,12 @@
   },
   "permissions": {
     "allow": [
-      "Bash(*)",
       "WebFetch(*)",
       "Read",
       "Glob",
       "Grep",
       "Edit",
       "Write",
-      "Task(*)",
       "Skill(*)",
       "mcp__claude-in-chrome",
       "mcp__claude_ai_Google_Drive",
@@ -530,7 +528,42 @@
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
   "theme": "light",
+  "switchModelsOnFlag": false,
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
+  "autoMode": {
+    "soft_deny": [
+      "$defaults",
+      "Bash(rm:*) targeting C:\\Users\\stans\\Projects\\resource-sentinel\\sentinel\\command_classification.py or tests/test_command_classification.py — deletion/overwrite of the command-classification safety logic itself",
+      "Writes to C:\\Users\\stans\\.resource-sentinel\\status.md or status.json outside the documented collect.ps1/orchestratorctl flow"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: None configured",
+      "**Repository visibility**: PUBLIC — stantheman0128/resource-sentinel (github.com); any push here is publishing",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured",
+      "**Default / protected branches**: master (default); no branch protection rules or rulesets listed via gh",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: None configured",
+      "**Host containment**: Runs on Stan's ordinary Windows developer machine (per ~/.claude/CLAUDE.md resource-sentinel policy); no container/VM egress boundary described — assume open internet",
+      "**Source control**: The trusted repo (stantheman0128/resource-sentinel) and its origin remote only — no additional orgs configured",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: None configured",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (personal/hobby projects; resource-sentinel is a local multi-agent resource coordination tool)",
+      "**Trusted repo**: C:\\Users\\stans\\Projects\\resource-sentinel — origin github.com/stantheman0128/resource-sentinel.git (public: only this repo's own work belongs here, not content ported in from other repos)",
+      "**Org-specific CLIs**: None configured — user runs `claude`, `codex`, `grok`, `openclaw`, `gcloud`, `docker`, `wsl`, `npm`/`pnpm`/`npx`/`bun`, `python`/`pip` per shell history, none org-specific",
+      "routine under C:\\Users\\stans\\Projects\\resource-sentinel\\ prefix qualifies for relaxed local-operation treatment (own repo, matches CLAUDE.md Resource Sentinel policy scope)"
+    ]
+  },
   "voiceEnabled": true
 }
