@@ -3,6 +3,8 @@
 # Runs on SessionStart — patches hardcoded macOS paths if detected
 # Related: https://github.com/thedotmack/claude-mem/issues/1513
 
+[ -f "$HOME/.claude-mem/.paused" ] && exit 0
+
 FILE="$HOME/.claude/plugins/marketplaces/thedotmack/plugin/scripts/worker-service.cjs"
 
 [ ! -f "$FILE" ] && exit 0

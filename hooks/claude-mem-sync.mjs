@@ -21,6 +21,7 @@ import { execFileSync } from 'child_process';
 const HOME = homedir();
 const DATA_DIR = join(HOME, '.claude-mem');
 const CLAUDE_DIR = join(HOME, '.claude');
+if (existsSync(join(DATA_DIR, '.paused'))) process.exit(0);
 const CONFIG_PATH = join(DATA_DIR, 'sync-config.json');
 const CREDS_PATH = join(CLAUDE_DIR, '.credentials.json');
 const LOG_PATH = join(DATA_DIR, 'sync.log');

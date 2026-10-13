@@ -3,6 +3,8 @@
 # Waits for worker to be healthy, then fetches CMEM context block.
 # Returns hookSpecificOutput.additionalContext for system prompt injection.
 
+[ -f "$HOME/.claude-mem/.paused" ] && exit 0
+
 SETTINGS_FILE="$HOME/.claude-mem/settings.json"
 PORT=$(grep -o '"CLAUDE_MEM_WORKER_PORT"[[:space:]]*:[[:space:]]*"[0-9]*"' "$SETTINGS_FILE" 2>/dev/null | grep -o '[0-9]*')
 PORT=${PORT:-37777}
