@@ -121,7 +121,7 @@ def main():
     except Exception:
         pass
 
-    # 建議留痕（兩區都記）：供 Stop hook 對帳「建議過 vs 實際載入」→ misses.jsonl
+    # 建議留痕（兩區都記）：供 Stop hook 對帳「建議過 vs 實際載入」→ per-session misses-<session>.jsonl
     try:
         lg = os.path.join(STATE_DIR, "suggestions-%s.jsonl" % safe)
         with open(lg, "a", encoding="utf-8") as lf:
