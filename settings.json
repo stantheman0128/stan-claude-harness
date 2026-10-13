@@ -127,15 +127,6 @@
             "timeout": 10
           }
         ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/sentinel-gate.py\""
-          }
-        ]
       }
     ],
     "SessionStart": [
@@ -210,14 +201,6 @@
             "type": "command",
             "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
             "timeout": 10
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/sentinel-stop.py\""
           }
         ]
       }
