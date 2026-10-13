@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 (2026-10-13)
+
+- 改成只擋 Haiku 4.5（`/haiku[-_. ]?4[-_.]5/i`）。原因：Stan 解禁 Haiku 5.5，而 CC 2.1.293 起 `haiku` 別名指向 Haiku 5.5，0.1.0 會把它一起擋掉；ocx-* agent 用 `model: "haiku"` 當佔位符也不再被擋。
+- 擋下訊息改指向 `haiku`（Haiku 5.5）、`sonnet`、`opus`。事後那一行 log 只在實際跑在 Haiku 4.5 時出現（例如 Bedrock 上 `haiku` 別名還指向 4.5）。
+- 測試 3 個增為 4 個（新增：`haiku` 別名照常啟動、不記 log）。CC 2.1.296 實跑：`claude plugin validate` 通過，`claude plugin test` 4 pass 0 fail。
+- 紅燈驗證：判斷改回 `/haiku/i` 的複本，別名那題失敗（1 fail）；判斷永遠不中的複本，擋下與記 log 兩題失敗（2 fail）。
+
 ## 0.1.0 (2026-10-03)
 
 - 新增 `agent.spawn` hook：Agent 工具明確帶含 `haiku` 的 model 時回 `{ deny }`，subagent 不啟動，Claude 收到改派指示。fork 不擋（fork 忽略 model 參數）。

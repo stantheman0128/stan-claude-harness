@@ -21,9 +21,9 @@
     },
     {
       "name": "no-haiku",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./no-haiku",
-      "description": "Mod: refuse subagent spawns that explicitly request a haiku model"
+      "description": "Mod: refuse subagent spawns that explicitly request Haiku 4.5 (Haiku 5.5 allowed)"
     }
   ]
 }
