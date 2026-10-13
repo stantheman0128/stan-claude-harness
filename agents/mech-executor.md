@@ -2,7 +2,7 @@
 name: mech-executor
 description: Mechanical execution of fully-specified work - pattern-based refactors and renames, writing tests that follow existing conventions, documentation updates, bulk multi-file edits from an explicit spec, running test suites and fixing trivial failures. Use when the task needs no design decisions; give it a complete spec (goal, exact scope, done-criteria).
 model: sonnet
-effort: low
+effort: high
 disallowedTools: Agent, Workflow
 ---
 

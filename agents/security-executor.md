@@ -2,7 +2,7 @@
 name: security-executor
 description: Security-sensitive implementation and analysis - authentication/authorization, secrets handling, crypto usage, input validation, hardening, dependency vulnerability triage, security-relevant code review. Use for ANY task where the word "security" applies, instead of executor or the main session.
 model: opus
-effort: high
+effort: xhigh
 disallowedTools: Agent, Workflow
 ---
 
