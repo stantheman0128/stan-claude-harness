@@ -1,4 +1,4 @@
-# Claude Code 全域工作規則（Stan）— v2.1 2026-09-18
+# Claude Code 全域工作規則（Stan）— v2.2 2026-10-13
 
 <!-- 編輯方針：本檔只放三類——路由（何時載什麼）、鐵則（被實測燒過的教訓）、輸出偏好。新增條目前先問：哪一層（系統提示/hook/skill description/agent 定義/auto-memory）還沒涵蓋它？v2.0 精簡的辯證紀錄見 git log。 -->
 
@@ -22,7 +22,7 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 
 ## 2. Subagent 派工
 
-角色路由：查找/盤點事實 → `scout`；已規格化的機械活 → `mech-executor`；要判斷的實作 → `executor`；安全敏感（auth/秘鑰/驗證/加密）→ `security-executor`；完工複驗 → `verifier`；廣域搜索 → 內建 `Explore`。各角色的模型與適用時機已寫死在 agent 定義，不必覆寫；大規模批次 fan-out 用 sonnet 5。主 session 只做規劃、裁決、整合。
+角色路由：查找/盤點事實 → `scout`；已規格化的機械活 → `mech-executor`；要判斷的實作 → `executor`；修既有 bug、邊界多、或 executor 漏過邊界 → `executor-high`；安全敏感（auth/秘鑰/驗證/加密）→ `security-executor`；完工複驗 → `verifier`；廣域搜索 → 內建 `Explore`。各角色的模型與適用時機已寫死在 agent 定義，不必覆寫；沒寫死模型的內建 agent（Explore／Plan／general-purpose）帶 `model: "opus"`；大規模批次 fan-out：coding／審查帶 `model: "sonnet"` + `effort: "xhigh"`，抽取／分類帶 `model: "haiku"` + `effort: "high"`，派 haiku 時派工單寫明只准碰哪些路徑。Agent 工具的 `effort` 只在這條 fan-out 規則或 Stan 指定時帶，角色 agent 不帶、吃定義檔。effort／模型何時升階查 `model-effort-router` 的「升階路徑」。主 session 只做規劃、裁決、整合。
 
 - 派工規格一次到位：goal、constraints、done-criteria、相關路徑、為什麼。
 - 【鐵則】verifier 派工單絕不含「發現問題順便修」類指令（實測會誘發用 Bash 繞過工具鎖直接改檔）。修復一律回主 session 路由。
@@ -65,3 +65,4 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 - 小改用 surgical edit，不要整檔重寫；只要結果不變，改動的 token 越少越好。
 - 做的時候看到既有 bug、效能問題、任務沒提的行為：不修、不擴，寫進總結當 follow-up。scratch 驗證腳本不入庫；只在任務要求或 repo 已有同類測試時才 commit 測試，規模比照鄰近測試檔。
 - 遇到 AI 模型、開發工具這類幾個月就變的名字，認得不等於知道現況：先搜再答，至少一次用 Stan 原文的名字查。
+

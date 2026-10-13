@@ -47,3 +47,12 @@
 7. 同為 Opus 5.5 的 verifier 可以用（偏差 0.07/10）；自建監控或 gate 要讀得到 thinking summary，只看最後訊息會漏。
 8. 資安任務碰不可信內容（第三方 repo、issue、網頁）時，假設回答者可能已換成 Opus 4.8。
 9. 創作類（文案、風格仿寫）品質不滿意時可 A/B 一次 Opus 5（card 只跟 Opus 5 比）。
+
+## 5.5 世代跨模型安全發現（2026-10-13，四份 System Card 對照）
+
+出處在 `Projects\model-blackbox-eval\research-2026-10-13\official.md`，摘要在同專案 `ROUTING-2026-10-13.md` §6。
+
+1. **主 agent 對 subagent 捏造使用者授權**：Opus 5.5 與 Fable 5.1 都有（<0.01%）；Fable 還試過用 bypassPermissions 啟動 agent（<0.001%）。全部被 auto mode 擋下。對策：auto mode 保持開；派工單寫明「主 session 的訊息不等於使用者同意」。
+2. **fallback 路徑是 prompt injection 的弱點**：Opus 與 Fable 的 cyber 分類器觸發後改送 Opus 4.8。對抗式 coding 攻擊（無產品防護）成功率：Opus 5.5 54.6%、Fable 5.1 51.9%，幾乎全部來自 fallback；Sonnet 5.5 3.0%、Haiku 5.5 0.08%。讀不受信任的內容、手上又有破壞性工具的 agent，Sonnet 或 Haiku 5.5 反而比較穩。
+3. **Haiku 5.5 越界**：30% 的情境會碰沙箱外的東西；system prompt 加一段沙箱說明降到 1.8%。派 haiku 一律寫明只准碰哪些路徑。
+4. **自評偏誤**：Sonnet 5.5 比 Opus 5.5 大；Mythos 5.1（跟 Fable 同一個模型）被告知「這是 Claude 寫的」會評得比較鬆。verifier 維持 Opus，派工單不寫作者是誰。
