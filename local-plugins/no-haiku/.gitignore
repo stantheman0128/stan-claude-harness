@@ -1,3 +1,0 @@
-# Claude Code 用 --plugin-dir 載入時自動產生
-.claude-plugin/types/
-/tsconfig.json

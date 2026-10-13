@@ -18,12 +18,6 @@
       "version": "1.0.1",
       "source": "./loop-gate",
       "description": "Machine-enforced verification gate + fail-loud hook health for loop engineering"
-    },
-    {
-      "name": "no-haiku",
-      "version": "0.2.0",
-      "source": "./no-haiku",
-      "description": "Mod: refuse subagent spawns that explicitly request Haiku 4.5 (Haiku 5.5 allowed)"
     }
   ]
 }

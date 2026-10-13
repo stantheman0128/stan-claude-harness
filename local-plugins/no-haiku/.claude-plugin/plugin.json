@@ -1,8 +1,0 @@
-{
-  "name": "no-haiku",
-  "version": "0.2.0",
-  "description": "擋下明確帶 Haiku 4.5 的 subagent 派工；Haiku 5.5 放行；解析後跑在 Haiku 4.5 的只記一行提醒（Stan harness mod）",
-  "author": {
-    "name": "Stan Shih"
-  }
-}

@@ -1,4 +1,0 @@
-{
-  "description": "no-haiku hooks module",
-  "modules": ["./register.js"]
-}
