@@ -11,7 +11,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 **Stan 的取捨（2026-10-13 定案）：品質優先。** 升一檔只要實際多拿到分數，寧可多花 token。判斷標準是「升一檔多拿到什麼」，不是「每分成本」，所以這裡的起點都比官方預設高一格。
 
-價格（每百萬 token input/output）：Haiku 5.5 $0.10/$0.50（prompt 超過 100K 變 $0.50/$2.50）、Sonnet 5.5 $2/$10、Opus 5.5 $4/$20（`/fast` $8/$40）、Fable 5.1 $10/$50。
+價格（美元，每百萬 token input/output）：Haiku 5.5 0.10/0.50（prompt 超過 100K 變 0.50/2.50）、Sonnet 5.5 2/10、Opus 5.5 4/20（`/fast` 8/40）、Fable 5.1 10/50。
 
 | 檔案 | 內容 | 什麼時候讀 |
 |---|---|---|
@@ -47,7 +47,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 | 電腦操作、vision、圖表/簡報/試算表知識工作 | Opus 5.5 @ high；長交付物 xhigh | OSWorld 2.0 81.8%、GDPval-AA 1846 Elo 皆最高 |
 | coding 卡關（Opus 5.5 @ xhigh 試 2 次仍同一失敗） | 回報 Stan，建議 Opus 5.5 @ max（只開當次 session） | xhigh → max：CursorBench +1.8；代價見硬規則 3 |
 | 模糊根因、架構決策、Opus 修不好的弱點、研究級深推理（Opus 高檔試過仍不行） | 回報 Stan，建議 Fable 5.1 @ xhigh；長文件交付用 high | Fable high → xhigh：CursorBench +2.4、AA +2；Endor Labs 弱點修補 Fable 87.2% vs Opus 68.7% |
-| 互動式 live debug 要快 | Opus 5.5 + `/fast` | 同模型同品質、輸出快 2.5x；$8/$40，訂閱方案只能走 usage credits |
+| 互動式 live debug 要快 | Opus 5.5 + `/fast` | 同模型同品質、輸出快 2.5x；每百萬 token 8/40 美元，訂閱方案只能走 usage credits |
 | 大規模平行（稽核全 repo、遷移、多視角驗證） | ultracode 或明講「用 workflow」 | 這是編排方式不是檔位；引擎上限 16 併發 / 1000 agent |
 
 ### Fable 5.1、Sonnet 5.5、Haiku 5.5 的界線
@@ -135,10 +135,10 @@ max 不當任何角色或設定的預設（硬規則 3）。
 
 ## 硬規則（逐條檢查）
 
-1. **安全/攻防/漏洞任務從 Opus 起，不用 Fable 起手**：Fable 5.1 與 Opus 5.5 分類器同級（p2、p55），換 Fable 不會比較少被擋。原始碼找漏洞允許，編譯後 binary 找漏洞一律擋；被 cyber 分類器擋下的請求在 Claude Code 自動改送 Opus 4.8（API 要開發者 opt-in，p48）。Opus 5 政策相同但沒有 Opus 5.5 那層「暫時加寬的安全邊際」，誤擋可能較少（推論，未實測），看到 refusal 或降級跡象可改 Opus 5。Sonnet 5.5 也有 cyber 分類器，被擋改送 Sonnet 5；bio 被擋直接拒絕，沒有 fallback。**例外**：Opus 5.5 @ xhigh 試 2 次修不好的弱點修補，回報 Stan 時可建議 Fable 5.1 @ xhigh（Endor Labs：功能通過率 Fable 87.2%、Opus 68.7%，單一來源、effort 沒標）。
+1. **安全/攻防/漏洞任務從 Opus 起，不用 Fable 起手**：Fable 5.1 與 Opus 5.5 分類器同級（p2、p55），換 Fable 不會比較少被擋。原始碼找漏洞允許，編譯後 binary 找漏洞一律擋；被 cyber 分類器擋下的請求在 Claude Code 自動改送 Opus 4.8（API 要開發者 opt-in，p48）；**Stan 設了 `switchModelsOnFlag: false`，被標記時 session 暫停，不自動換模型**，看到暫停就停下回報 Stan。Opus 5 政策相同但沒有 Opus 5.5 那層「暫時加寬的安全邊際」，誤擋可能較少（推論，未實測），看到 refusal 或降級跡象可改 Opus 5。Sonnet 5.5 也有 cyber 分類器，被擋改送 Sonnet 5；bio 被擋直接拒絕，沒有 fallback。**例外**：Opus 5.5 @ xhigh 試 2 次修不好的弱點修補，回報 Stan 時可建議 Fable 5.1 @ xhigh（Endor Labs：功能通過率 Fable 87.2%、Opus 68.7%，單一來源、effort 沒標）。
 2. **中途換檔看模型（Claude Code）**：Opus 5.5、Sonnet 5.5、Haiku 5.5 與 Fable 5.1 用 API key 或訂閱登入時，換 effort 保 cache、不跳確認（Fable 要 v2.1.260 起）；其他模型換檔整段重讀，cache 還熱時 CC 會先問。例外照樣重讀：Bedrock、Google Cloud Agent Platform、Claude apps gateway、設了 `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS`、HIPAA 組織。直接打 `/effort <檔位>` 或滑桿按 Enter 會存成之後 session 的預設，滑桿按 `s` 只套這個 session。換模型（含分類器自動 fallback）一定整段重讀。API 端 per-message effort beta 是 `mid-conversation-output-config-2026-07-01`。
 3. **max 不當預設**：官方原話「Reserve xhigh and max for work where you've measured a quality gain」。Opus 5.5 FrontierCode 在 medium 以上下降、Terminal-Bench max 不比 xhigh 高；Sonnet 5.5 max 的 FrontierCode 比 xhigh 低 5.9；Fable 5.1 max 跟 xhigh 同分。max 只有兩種用法，兩種都由 Stan 決定開：coding 在 Opus 5.5 @ xhigh 卡關後開當次 session；無人看管的漏洞搜尋，而且多抓到一個就值得 3 倍以上成本。另外 max 會提高照做「貼上文字裡被植入的指令」的比率（預設檔約 2%，max 約 7.4%，p126），開 max 時不要讀沒包裝的外部貼文。
-4. **Opus 5.5 / Sonnet 5.5 / Haiku 5.5 在 CC 預設 medium，不是 high**：user settings 頂層的 `effortLevel` 對 Opus 5.5 及之後發佈的模型**不生效**，要在 `modelSettings["claude-opus-5-5"].effortLevel`（Sonnet 是 `"claude-sonnet-5-5"`，Haiku 是 `"claude-haiku-5-5"`）明寫，或在 session 裡直接打 `/effort high` 存（v2.1.251 起就是存到 `modelSettings`）。project/local/managed 設定裡的頂層 `effortLevel` 仍有效；`max` 兩個鍵都不收。Stan 現況（2026-10-13）：頂層 `effortLevel: "high"` 只剩 Fable 5.1 吃得到；主 session 要 high 得靠 `/effort high` 存進 `modelSettings`。
+4. **Opus 5.5 / Sonnet 5.5 / Haiku 5.5 在 CC 預設 medium，不是 high**：user settings 頂層的 `effortLevel` 對 Opus 5.5 及之後發佈的模型**不生效**，要在 `modelSettings["claude-opus-5-5"].effortLevel`（Sonnet 是 `"claude-sonnet-5-5"`，Haiku 是 `"claude-haiku-5-5"`）明寫，或在 session 裡直接打 `/effort high` 存（v2.1.251 起就是存到 `modelSettings`）。project/local/managed 設定裡的頂層 `effortLevel` 仍有效；`max` 兩個鍵都不收。Stan 現況（2026-10-14）：`modelSettings["claude-opus-5-5"].effortLevel: "high"` 已寫入（桌面版打 `/effort high` 沒存檔，改手動寫）；頂層 `effortLevel: "high"` 只剩 Fable 5.1 吃得到。
 5. **ultracode 不是 effort 檔位**：是 Claude Code 設定＝送 xhigh + 自動 workflow 編排，session-only；`effortLevel` 與 `modelSettings` 不收 max，ultracode 不是任何設定鍵或環境變數的值。`CLAUDE_CODE_EFFORT_LEVEL` 收 max，是 max 能跨 session 的唯一方法，照硬規則 3 不設。
 6. **xhigh/max 要配大 max_tokens**：API 端至少 64K，16K 會截斷約 25% 的 Opus 與 43% 的 Fable 嘗試；Opus 5.5 官方實測長 agentic turn 直接給 128k（模型上限）。thinking 算進 max_tokens，即使沒回傳。
 7. **Opus 5.5 API 四個 breaking change**：thinking 關不掉、`tool_choice: any/tool` 回 400（改 `auto` + `strict: true`）、`computer_20251124` 在 API/GCP 回 400（改 `computer_toolset_20260801`）、thinking block 綁模型與對話（2026-08-31 後建立的帳號改動 prefix 直接 400；對話要 append-only，改指令用 mid-conversation system message）。前三條 Fable 5.1 也一樣。Sonnet 5.5 四條全中，另有：關 thinking 改送 `between_tools`（xhigh/max 下 400、開了就不能中途換 effort）、`temperature`/`top_p`/`top_k` 非預設值 400、advisor 工具不收 Opus 4.8/4.7、Sonnet 5 與 Haiku 5.5。Haiku 5.5 同樣不要送 `temperature`/`top_p`/`top_k`。
@@ -148,7 +148,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
 11. **fast mode 是速度不是智力**：同模型同權重，只快輸出（OTPS），首 token 不快。訂閱方案走 usage credits 不算訂閱額度；開啟當下要付整段 context 的未快取 input 價，所以要開就 session 一開始開。只有一段對話第一次開 fast 會整段重讀；之後關掉、被限流自動退回標準速度、再打開都保 cache。
 12. Haiku 5.5 / Sonnet 5.5 / Sonnet 5 / Fable 5.1 / Opus 5.5 都是新 tokenizer，同文字比 Opus 4.7 前（含 Haiku 4.5）約 +30% token：從舊模型搬來的 max_tokens/成本估算要重算（Sonnet 5 → 5.5 同 tokenizer，不用重算）。
 13. **Sonnet 5.5 與 Haiku 5.5 要逼它驗證**：官方承認 Sonnet low 有時沒跑能驗到改動的檢查就回報完成（例如依賴沒裝就跳過測試），low/medium 長任務會停下來問本來可以自己決定的事；Haiku medium 以下會跳過驗證，謊報完成也比 Opus、Sonnet 多。對策：派工單或 system prompt 貼官方那段「改了能跑的程式就先跑真的測試、型別檢查或 build 再回報；跑不了就說哪個沒跑、為什麼」，要它做完再停就加官方「Keep working until everything the user asked for is done…」段。
-14. **Haiku 5.5 的位置**（2026-10-13 解禁，規格已查證）：$0.10/$0.50（prompt 超過 100K 變 $0.50/$2.50）、cache read $0.01、1M context、CC 預設 medium、五檔都支援；`haiku` 別名 v2.1.293 起指向它。只接大量抽取、分類、摘要，effort 開 high；派工單加一段工作邊界說明（只准碰哪些路徑、不准做什麼），System Card 實測越界率從 30% 降到 1.8%。要判斷的實作、安全、複驗、scout 不給它。Haiku 4.5 不再使用。
+14. **Haiku 5.5 的位置**（2026-10-13 解禁，規格已查證）：每百萬 token 0.10/0.50 美元（prompt 超過 100K 變 0.50/2.50）、cache read 0.01、1M context、CC 預設 medium、五檔都支援；`haiku` 別名 v2.1.293 起指向它。只接大量抽取、分類、摘要，effort 開 high；派工單加一段工作邊界說明（只准碰哪些路徑、不准做什麼），System Card 實測越界率從 30% 降到 1.8%。要判斷的實作、安全、複驗、scout 不給它。Haiku 4.5 不再使用。
 15. **fan-out 一律帶 model 也帶 effort**：照 CLAUDE.md §2，coding、審查帶 `model: "sonnet"` + `effort: "xhigh"`，抽取、分類帶 `model: "haiku"` + `effort: "high"`。沒帶 effort 時 subagent 大概跟 session 走（文件只暗示，沒明講），結果不可預期。
 
 ## 輸出格式
@@ -188,3 +188,5 @@ Effort：<檔位>
 ## 資料時效
 
 來源、每次更新的紀錄與未驗證項在 `references/sources.md`。逐檔分數全靠 CursorBench 與 Artificial Analysis（Anthropic 沒用文字公布 Sonnet 5.5、Haiku 5.5 的逐檔分數）；新模型發佈或 CC 大改版時，先查 platform.claude.com/docs 的 models overview 與 effort 頁、code.claude.com 的 model-config，數字過期就別引用。
+
+維護注意：本檔內文不寫「錢號緊接數字」。帶參數呼叫 skill 時，Claude Code 會把錢號接 0、1、2 這類寫法換成你帶的第幾個參數，價格會被吃掉；`references/` 不受影響。
