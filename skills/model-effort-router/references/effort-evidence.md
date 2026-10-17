@@ -37,23 +37,56 @@ Anthropic 沒用文字公布 Sonnet 5.5、Haiku 5.5 的逐檔分數，四模型�
 
 Haiku 的成本是暫定值，AA 還沒算進 100K 以上的價格級距。
 
+**AA 逐項拆分**（2026-10-18 抓 artificialanalysis.ai 二十個變體頁的原始數據，Index v4.3.2；總分與每題成本跟上表一致。秒數是每題平均完成時間，不是首字時間。Anthropic 模型標「with fallback」，即分類器擋下時改送 fallback 模型；Stan 設了 `switchModelsOnFlag: false`，不過這些都是良性題，影響應該很小。Haiku 沒標 fallback。）
+
+| 變體 | 總分 | 每題美元 | 每題秒數 | Terminal-Bench 4.0 | Briefcase Elo | GDPval | AutomationBench | HLE | 幻覺率 |
+|---|---|---|---|---|---|---|---|---|---|
+| Opus low | 42.3 | 0.55 | 81 | 31.3 | 1279 | 1234 | 52.9 | 48.3 | 0.68 |
+| Opus medium | 51.2 | 1.34 | 203 | 52.5 | 1627 | 1584 | 61.2 | 54.7 | 0.68 |
+| Opus high | 53.6 | 1.82 | 272 | 56.6 | 1688 | 1703 | 63.2 | 55.6 | 0.68 |
+| Opus xhigh | 56.0 | 3.46 | 501 | 59.6 | 1766 | 1836 | 65.0 | 57.5 | 0.66 |
+| Opus max | 57.6 | 5.98 | 792 | 59.6 | 1805 | 1866 | 69.5 | 61.4 | 0.59 |
+| Sonnet low | 35.9 | 0.35 | 87 | 20.7 | 1271 | 1175 | 49.4 | 36.2 | 0.50 |
+| Sonnet medium | 40.8 | 0.48 | 130 | 29.8 | 1442 | 1323 | 54.9 | 39.8 | 0.51 |
+| Sonnet high | 46.8 | 0.88 | 238 | 43.9 | 1638 | 1550 | 59.4 | 45.8 | 0.65 |
+| Sonnet xhigh | 51.9 | 2.01 | 443 | 57.1 | 1752 | 1730 | 65.5 | 50.0 | 0.63 |
+| Sonnet max | 56.0 | 5.46 | 905 | 63.6 | 1820 | 1838 | 71.8 | 55.0 | 0.47 |
+| Haiku low | 29.5 | 0.02 | 66 | 12.6 | 1112 | 1122 | 22.9 | 27.0 | 0.45 |
+| Haiku medium | 34.5 | 0.05 | 118 | 15.2 | 1372 | 1274 | 28.6 | 33.8 | 0.45 |
+| Haiku high | 37.8 | 0.08 | 190 | 21.7 | 1442 | 1418 | 33.7 | 37.3 | 0.45 |
+| Haiku xhigh | 41.2 | 0.12 | 291 | 29.3 | 1533 | 1511 | 36.0 | 42.7 | 0.44 |
+| Haiku max | 43.4 | 0.21 | 421 | 32.8 | 1578 | 1620 | 35.4 | 44.4 | 0.40 |
+| Fable low | 46.8 | 2.37 | 231 | 40.4 | 1483 | 1468 | 52.2 | 48.9 | 0.66 |
+| Fable medium | 48.9 | 2.98 | 298 | 44.9 | 1528 | 1545 | 54.7 | 53.8 | 0.69 |
+| Fable high | 51.2 | 3.91 | 409 | 52.0 | 1581 | 1634 | 55.3 | 55.9 | 0.69 |
+| Fable xhigh | 53.2 | 5.98 | 595 | 55.1 | 1656 | 1733 | 57.8 | 58.7 | 0.71 |
+| Fable max | 53.4 | 7.63 | 688 | 52.0 | 1675 | 1756 | 59.4 | 59.1 | 0.73 |
+
+幻覺率是 AA-Omniscience 的 hallucination rate（越低越好），量的是答不出來時硬掰的比例，跟 System Card 的「輸入幻覺」不是同一件事。FrontierCode 在 AA 只測了 max（Opus 52.2、Fable 49.0、Sonnet 45.8、Haiku 41.8）。
+
+從這張表讀出的四點（2026-10-18 寫進 SKILL.md）：
+1. Sonnet xhigh 每題比 Opus high 貴、分數略低、慢 1.6 倍；fan-out 選 Sonnet 的理由只剩分散週額度。
+2. Opus xhigh → max 的 Terminal-Bench 是 0 增益，漲分在 Briefcase、GDPval、HLE、AutomationBench 與幻覺率。
+3. Sonnet xhigh → max 是四模型頂端最大的一跳，Terminal-Bench 63.6 與 AutomationBench 71.8 為全系列最高，幻覺率最低；知識題（Omniscience 32 對 Opus 46）明顯輸。
+4. 同成本下找不到 Fable 贏 Opus 的單項；Fable xhigh → max 的 Terminal-Bench 從 55.1 退到 52.0。
+
 **每升一檔多拿到什麼**（括號是每題成本增幅；SKILL.md 決策表的依據）
 
 | 模型 | 升檔 | CursorBench | AA | 其他 | 判斷 |
 |---|---|---|---|---|---|
 | Opus 5.5 | medium → high | +3.5（+36%） | +3（+36%） | SWE-bench Pro +2.5；livenerf +4.2；首字 28s → 57s | 值得，四個來源一致 |
-| Opus 5.5 | high → xhigh | +0（+76%） | +2（+90%） | SWE-bench Pro +1.4（+150%）；AA-Briefcase +75 Elo；首字 57s → 159s | 沒人等著的工作值得 |
-| Opus 5.5 | xhigh → max | +1.8（+92%） | +2（+73%） | 貼上文字的植入指令照做率 2% → 7.4%；官方說容易想太多 | 只當 coding 卡關的升階 |
+| Opus 5.5 | high → xhigh | +0（+76%） | +2（+90%） | SWE-bench Pro +1.4（+150%）；AA-Briefcase +78 Elo；首字 57s → 159s | 沒人等著的工作值得 |
+| Opus 5.5 | xhigh → max | +1.8（+92%） | +2（+73%） | AA：Terminal-Bench +0、Briefcase +39、GDPval +30、HLE +3.8、幻覺率 0.66 → 0.59；貼上文字的植入指令照做率 2% → 7.4%；官方說容易想太多 | 知識型長交付物要準確時值得；coding 證據偏弱；都由 Stan 決定 |
 | Sonnet 5.5 | medium → high | +8.6（+131%） | +6（+83%） | | 值得 |
 | Sonnet 5.5 | high → xhigh | +5.3（+134%） | +5（+128%） | FrontierCode 在這檔最高 | 值得 |
-| Sonnet 5.5 | xhigh → max | +2.4（+151%） | +4（+172%） | FrontierCode -5.9；首字 450s | 不值得 |
+| Sonnet 5.5 | xhigh → max | +2.4（+151%） | +4（+172%） | FrontierCode -5.9；首字 450s；AA：Terminal-Bench +6.6、AutomationBench +6.3、幻覺率 0.63 → 0.47 | 不當起點；Opus xhigh 也卡關的終端機任務可當候選 |
 | Haiku 5.5 | medium → high | +5.4（+88%） | +4（+60%） | | 值得 |
 | Haiku 5.5 | high → xhigh | +2.0 | +3 | 多輪對話會空回覆 | 不值得 |
 | Fable 5.1 | high → xhigh | +2.4（+43%） | +2（+53%） | 長交付物 token 約翻倍 | 非長交付物值得 |
 | Fable 5.1 | xhigh → max | +0.2 | +0 | | 不值得 |
 
 **各檔行為特性**（官方 prompting 指南、effort 文件與 System Card）
-- Opus 5.5：low 拒絕隱藏的惡意子任務時常只在思考裡拒絕、不告訴你（p142）；medium 是 FrontierCode 最高分；high 多買驗證與邊界；xhigh 每回合想更多、回合更長，coding 跟 high 同分但知識型交付物還在漲（AA-Briefcase high 1705、xhigh 1780、max 1822）。
+- Opus 5.5：low 拒絕隱藏的惡意子任務時常只在思考裡拒絕、不告訴你（p142）；medium 是 FrontierCode 最高分；high 多買驗證與邊界；xhigh 每回合想更多、回合更長，coding 跟 high 同分但知識型交付物還在漲（AA-Briefcase high 1688、xhigh 1766、max 1805，2026-10-18 重抓）。
 - Sonnet 5.5：low 簡單請求多半不思考、可能沒驗證就回報完成；medium 起幾乎每句都先想、長任務容易停下來問；xhigh 開始做自我審查回合，有時會開 subagent；max 叫它「做完就停、回報」可省約 1/3。每一檔都會多加沒要求的測試、文件、檔案，檔位越高越多。
 - Haiku 5.5：low 長 prompt 會跳過搜尋、提早停、思考內容漏到輸出；medium 提早停止減半但仍會跳過驗證；high 是官方建議的嚴格照指令檔；xhigh 多輪對話會空回覆。
 - Fable 5.1：low 搜尋變少、多靠記憶；high 會多改範圍外的小東西、整檔重寫、只描述下一步而不去做，派工單加「只碰要求的範圍」「把整件事做完」兩句可壓下來；xhigh 長交付物先在思考裡打草稿。
