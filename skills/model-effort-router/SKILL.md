@@ -51,11 +51,12 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 | 互動式 live debug 要快 | Opus 5.5 + `/fast` | 同模型同品質、輸出快 2.5x；每百萬 token 8/40 美元，訂閱方案只能走 usage credits |
 | 大規模平行（稽核全 repo、遷移、多視角驗證） | ultracode 或明講「用 workflow」 | 這是編排方式不是檔位；引擎上限 16 併發 / 1000 agent |
 
-### Fable 5.1、Sonnet 5.5、Haiku 5.5 的界線
+### Fable 5.1、Mythos 5.1、Sonnet 5.5、Haiku 5.5 的界線
 
 細節、benchmark 與頁碼在 `references/model-picks.md`。
 
 - **Fable 5.1**：Opus 5.5 卡關後才上。兩種情況：模糊的根因調查、架構決策、要一次就對的工作，Opus 5.5 @ high 與 xhigh 各試 2 次仍不行；或 Opus 修不好的弱點修補（Endor Labs 179 題，只有這一份資料、effort 沒標）。effort 用 xhigh；長交付物用 high（xhigh 會先在 thinking 打一次草稿，token 約翻倍）；max 跟 xhigh 同分，不開。CursorBench 上 Opus 5.5 從 medium 到 xhigh 每一檔都贏 Fable max；AA（2026-10-18）同樣找不到 Fable 在同成本下贏 Opus 的單項，Opus xhigh（56.0 分、每題 3.46 美元）已高過 Fable max（53.4 分、7.63 美元），Fable 的幻覺率 0.66 到 0.73 是四模型最高。派工單加「只碰要求的範圍」「把整件事做完」兩句。中途從 Opus 5.5 升到 Fable 5.1 會保留推理，反向會丟。
+- **Mythos 5.1**（`claude-mythos-5-1`）：官方文件寫明是「Claude Fable 5.1 for verified organizations」，同一個模型、同價（每百萬 token 10/50 美元）、同規格，只是放寬資安與生科的 safeguards；只開給通過 Cyber Verification Program 這類驗證計畫的組織（2026-10-18 查 platform.claude.com 的 mythos-5-1 overview）。Stan 沒申請過就不在路由裡出現；資安任務照硬規則 1 走 Opus。能力上它就是 Fable 5.1，所以上面 Fable 的結論全部適用，AA 也沒有收錄它。
 - **Sonnet 5.5**：範圍清楚、有驗收方法的 coding、修 bug、文件簡報試算表、量大的派工。一律從 high 起，fan-out coding 用 xhigh；不開 low（會沒驗證就回報完成）；max 不當起點（會自開 review 輪與 subagent、FrontierCode 退步、每題 905 秒），但它在 AA 確實漲分（總分 +4.1、Terminal-Bench +6.6），終端機為主的 agent 任務在 Opus xhigh 卡關後可以並列建議，由 Stan 決定。Opus 週額度緊時，規格清楚的活移到 Sonnet high。開放式長程判斷、長 context 精準檢索用 Opus 5.5。
 - **Haiku 5.5**：大量抽取、分類、摘要，輸出可以逐條檢查。effort 用 high；不開 low（長 prompt 會跳過搜尋、提早停）、不開 xhigh/max（xhigh 多輪對話會空回覆，max 跟 Sonnet high 同價又慢）。prompt 維持 100K 以內。不給要判斷的實作、安全、複驗：輸入幻覺、重要遺漏、謊報完成三項都輸 Opus 5.5 與 Sonnet 5.5。scout 不換 Haiku，因為輸入幻覺正是 scout 最怕的錯。
 - **要不要從 Opus 降 Sonnet**：自己量，`/claude-api build-eval` 建評測、`/claude-api hillclimb` 調 prompt（CC v2.1.259 起）。
@@ -151,7 +152,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
 12. Haiku 5.5 / Sonnet 5.5 / Sonnet 5 / Fable 5.1 / Opus 5.5 都是新 tokenizer，同文字比 Opus 4.7 前（含 Haiku 4.5）約 +30% token：從舊模型搬來的 max_tokens/成本估算要重算（Sonnet 5 → 5.5 同 tokenizer，不用重算）。
 13. **Sonnet 5.5 與 Haiku 5.5 要逼它驗證**：官方承認 Sonnet low 有時沒跑能驗到改動的檢查就回報完成（例如依賴沒裝就跳過測試），low/medium 長任務會停下來問本來可以自己決定的事；Haiku medium 以下會跳過驗證，謊報完成也比 Opus、Sonnet 多。對策：派工單或 system prompt 貼官方那段「改了能跑的程式就先跑真的測試、型別檢查或 build 再回報；跑不了就說哪個沒跑、為什麼」，要它做完再停就加官方「Keep working until everything the user asked for is done…」段。
 14. **Haiku 5.5 的位置**（2026-10-13 解禁，規格已查證）：每百萬 token 0.10/0.50 美元（prompt 超過 100K 變 0.50/2.50）、cache read 0.01、1M context、CC 預設 medium、五檔都支援；`haiku` 別名 v2.1.293 起指向它。只接大量抽取、分類、摘要，effort 開 high；派工單加一段工作邊界說明（只准碰哪些路徑、不准做什麼），System Card 實測越界率從 30% 降到 1.8%。要判斷的實作、安全、複驗、scout 不給它。Haiku 4.5 不再使用。
-15. **fan-out 一律帶 model 也帶 effort**：照 CLAUDE.md §2，coding、審查帶 `model: "sonnet"` + `effort: "xhigh"`，抽取、分類帶 `model: "haiku"` + `effort: "high"`。沒帶 effort 時 subagent 大概跟 session 走（文件只暗示，沒明講），結果不可預期。
+15. **fan-out 一律帶 model 也帶 effort**：照 CLAUDE.md §2，coding、審查帶 `model: "sonnet"` + `effort: "xhigh"`（Opus 額度寬鬆時改 `model: "opus"` + `effort: "high"`），抽取、分類帶 `model: "haiku"` + `effort: "high"`。沒帶 effort 時 subagent 大概跟 session 走（文件只暗示，沒明講），結果不可預期。
 
 ## 輸出格式
 

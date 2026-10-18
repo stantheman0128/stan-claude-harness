@@ -22,7 +22,7 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 
 ## 2. Subagent 派工
 
-角色路由：查找/盤點事實 → `scout`；已規格化的機械活 → `mech-executor`；要判斷的實作 → `executor`；修既有 bug、邊界多、或 executor 漏過邊界 → `executor-high`；安全敏感（auth/秘鑰/驗證/加密）→ `security-executor`；完工複驗 → `verifier`；廣域搜索 → 內建 `Explore`。各角色的模型與適用時機已寫死在 agent 定義，不必覆寫；沒寫死模型的內建 agent（Explore／Plan／general-purpose）帶 `model: "opus"`；大規模批次 fan-out：coding／審查帶 `model: "sonnet"` + `effort: "xhigh"`，抽取／分類帶 `model: "haiku"` + `effort: "high"`，派 haiku 時派工單寫明只准碰哪些路徑。Agent 工具的 `effort` 只在這條 fan-out 規則或 Stan 指定時帶，角色 agent 不帶、吃定義檔。effort／模型何時升階查 `model-effort-router` 的「升階路徑」。主 session 只做規劃、裁決、整合。
+角色路由：查找/盤點事實 → `scout`；已規格化的機械活 → `mech-executor`；要判斷的實作 → `executor`；修既有 bug、邊界多、或 executor 漏過邊界 → `executor-high`；安全敏感（auth/秘鑰/驗證/加密）→ `security-executor`；完工複驗 → `verifier`；廣域搜索 → 內建 `Explore`。各角色的模型與適用時機已寫死在 agent 定義，不必覆寫；沒寫死模型的內建 agent（Explore／Plan／general-purpose）帶 `model: "opus"`；大規模批次 fan-out：coding／審查帶 `model: "sonnet"` + `effort: "xhigh"`（用意是分散到 Sonnet 週額度；Opus 額度寬鬆時改帶 `model: "opus"` + `effort: "high"`，AA 上更便宜也更高分），抽取／分類帶 `model: "haiku"` + `effort: "high"`，派 haiku 時派工單寫明只准碰哪些路徑。Agent 工具的 `effort` 只在這條 fan-out 規則或 Stan 指定時帶，角色 agent 不帶、吃定義檔。effort／模型何時升階查 `model-effort-router` 的「升階路徑」。主 session 只做規劃、裁決、整合。
 
 - 派工規格一次到位：goal、constraints、done-criteria、相關路徑、為什麼。
 - 【鐵則】verifier 派工單絕不含「發現問題順便修」類指令（實測會誘發用 Bash 繞過工具鎖直接改檔）。修復一律回主 session 路由。
