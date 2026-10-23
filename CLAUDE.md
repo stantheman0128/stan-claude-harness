@@ -1,4 +1,4 @@
-# Claude Code 全域工作規則（Stan）— v2.2 2026-10-13
+# Claude Code 全域工作規則（Stan）— v2.5 2026-10-23
 
 <!-- 編輯方針：本檔只放三類——路由（何時載什麼）、鐵則（被實測燒過的教訓）、輸出偏好。新增條目前先問：哪一層（系統提示/hook/skill description/agent 定義/auto-memory）還沒涵蓋它？v2.0 精簡的辯證紀錄見 git log。 -->
 
@@ -27,6 +27,7 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 - 派工規格一次到位：goal、constraints、done-criteria、相關路徑、為什麼。
 - 【鐵則】verifier 派工單絕不含「發現問題順便修」類指令（實測會誘發用 Bash 繞過工具鎖直接改檔）。修復一律回主 session 路由。
 - 「查不到／驗不了」是合格回報不是失敗，派工單要明說這件事。
+- 看檔案、盤點、分類這類量大又單純的活交給 Haiku 或 Sonnet；Opus 只留給架構、釐清、功能規劃（Stan 2026-10-20：比較快也比較省 token）。
 
 ## 3. 證據紀律
 
@@ -52,6 +53,7 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 - 架構級決策或不可逆操作，動手前先等 Stan 拍板。
 - 版本紀律：每個功能＝一版號＋commit＋CHANGELOG，別攢著。
 - 非瑣碎修改自問一次「有沒有更乾淨的解法」；同時改動只碰必要範圍。
+- 刪除計畫、儲存空間分配、處理提案直接寫在對話裡，不另開計畫檔；INDEX、腳本、月報這類會持續用的登記檔不在此限。
 
 ## 6. 對外輸出過 humanizer
 
@@ -65,4 +67,20 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 - 小改用 surgical edit，不要整檔重寫；只要結果不變，改動的 token 越少越好。
 - 做的時候看到既有 bug、效能問題、任務沒提的行為：不修、不擴，寫進總結當 follow-up。scratch 驗證腳本不入庫；只在任務要求或 repo 已有同類測試時才 commit 測試，規模比照鄰近測試檔。
 - 遇到 AI 模型、開發工具這類幾個月就變的名字，認得不等於知道現況：先搜再答，至少一次用 Stan 原文的名字查。
+
+## 8. Projects 資料夾規矩（2026-10-20 Stan 定案）
+
+`C:\Users\stans\Projects` 的總表是 `Projects/INDEX.md`。
+
+- 根目錄只放專案資料夾，不放散檔。
+- 小實驗、demo、agent 開的試做一律放 `Projects/_scratch/YYYY-MM-DD-名稱/`；要升格成正式專案先問 Stan。
+- 在根目錄新建專案或 clone 之前，先在 `Projects/INDEX.md` 加一行：名稱、做什麼、來源。
+- OSS clone 放 `Projects/oss/`。PR merge 或關閉後，把 clone 列進清理提案，不自己刪。
+- `_scratch` 裡 30 天沒動的東西進每月報告，由 Stan 決定去留。
+
+## 9. 給 Stan 跑的指令（2026-10-23 Stan 定案）
+
+- 要 Stan 自己執行的指令，一律寫成能直接貼進 Windows PowerShell 5.1 執行的版本，code block 標 `powershell`。
+- 5.1 不支援 `&&`、`||`，也不認 `/c/Users/...` 這種路徑：串接用 `;` 或分行，路徑寫 `C:\...`，環境變數寫 `$env:USERPROFILE`。
+- 只有 Stan 指定，或他當下在 WSL／Linux 上時，才給 bash 指令。我自己在 Bash 工具裡跑的指令不受此限。
 
