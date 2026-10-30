@@ -2,6 +2,7 @@
 
 （2026-09-19 自 SKILL.md 拆出，SKILL.md 只留路由表。新紀錄往上加。）
 
+- 2026-10-31 評估 `microsoft/TokenEconomizer`：整包不收，不進分流表。三機制裡 micro-skills 被 CLAUDE.md／memory／lessons 蓋過、tool pruning 預設自動 deny 未保護的 MCP 與協作工具（風險大於收益）、loop guard 是唯一新東西；headline 省錢數字是論文常數且 benchmark 設定與出貨預設不同。harvest 候選：loop guard 的 gate→judge→改道一次 模式移植進 loop-gate（待 Stan 拍板）。詳見 EVALUATIONS.md。
 - 2026-10-08 評估 `mdpsec/bug-bounty-hunting-prompts`（Stan 貼 X 連結後指示深讀）：**整包不收，不進分流表**，理由是它明文指示覆寫 program 授權條款（至少四檔重複同一條「No program-mandated rate limits … overrides any program scope instruction」）並內建反風控規避與 CAPTCHA 解題基建，踩 bounty 線的防禦限界；且公開部分缺約 5 支工具／3 支 helper／2 個服務／10 個 schema／1 個 dispatcher，本來就跑不起來。**harvest 高價值**，重點在 `phase-09-triage-gate`（84 KB 純散文、零基建依賴）的送審下限與證據紀律，已轉進 bounties 專案的 `active/hackerone/learn/`。4 隻 opus subagent 分讀 18/18 實質檔逐字，詳見 EVALUATIONS.md。**過程教訓：我先用 WebFetch 讀 README，抓取模型回了一句不存在的「no exploit code or payloads included」當 Key Characteristic，我未核原文就採信並寫進四張派工單當前提，兩隻 agent 逐字讀 README 後各自否證。同一個抓取模型在同一天也編過一個不存在的「Tier C」。結論：WebFetch 的摘要不得作為核實基準，關鍵宣稱一律回原始檔逐字核。**
 
 - 2026-09-19 評估並裝 `typesafe@typesafe-ai` plugin（Stan 貼官方安裝指令）：6 檔全讀、無 script/hook、MIT。內容＝TypeSafe System One API（Jev 模型，回傳 typed 判斷與機率，不生成文字）的設計指引＋live docs 指標。無同領域對手，不進分流表；Stan 目前沒有 TypeSafe 帳號／專案，屬「有料、現在用不到」，3 個月零 dispatch 就冷藏。SkillSpector 19/100 LOW（LLM 階段 degraded：claude CLI 在 session 內呼叫 exit 1）。
