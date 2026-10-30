@@ -97,10 +97,11 @@ def marker_lines(path: Path, marker: str) -> int:
     return sum(marker in line for line in path.read_text(encoding="utf-8", errors="replace").splitlines())
 
 
-def overlay_gap(key: str, overlay: dict[str, Any], entry: dict[str, Any], marker: str) -> str:
-    root = Path(entry["installPath"])
-    if not root.is_dir():
+def overlay_gap(key: str, overlay: dict[str, Any], entry: Any, marker: str) -> str:
+    path = entry.get("installPath") if isinstance(entry, dict) else None
+    if not path or not Path(path).is_dir():
         return ""
+    root = Path(path)
     found = expected = 0
     short: list[str] = []
     for rel, want in overlay["files"].items():
@@ -122,8 +123,11 @@ def overlay_warning(enabled: set[str], markers: Path = MARKERS, installed: Path 
     try:
         spec = json.loads(markers.read_text(encoding="utf-8-sig"))
         overlays, marker = spec["plugins"].items(), spec.get("marker", "Stan overlay")
+        counts = [want for _, overlay in overlays for want in overlay["files"].values()]
+        if not isinstance(marker, str) or not marker.strip() or not all(isinstance(want, int) for want in counts):
+            raise ValueError("unexpected markers.json shape")
     except Exception:
-        return "⚠️ [overlay watch] ~/.claude/overlays/markers.json 讀不了，overlay 標記檢查這次沒跑" + relay
+        return "⚠️ [overlay watch] ~/.claude/overlays/markers.json 讀不了或格式不對，overlay 標記檢查這次沒跑" + relay
     try:
         installs = json.loads(installed.read_text(encoding="utf-8-sig"))["plugins"]
     except Exception:
@@ -137,7 +141,7 @@ def overlay_warning(enabled: set[str], markers: Path = MARKERS, installed: Path 
                 gaps.append(overlay_gap(key, overlay, entry, marker))
         except Exception:
             continue
-    gaps = [gap for gap in gaps if gap]
+    gaps = [gap for gap in dict.fromkeys(gaps) if gap]
     if not gaps:
         return ""
     return "⚠️ [overlay watch] Stan overlay 沒套在目前版本：" + "；".join(gaps) + relay
