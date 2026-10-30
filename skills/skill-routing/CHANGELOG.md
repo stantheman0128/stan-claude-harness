@@ -2,6 +2,7 @@
 
 （2026-09-19 自 SKILL.md 拆出，SKILL.md 只留路由表。新紀錄往上加。）
 
+- 2026-10-31 回報上游：Stan 拍板，以 stantheman0128 開 https://github.com/microsoft/TokenEconomizer/issues/87（side call 帶著全部 MCP server，一次 Haiku 約 572k effective tokens；建議修法同本機修補）。上游修好後撤掉本機修補。
 - 2026-10-31 TokenEconomizer 本機修補（Stan 拍板）：`~/.claude/plugins/marketplaces/tokeneconomizer/tokeneconomizer/plugin/sidecall.py` 的 `claude_call` 加 `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`（標記 `Stan local patch 2026-10-31`，未 commit，`git checkout -- <檔>` 即還原）。實測經 Guardian `claude.CMD` shim 呼叫正常：一次 side call 從約 572k 降到約 14k effective tokens、21 秒降到 8 秒。marketplace 更新後要確認還在。
 - 2026-10-31 TokenEconomizer 實測：Stan 登入 CLI 後 side call 可用（回 OK），但一次 Haiku side call 被 TE 自己記帳約 572k effective tokens。原因是 side call 用 `claude -p --tools ""`，連 ToolSearch 一起關掉，Stan 的 503 個 MCP 工具（claude.ai Vercel 就 244 個）只能整包載入；同一個呼叫加 `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` 只要約 14k。本機修補與回報上游待 Stan 決定。
 - 2026-10-31 `microsoft/TokenEconomizer` 改為試裝：Stan 選全預設整包裝（user scope、marketplace auto-update 預設關、裝的是 `8e54075`）。Windows 上 hook 實測會跑（state 有寫入）；但 standalone CLI 未登入（`claude auth status` loggedIn false），Haiku judge 在 Stan 跑 `claude auth login` 前無法運作。11-07 10:00 排程複查 `tokeneconomizer-week-review`（只報告不動手）。
