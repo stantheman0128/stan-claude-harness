@@ -2,6 +2,7 @@
 
 （2026-09-19 自 SKILL.md 拆出，SKILL.md 只留路由表。新紀錄往上加。）
 
+- 2026-10-31 router 假建議修正與 precision 紀錄：`skill-suggest.py` 跳過 harness 代送的 agent 回報。用隔離的 headless session 實抓 UserPromptSubmit stdin：背景任務或 agent 完成時，`prompt` 以 `<task-notification>` 開頭，排隊中送達也一樣；桌面 app 的 subagent 交回抓不到 stdin，依 transcript 判斷開頭幾行會有 `[Subagent hand-back]`。用新條件回頭算，近一週有動過的 101 份 transcript 裡，270 次 router 注入有 144 次會被擋掉。Skill 工具載入的 skill 內文不會觸發 UserPromptSubmit，近期 transcript 裡 105 次載入沒有一次觸發；稽核時歸給 claude-api 內文 Kotlin 的那次 chrisbanes 提醒，其實是緊接著送達的 queued agent 報告觸發的。`suggestions-<session>.jsonl` 每筆另記 `snippet`，即觸發訊息的前 120 字，之後能逐筆判斷建議切不切題；檔案在 gitignore 的 `skill-usage/`，只留本機。舊紀錄沒有 snippet，既有的失手統計仍含先前的假建議。
 - 2026-10-31 回報上游：Stan 拍板，以 stantheman0128 開 https://github.com/microsoft/TokenEconomizer/issues/87（side call 帶著全部 MCP server，一次 Haiku 約 572k effective tokens；建議修法同本機修補）。上游修好後撤掉本機修補。
 - 2026-10-31 TokenEconomizer 本機修補（Stan 拍板）：`~/.claude/plugins/marketplaces/tokeneconomizer/tokeneconomizer/plugin/sidecall.py` 的 `claude_call` 加 `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`（標記 `Stan local patch 2026-10-31`，未 commit，`git checkout -- <檔>` 即還原）。實測經 Guardian `claude.CMD` shim 呼叫正常：一次 side call 從約 572k 降到約 14k effective tokens、21 秒降到 8 秒。marketplace 更新後要確認還在。
 - 2026-10-31 TokenEconomizer 實測：Stan 登入 CLI 後 side call 可用（回 OK），但一次 Haiku side call 被 TE 自己記帳約 572k effective tokens。原因是 side call 用 `claude -p --tools ""`，連 ToolSearch 一起關掉，Stan 的 503 個 MCP 工具（claude.ai Vercel 就 244 個）只能整包載入；同一個呼叫加 `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` 只要約 14k。本機修補與回報上游待 Stan 決定。

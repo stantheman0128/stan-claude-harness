@@ -29,6 +29,13 @@ def main():
     # 指令自帶工作流，本來就不需要 nudge，直接跳過。
     if "<command-name>" in prompt or "<command-message>" in prompt:
         return
+    # harness 代送的 agent 回報也會走 UserPromptSubmit。回報裡的關鍵字不代表使用者意圖，
+    # 照樣比對會生出假建議、再被記成失手 → 跳過。
+    #   背景任務／agent 完成：prompt 以 <task-notification> 開頭，排隊中送達也一樣（2026-10-31 實抓 stdin 確認）
+    #   桌面 app 的 subagent 交回：開頭幾行有 [Subagent hand-back]，前面可能多包一層 <agent-message>（依 transcript）
+    # Skill 工具載入的 skill 內文不會觸發 UserPromptSubmit，不用處理。
+    if prompt.startswith("<task-notification>") or "[Subagent hand-back]" in prompt[:300]:
+        return
     with open(RULES, encoding="utf-8") as f:
         cfg = json.load(f)
     low = prompt.lower()
@@ -122,14 +129,16 @@ def main():
         pass
 
     # 建議留痕（兩區都記）：供 Stop hook 對帳「建議過 vs 實際載入」→ per-session misses-<session>.jsonl
+    # snippet 是觸發這則建議的訊息開頭，事後人工判斷建議切不切題、算 precision 用；skill-usage/ 在 .gitignore 裡，只留本機。
     try:
+        snippet = " ".join(prompt[:400].split())[:120]
         lg = os.path.join(STATE_DIR, "suggestions-%s.jsonl" % safe)
         with open(lg, "a", encoding="utf-8") as lf:
             for r in mand[:cap]:
-                lf.write(json.dumps({"zone": "mandatory", "skills": r.get("skills", [])},
+                lf.write(json.dumps({"zone": "mandatory", "skills": r.get("skills", []), "snippet": snippet},
                                     ensure_ascii=False) + "\n")
             for r in shown_adv:
-                lf.write(json.dumps({"zone": "soft", "skills": r.get("skills", [])},
+                lf.write(json.dumps({"zone": "soft", "skills": r.get("skills", []), "snippet": snippet},
                                     ensure_ascii=False) + "\n")
     except Exception:
         pass
