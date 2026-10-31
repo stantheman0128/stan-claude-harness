@@ -2,6 +2,7 @@
 
 （2026-09-19 自 SKILL.md 拆出，SKILL.md 只留路由表。新紀錄往上加。）
 
+- 2026-10-31 TokenEconomizer 桌面版彈窗修補：Stan 回報 09:55 起狂跳 Windows「選擇 App」視窗。原因是 hooks.json 的指令是 `"${CLAUDE_PLUGIN_ROOT}/scripts/te-hook"`，桌面版經 cmd 執行時把無副檔名的 sh 腳本丟給檔案關聯，hook 沒跑。改 `~/.claude/plugins/cache/tokeneconomizer/tokeneconomizer/0.1.0/hooks/hooks.json` 6 處為 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/te-hook"`（同 i-have-adhd hook 的寫法），備份 `hooks.json.orig`。cmd 實測回 `{}`、exit 0、約 0.4 秒。已開著的 session 要重開才吃到新指令。
 - 2026-10-31 回報上游：Stan 拍板，以 stantheman0128 開 https://github.com/microsoft/TokenEconomizer/issues/87（side call 帶著全部 MCP server，一次 Haiku 約 572k effective tokens；建議修法同本機修補）。上游修好後撤掉本機修補。
 - 2026-10-31 TokenEconomizer 本機修補（Stan 拍板）：`~/.claude/plugins/marketplaces/tokeneconomizer/tokeneconomizer/plugin/sidecall.py` 的 `claude_call` 加 `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`（標記 `Stan local patch 2026-10-31`，未 commit，`git checkout -- <檔>` 即還原）。實測經 Guardian `claude.CMD` shim 呼叫正常：一次 side call 從約 572k 降到約 14k effective tokens、21 秒降到 8 秒。marketplace 更新後要確認還在。
 - 2026-10-31 TokenEconomizer 實測：Stan 登入 CLI 後 side call 可用（回 OK），但一次 Haiku side call 被 TE 自己記帳約 572k effective tokens。原因是 side call 用 `claude -p --tools ""`，連 ToolSearch 一起關掉，Stan 的 503 個 MCP 工具（claude.ai Vercel 就 244 個）只能整包載入；同一個呼叫加 `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` 只要約 14k。本機修補與回報上游待 Stan 決定。
