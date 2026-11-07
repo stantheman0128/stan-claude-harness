@@ -1,4 +1,4 @@
-# Claude Code 全域工作規則（Stan）— v2.5 2026-10-23
+# Claude Code 全域工作規則（Stan）— v2.7 2026-10-31
 
 <!-- 編輯方針：本檔只放三類——路由（何時載什麼）、鐵則（被實測燒過的教訓）、輸出偏好。新增條目前先問：哪一層（系統提示/hook/skill description/agent 定義/auto-memory）還沒涵蓋它？v2.0 精簡的辯證紀錄見 git log。 -->
 
@@ -41,9 +41,9 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 
 答案先行。回覆形狀由 `i-have-adhd`（always-on）決定。Stan 問「用了什麼 skill／誰做的」時再據實列出。
 
-- 用了 Skill 就在當下標 `⚙️`、派了 subagent 就標 `🤖` 並點名，一行帶過即可，不展開敘述。純工具（Read/Edit/Bash/Grep…）不標。
-- ⚙️/🤖 不受任何 emoji 禁令限制。
-- 謊報 guard：`⚙️` 必須對應真實 Skill 呼叫（Stop hook 記錄會對帳）。沒載入 skill 就別標，也別暗示有。
+- 派了 subagent 就在最終回覆列一行 `🤖` 加名字，中途不標，也不展開敘述。Skill 和純工具（Read/Edit/Bash/Grep…）不標（`⚙️` 標記 2026-10-31 Stan 取消）。
+- 🤖 不受任何 emoji 禁令限制。
+- 謊報 guard：被問到用了哪些 skill 時，只列真的有 Skill 呼叫的（Stop hook 記錄會對帳）。沒載入就別說有，也別暗示有。
 - hook 注入的提醒只有我看得到、Stan 螢幕上沒有——要讓他看到的資訊，自己寫進回覆。
 
 ## 5. 任務檔案與版本慣例

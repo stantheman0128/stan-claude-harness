@@ -85,7 +85,8 @@ def banner() -> str:
     return (
         "⚙️ [skill 系統啟用中] 關鍵字提醒(UserPromptSubmit) + 用量紀錄(Stop) + 失手對帳(misses) 運作中"
         + tail + miss_tail
-        + "。（請在本 session 第一則回覆開頭把這行顯示給使用者一次，讓他確認系統在跑；之後不必重複。）"
+        + "。（請在本 session 第一則最終回覆的最後一行把這行顯示給使用者一次，讓他確認系統在跑；"
+        "不要放在開頭或中途訊息，之後也不必重複。）"
     )
 
 
