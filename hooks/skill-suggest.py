@@ -18,6 +18,29 @@ def emit(ctx):
     }}, ensure_ascii=False))
 
 
+def kw_hit(k, low):
+    # 英文關鍵字前後不能緊接英數字，所以 "ui" 不會中 build、"spec" 不會中 specific，"UI跑版" 照樣會中。
+    # 容許詞尾 s/es/ed/ing/er/ers，子音結尾可以重複一次：debug 中 debugging，commit 中 committed。
+    # e 結尾只接 s/d，compose 中 composed 但不中 composer。關鍵字結尾加 * 就只比字首，vulnerab* 中 vulnerability。
+    # 中文關鍵字是子字串比對。
+    k = k.lower()
+    stem = k.endswith("*")
+    if stem:
+        k = k[:-1]
+    if k not in low:
+        return False
+    if not k.isascii():
+        return True
+    if stem:
+        tail = ""
+    elif k.endswith("e"):
+        tail = r"(?:s|d)?(?![a-z0-9])"
+    else:
+        tail = ((re.escape(k[-1]) + "?" if k[-1] in "bcdfgklmnprstvz" else "")
+                + r"(?:s|es|ed|ing|er|ers)?(?![a-z0-9])")
+    return re.search(r"(?<![a-z0-9])" + re.escape(k) + tail, low) is not None
+
+
 def main():
     raw = sys.stdin.read()
     data = json.loads(raw) if raw.strip() else {}
@@ -41,7 +64,7 @@ def main():
     low = prompt.lower()
 
     def hit(rule):
-        kw = any(k.lower() in low for k in rule.get("keywords", []))
+        kw = any(kw_hit(k, low) for k in rule.get("keywords", []))
         pat = any(re.search(p, prompt, re.I | re.U) for p in rule.get("intentPatterns", []))
         if not (kw or pat):
             return False
@@ -53,7 +76,7 @@ def main():
     hits = [r for r in cfg.get("rules", []) if hit(r)]
     # 觀察名單：EVALUATIONS.md「重評觸發」欄的編譯版（非 skill，不進 suggestions 對帳）
     watch_hits = [w for w in cfg.get("watchlist", [])
-                  if any(k.lower() in low for k in w.get("keywords", []))]
+                  if any(kw_hit(k, low) for k in w.get("keywords", []))]
     if not hits and not watch_hits:
         return
 
