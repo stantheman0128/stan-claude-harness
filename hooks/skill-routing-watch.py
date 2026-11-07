@@ -13,6 +13,8 @@ CLAUDE = Path.home() / ".claude"
 SETTINGS = CLAUDE / "settings.json"
 SKILLS = CLAUDE / "skills"
 SNAP = CLAUDE / "skill-routing-snapshot.json"
+MARKERS = CLAUDE / "overlays" / "markers.json"
+INSTALLED = CLAUDE / "plugins" / "installed_plugins.json"
 
 
 def safe_session_name(session: str) -> str:
@@ -90,6 +92,62 @@ def banner() -> str:
     )
 
 
+def marker_lines(path: Path, marker: str) -> int:
+    if not path.is_file():
+        return 0
+    return sum(marker in line for line in path.read_text(encoding="utf-8", errors="replace").splitlines())
+
+
+def overlay_gap(key: str, overlay: dict[str, Any], entry: Any, marker: str) -> str:
+    path = entry.get("installPath") if isinstance(entry, dict) else None
+    if not path or not Path(path).is_dir():
+        return ""
+    root = Path(path)
+    found = expected = 0
+    short: list[str] = []
+    for rel, want in overlay["files"].items():
+        have = marker_lines(root / rel, marker)
+        found, expected = found + min(have, want), expected + want
+        if have < want:
+            short.append(Path(rel).name)
+    if not short:
+        return ""
+    return "%s %s 標記 %d/%d（缺：%s），重貼指引 ~/.claude/%s" % (
+        key, entry.get("version") or root.name, found, expected, "、".join(short), overlay.get("doc", "overlays/"))
+
+
+def overlay_warning(enabled: set[str], markers: Path = MARKERS, installed: Path = INSTALLED) -> str:
+    """Read-only: name enabled plugins whose active install has fewer marker lines than overlays/markers.json lists."""
+    relay = "。（請在本 session 第一則回覆把這行也轉告使用者。）"
+    if not markers.exists():
+        return ""
+    try:
+        spec = json.loads(markers.read_text(encoding="utf-8-sig"))
+        overlays, marker = spec["plugins"].items(), spec.get("marker", "Stan overlay")
+        counts = [want for _, overlay in overlays for want in overlay["files"].values()]
+        if not isinstance(marker, str) or not marker.strip() or not all(isinstance(want, int) for want in counts):
+            raise ValueError("unexpected markers.json shape")
+    except Exception:
+        return "⚠️ [overlay watch] ~/.claude/overlays/markers.json 讀不了或格式不對，overlay 標記檢查這次沒跑" + relay
+    try:
+        installs = json.loads(installed.read_text(encoding="utf-8-sig"))["plugins"]
+    except Exception:
+        return ""
+    gaps: list[str] = []
+    for key, overlay in overlays:
+        if key not in enabled:
+            continue
+        try:
+            for entry in installs.get(key, []):
+                gaps.append(overlay_gap(key, overlay, entry, marker))
+        except Exception:
+            continue
+    gaps = [gap for gap in dict.fromkeys(gaps) if gap]
+    if not gaps:
+        return ""
+    return "⚠️ [overlay watch] Stan overlay 沒套在目前版本：" + "；".join(gaps) + relay
+
+
 def main() -> int:
     current = current_state()
     try:
@@ -102,6 +160,9 @@ def main() -> int:
         pass
 
     print(banner())
+    warning = overlay_warning(set(current["plugins"]))
+    if warning:
+        print(warning)
     if previous is None:
         return 0
     new_plugins = [item for item in current["plugins"] if item not in set(previous.get("plugins", []))]

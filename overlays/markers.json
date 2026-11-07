@@ -1,0 +1,20 @@
+{
+  "_comment": "hooks/skill-routing-watch.py 開場時讀這份：照 installed_plugins.json 找到 plugin 目前版本的目錄，逐檔數含 marker 的行數，少於這裡寫的數字就在 banner 下多印一行警告。重貼後標記位置或數量變了，就改這裡的數字。",
+  "marker": "Stan overlay",
+  "plugins": {
+    "superpowers@superpowers-marketplace": {
+      "doc": "overlays/superpowers-stan-overlay.md",
+      "files": {
+        "hooks/hooks.json": 1
+      }
+    },
+    "impeccable@impeccable": {
+      "doc": "overlays/impeccable-stan-overlay.md",
+      "files": {
+        "skills/impeccable/SKILL.md": 1,
+        "skills/impeccable/reference/animate.md": 3,
+        "skills/impeccable/reference/harden.md": 1
+      }
+    }
+  }
+}
