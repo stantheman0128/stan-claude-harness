@@ -1,5 +1,16 @@
 # Quota Pacer CHANGELOG
 
+## 0.3.1 — 2026-11-13
+刷新失敗不再無聲回舊資料：分得出原因，印得出處置。
+
+- 起因：桌面 App 的 session 自己換 token、不寫回 `~/.claude/.credentials.json`，檔裡的 access token 約 8 小時後過期，`fetch_usage()` 回 401；`refresh_usage()` 用 `except Exception: return None` 吞掉，`read_usage.py` 印出 `5h None% | weekly None%` 且 exit 0。
+- `pace_core`：失敗改丟 `RefreshFail(status)`，`refresh_usage()` 把結果記在 `LAST_REFRESH`。status 有 `cooldown`、`auth`（401/403，對照 `expiresAt` 分成已過期與未過期）、`http`、`network`、`cred`、`parse`、`empty`、`write`、`error`。`refresh_advice()` 轉成一行「原因 → 處置」，不含 token 值。
+- token 過期的處置只有提示：請 Stan 在一般 PowerShell 跑一次 `claude -p "ok" --model claude-haiku-5-5`。不自己做 OAuth refresh，也不寫 `.credentials.json`。
+- `usable()`：5h 與 weekly 兩條 pct 都是 None 的檔不算讀數。這種檔就算 ts 很新也會觸發重拉；endpoint 回 200 但兩條都空時不寫檔。
+- `read_usage.py`：讀數不可用時第一行印 `UNUSABLE 原因 → 處置`，舊資料另起一行標明別拿來記基準；exit 4（完全沒檔是 3）。`--json` 加 `usable`、`refresh`、`advice`。新增 `--force` 跳過冷卻。單一條是 None 時印 `5h n/a`（endpoint 目前就不回 5h）。
+- `eval_pace.py`：STALE 的註記帶上同一行原因。
+- 驗證：假 credentials 加本機假 endpoint 跑 12 個情境全過（401 過期／未過期、500、連線被拒、冷卻、`--force`、全 None 新鮮檔、200 全空、缺 credentials、eval_pace）。
+
 ## 0.3.0 — 2026-08-13
 脫離 CLI statusline：用量自己拉，任何 harness（桌面 App／SDK／headless）都能用用量 guard。
 

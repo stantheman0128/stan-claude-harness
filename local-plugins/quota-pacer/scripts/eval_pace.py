@@ -24,11 +24,14 @@ def main():
         if (active.get("u0") or {}).get("scoped") and not u.get("scoped"):
             u = pc.refresh_usage() or u
         if u.get("_age", 0) > pc.STALE:
-            note = " ⚠用量STALE({}s)，自動刷新失敗".format(int(u["_age"]))
+            note = " ⚠用量STALE({}s)：{}".format(
+                int(u["_age"]), pc.refresh_advice() or "沒重拉")
+        elif not pc.usable(u):
+            note = " ⚠用量檔沒有任何數字：{}".format(pc.refresh_advice() or "沒重拉")
         else:
             usage = u
     except (OSError, ValueError):
-        note = " ⚠用量讀不到（自動刷新也失敗）"
+        note = " ⚠用量讀不到：{}".format(pc.refresh_advice() or "沒有 usage-state.json")
 
     verdict, trigger = pc.evaluate(usage, active)
 
@@ -42,9 +45,10 @@ def main():
         parts.append("elapsed {:.0f}m/{:.0f}m".format(
             pc.elapsed_min(active["started"]), minutes))
     if usage is not None:
-        h5 = usage.get("five_hour", {}).get("pct")
-        w = usage.get("seven_day", {}).get("pct")
-        seg = "5h {}% weekly {}%".format(h5, w)
+        def _p(key):
+            v = usage.get(key, {}).get("pct")
+            return "n/a" if v is None else "{}%".format(v)
+        seg = "5h {} weekly {}".format(_p("five_hour"), _p("seven_day"))
         for name, blk in (usage.get("scoped") or {}).items():
             seg += " {} {}%".format(name, blk.get("pct"))
         parts.append(seg)

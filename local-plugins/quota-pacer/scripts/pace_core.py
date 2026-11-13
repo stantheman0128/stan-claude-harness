@@ -69,26 +69,70 @@ def _pct(v):
         return None
     return int(n) if float(n).is_integer() else round(n, 1)
 
+class RefreshFail(Exception):
+    """刷新失敗，帶可分類的 status。detail 絕不含 token 值。"""
+    def __init__(self, status, **detail):
+        Exception.__init__(self, status)
+        self.status = status
+        self.detail = detail
+
+# 最近一次 refresh_usage() 的結果，給 CLI 印處置用：
+# ok / cooldown / cred / auth / http / network / parse / empty / write / none(沒試過)
+LAST_REFRESH = {"status": "none"}
+
+def _read_cred():
+    """回 (token, expires_epoch 或 None)。只讀不寫 credentials。"""
+    try:
+        with open(CRED_FILE, encoding="utf-8") as fh:
+            cred = json.load(fh)
+    except (OSError, ValueError) as e:
+        raise RefreshFail("cred", reason=type(e).__name__)
+    oauth = cred.get("claudeAiOauth", cred) if isinstance(cred, dict) else {}
+    token = oauth.get("accessToken") or oauth.get("access_token")
+    if not token:
+        raise RefreshFail("cred", reason="no-token")
+    exp = _num(oauth.get("expiresAt"))
+    if exp and exp > 1e11:  # 毫秒 → 秒
+        exp = exp / 1000.0
+    return token, exp
+
+def usable(u):
+    """至少一條主限制有數字才算可用讀數（pct 全 None 的檔不能當讀數）。"""
+    if not u:
+        return False
+    return any(_num((u.get(k) or {}).get("pct")) is not None
+               for k in ("five_hour", "seven_day"))
+
 def fetch_usage(timeout=10):
     """打官方 oauth/usage endpoint，轉成 usage-state.json 格式（含 scoped）。
 
-    失敗 raise（OSError/ValueError），由 refresh_usage 統一吞。
+    失敗一律 raise RefreshFail(status)，由 refresh_usage 記進 LAST_REFRESH。
     """
+    import urllib.error
     import urllib.request  # 延遲載入：hook 路徑 import pace_core 時不揹網路模組
-    with open(CRED_FILE, encoding="utf-8") as fh:
-        cred = json.load(fh)
-    oauth = cred.get("claudeAiOauth", cred)
-    token = oauth.get("accessToken") or oauth.get("access_token")
-    if not token:
-        raise ValueError("credentials 裡沒有 OAuth access token")
+    token, exp = _read_cred()
 
     req = urllib.request.Request(USAGE_URL, headers={
         "Authorization": "Bearer " + token,
         "anthropic-beta": "oauth-2025-04-20",
-        "User-Agent": "quota-pacer/0.2",
+        "User-Agent": "quota-pacer/0.3",
     })
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            body = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            raise RefreshFail("auth", code=e.code, expires_at=exp,
+                              expired=bool(exp and exp < time.time()))
+        raise RefreshFail("http", code=e.code)
+    except (urllib.error.URLError, OSError) as e:  # DNS／連線／逾時
+        raise RefreshFail("network", reason=str(getattr(e, "reason", e))[:120])
+    try:
+        raw = json.loads(body)
+    except ValueError:
+        raise RefreshFail("parse")
+    if not isinstance(raw, dict):
+        raise RefreshFail("parse")
 
     out = {"ts": time.time(), "source": "oauth"}
     for key in ("five_hour", "seven_day"):
@@ -105,13 +149,21 @@ def fetch_usage(timeout=10):
                         "resets_at": _iso_to_epoch(lim.get("resets_at"))}
     if scoped:
         out["scoped"] = scoped
+    if not usable(out):
+        raise RefreshFail("empty")  # 200 但兩條主限制都沒數字，不寫檔
     return out
 
 def refresh_usage(force=False):
-    """拉新用量寫 USAGE_STATE。成功回 dict、失敗/冷卻中回 None，絕不覆寫壞資料。"""
+    """拉新用量寫 USAGE_STATE。成功回 dict、失敗/冷卻中回 None，絕不覆寫壞資料。
+
+    失敗原因記在 LAST_REFRESH（status + detail），呼叫端用 refresh_advice() 轉成處置。
+    """
+    global LAST_REFRESH
     if not force:
         try:
-            if time.time() - os.path.getmtime(REFRESH_MARK) < REFRESH_COOLDOWN:
+            left = REFRESH_COOLDOWN - (time.time() - os.path.getmtime(REFRESH_MARK))
+            if left > 0:
+                LAST_REFRESH = {"status": "cooldown", "wait": int(left) + 1}
                 return None
         except OSError:
             pass
@@ -123,23 +175,65 @@ def refresh_usage(force=False):
         pass
     try:
         data = fetch_usage()
-    except Exception:
+    except RefreshFail as e:
+        LAST_REFRESH = dict(e.detail, status=e.status)
+        return None
+    except Exception as e:  # 沒料到的錯也要留名字，不再無聲吞掉
+        LAST_REFRESH = {"status": "error", "reason": type(e).__name__}
         return None
     tmp = USAGE_STATE + ".tmp"
     try:
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(data, fh, ensure_ascii=False)
         os.replace(tmp, USAGE_STATE)
-    except OSError:
+    except OSError as e:
+        LAST_REFRESH = {"status": "write", "reason": type(e).__name__}
         return None
+    LAST_REFRESH = {"status": "ok"}
     data = dict(data)
     data["_age"] = 0.0
     return data
 
-def load_usage(refresh_if_stale=False):
-    """讀 usage state。refresh_if_stale=True 時，檔案缺/過舊就先自拉一次再讀。
+def _fmt_dur(sec):
+    sec = int(abs(sec))
+    return "%dh%02dm" % (sec // 3600, (sec % 3600) // 60)
+
+def refresh_advice(st=None):
+    """把 LAST_REFRESH 轉成一行「原因 → 處置」。ok/none 回空字串。"""
+    st = st or LAST_REFRESH
+    s = st.get("status")
+    cli = '在一般 PowerShell（不是桌面 App）跑一次 claude -p "ok" --model claude-haiku-5-5 讓 CLI 換 token，再重跑'
+    if s in ("ok", "none", None):
+        return ""
+    if s == "cooldown":
+        return "冷卻中，上次嘗試不到 %ds 前 → 等 %ds 或加 --force 重試" % (
+            int(REFRESH_COOLDOWN), st.get("wait", 0))
+    if s == "auth":
+        exp = st.get("expires_at")
+        if st.get("expired") and exp:
+            return "HTTP %s，檔裡的 access token 已過期（expiresAt %s，過了 %s）→ %s" % (
+                st.get("code"), time.strftime("%m-%d %H:%M", time.localtime(exp)),
+                _fmt_dur(time.time() - exp), cli)
+        return ("HTTP %s，但檔裡的 token 照 expiresAt 還沒過期 → 可能被輪替或撤銷；先%s，"
+                "還是 %s 就跑 claude auth status 看登入" % (st.get("code"), cli, st.get("code")))
+    if s == "cred":
+        return "讀不到 OAuth token（%s：%s）→ 確認檔案存在，或跑 claude 登入" % (
+            CRED_FILE, st.get("reason"))
+    if s == "network":
+        return "網路錯誤（%s）→ 檢查連線後重試，token 沒問題" % st.get("reason")
+    if s == "http":
+        return "endpoint 回 HTTP %s → 不是 token 問題，稍後重試" % st.get("code")
+    if s in ("parse", "empty"):
+        return "endpoint 回 200 但沒有可用數字（%s）→ 稍後重試；持續發生代表回應格式變了" % s
+    if s == "write":
+        return "拉到了但寫不進 %s（%s）" % (USAGE_STATE, st.get("reason"))
+    return "刷新失敗（%s %s）" % (s, st.get("reason", ""))
+
+def load_usage(refresh_if_stale=False, force=False):
+    """讀 usage state。refresh_if_stale=True 時，檔案缺/過舊/沒有可用數字就先自拉一次。
 
     hook 路徑請維持預設 False（PreToolUse 每次工具呼叫都跑，不能揹網路延遲）。
+    刷新失敗時回舊檔（_age 照實），原因看 LAST_REFRESH；呼叫端要自己用 usable() 把關。
     """
     if not refresh_if_stale:
         return _read_usage_file()
@@ -147,8 +241,8 @@ def load_usage(refresh_if_stale=False):
         d = _read_usage_file()
     except (OSError, ValueError):
         d = None
-    if d is None or d.get("_age", 0) > STALE:
-        fresh = refresh_usage()
+    if force or d is None or d.get("_age", 0) > STALE or not usable(d):
+        fresh = refresh_usage(force=force)
         if fresh is not None:
             return fresh
     if d is None:

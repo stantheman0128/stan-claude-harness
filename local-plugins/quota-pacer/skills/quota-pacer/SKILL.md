@@ -17,8 +17,8 @@ description: 額度感知的任務節奏器。當 Stan 要在有限的用量下�
    ```bash
    py "$SCRIPTS/read_usage.py" --json
    ```
-   - 讀得到 → 記下 u0（含 `scoped`，per-model weekly 如 fable）。
-   - 還是讀不到（credentials 缺／斷網）：**若有給時間上限** → 走純時間盒照樣開工；**若沒給** → 純用量模式沒資料，別硬跑，回報使用者。
+   - `usable` 是 true → 記下 u0（含 `scoped`，per-model weekly 如 fable）。某一條是 null（例如 endpoint 沒回 5h）就不要寫進 u0，那條不設 guard。
+   - `usable` 是 false（exit 4 或 3）：這份讀數不能記成 u0。把 `advice` 那一行原樣轉給使用者（它寫了原因和處置，例如 token 過期要去 PowerShell 跑一次 CLI）。接著：**若有給時間上限** → 走純時間盒照樣開工；**若沒給** → 純用量模式沒資料，別硬跑，回報使用者。
 3. 寫基準檔 `ACTIVE`（目錄不存在先建）。至少要有 `u0` 或 `minutes` 其一，否則沒有任何 guard：
    ```json
    { "mode": "both",
