@@ -52,6 +52,12 @@ def main():
         for name, blk in (usage.get("scoped") or {}).items():
             seg += " {} {}%".format(name, blk.get("pct"))
         parts.append(seg)
+        # 開工時記了基準、現在卻讀不到的 per-model 限制：那條等於沒人看，要講出來
+        lost = [n for n in ((active.get("u0") or {}).get("scoped") or {})
+                if (usage.get("scoped") or {}).get(n, {}).get("pct") is None]
+        if lost:
+            note += " ⚠沒讀到 {} 的用量，這條上限這次沒檢查（write_usage 的 --scoped 名稱要跟開工時一樣）".format(
+                "、".join(lost))
 
     print(f"{verdict} {trigger} | {' '.join(parts)}{note}".rstrip())
 

@@ -5,102 +5,103 @@ description: 額度感知的任務節奏器。Stan 用白話給這個 session �
 
 # Quota Pacer
 
-在有限用量下跑一個大任務：邊做邊印用量、接近綁定限制前主動收手、沒做完就寫交接。用量有兩個來源：桌面 App 的 `get_usage` 工具（優先），和腳本自己打官方 endpoint（備援）。互動 CLI、桌面 App、SDK、headless 都能用。
+Stan 的用量是每週重置的固定額度，一個 session 燒太多，其他專案就沒得用。這個 skill 讓你在他給的上限內工作：開工記下起點，每做完一段看一次用量，快到線就收手，沒做完就留交接。
 
-`SCRIPTS` = `C:/Users/stans/.claude/local-plugins/quota-pacer/scripts`
-`ACTIVE` = `C:/Users/stans/.claude/quota-pacer/active.json`
+Stan 多半不打 `/quota-pace`，而是交代任務時順口講一句上限。聽到就照這份做，不用請他改用指令。
 
-## 用量來源：先 App，後 endpoint
+## 先判斷要不要開
 
-每次要讀用量之前（啟動時，以及工作迴圈每次裁決之前）先做這一步：
+一兩個工具呼叫就能答完的事（回答問題、看一個檔、改一行），直接做，回覆裡帶一句「這點用量遠低於你給的上限」就好。開 pacer 本身要五六個工具呼叫，比這種任務還貴。
 
-1. 如果這個 session 有 `mcp__ccd_session_mgmt__get_usage`（桌面 App 才有；列在 deferred tools 時先用 ToolSearch 載入），呼叫它，不帶參數。它走 App 自己的登入，不會遇到 token 過期。
-2. 從回傳的 `plan` 取「已用百分比」和重置時間，交給腳本寫檔。沒有的那條就省略那個參數：
-   ```bash
-   py "$SCRIPTS/write_usage.py" --five-hour <5h%>@<重置時間> --weekly <weekly%>@<重置時間> --scoped fable=<fable%>@<重置時間>
+會跑一陣子的任務（多檔修改、掃描、重構、派 subagent）才開。
+
+## 四個步驟
+
+下面的指令都是完整路徑，照抄就能跑，Bash 和 PowerShell 都行。
+
+### 1. 讀用量
+
+開工前、以及之後每次檢查前都做：
+
+1. 有 `mcp__ccd_session_mgmt__get_usage` 就呼叫它，不帶參數（桌面 App 才有；列在 deferred tools 時先用 ToolSearch 載入）。它走 App 自己的登入，比腳本自己去拉可靠。
+2. 回傳可能是結構化欄位，也可能是一段文字。從裡面找每條限額的「已用百分比」，寫進檔：
    ```
-   重置時間照工具給的原樣貼（ISO 8601 或 epoch 秒），沒有就只寫百分比。工具給的若是「剩餘」百分比，先換成已用（100 減它）。per-model 的每週限制每條一個 `--scoped 名稱=…`。
-3. 工具不存在、被權限擋、或 `plan` 狀態是 unavailable／not_applicable → 跳過這一步，不要停。後面的 `read_usage.py`／`eval_pace.py` 會自己打 endpoint。
-
-寫完之後檔案是新的，後面的腳本直接讀檔，不會再打 endpoint。
-
-## 啟動
-
-Stan 多半不會打 `/quota-pace`，而是在交代任務時順口講一句上限。聽到就照這一節開工，不用請他改用指令。
-
-1. 解析使用者意圖：**任務內容**、**用量上限**（見下表）、是否 `5h-override`（只管 weekly、忽略 5h）、可選的**時間上限**（「30m」「跑 30 分就停」→ `--minutes 30`）。
-
-   | Stan 的說法 | 意思 | 參數 |
-   |---|---|---|
-   | 「不要用超過 5%」「這次最多用 5%」「只給你 5% 的額度」 | 這個 session 最多再花 5 個百分點 | `--budget 5` |
-   | 「weekly 到 60% 就停」「不要讓 weekly 超過 60%」「停在 60%」 | weekly 的絕對水位 | `--cap 60` |
-   | 沒講數字，只說「別燒光」「快沒就收手」 | 只防撞到 100% | 不帶 |
-
-   分不出是「再花多少」還是「絕對水位」時：數字不高於現在的 weekly 用量，只可能是前者，用 `--budget`；其餘照字面最接近的那一列選，並在第 3 步的回報裡講明你用了哪種解讀，Stan 一眼就能糾正。
-2. 先做上面「用量來源」那一步，再開工：
-   ```bash
-   py "$SCRIPTS/start_pace.py" [--budget <pp> | --cap <%>] [--minutes <N>] [--mode 5h-override]
+   py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/write_usage.py" --weekly 49 --scoped fable=52
    ```
-   它讀當前用量記成基準、算好上限、寫 `ACTIVE`，並印出每條限制會在幾 % 收尾、停手、硬擋。
-   - `--budget` 同時套在 weekly（全部模型）和每條 per-model weekly（如 fable），各自從自己的起點加，先到的先觸發。
-   - `--cap` 只管 weekly（全部模型）。
-   - exit 4 = 用量讀不到。把它印的那行原因原樣轉給使用者（例如 token 過期要去 PowerShell 跑一次 CLI）。有給時間上限就改跑純時間盒（只帶 `--minutes`）；沒給就別硬跑，回報使用者。
-   - exit 2 = 參數不對（例如 `--cap` 低於現在的用量），照它印的訊息修正或回問。
-3. 把 `start_pace.py` 印的那幾行轉給使用者（一兩行就好）：上限是多少、會在幾 % 收手。
+   - `--weekly`：全部模型的週限額。
+   - `--scoped 名稱=數字`：某個模型專用的週限額，每條一個。名稱用模型的英文名、全小寫（`fable`、`opus`），整個 session 都用同一個名稱，不然開工時記的那條後面會對不上。
+   - `--five-hour`：5 小時限額。回傳裡沒有這條就不要給。
+   - 工具給的是「剩餘」就先換成已用（100 減它）。重置時間不用給，裁決不看它。
+3. 工具不存在、被權限擋、或回報用量不可用：跳過這一步繼續往下。後面的腳本發現檔案過舊會自己去官方 endpoint 拉。
 
-`ACTIVE` 的格式（腳本寫的，除錯時才需要看）：
-```json
-{ "mode": "both", "started": <epoch>, "minutes": <可省>,
-  "u0": { "seven_day": 49, "scoped": { "fable": 52 } },
-  "ceiling": { "seven_day": 54, "scoped": { "fable": 57 } } }
+### 2. 開工
+
 ```
-`ceiling` 沒寫的那條上限就是 100。
-
-## 工作迴圈
-
-把任務切成一塊塊做。**每做完一塊**先做「用量來源」那一步更新檔案，再裁決一次：
-```bash
-py "$SCRIPTS/eval_pace.py" "$ACTIVE"
+py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/start_pace.py" [--budget 數字 | --cap 數字] [--minutes 數字] [--mode 5h-override]
 ```
-把那一行原樣印給使用者（它就是「邊做邊看進度」），再依 VERDICT 行動：
 
-- **CONTINUE** → 做下一塊。
-- **WINDDOWN** → 不要再開新的大塊，把手上這塊收束到一個乾淨的停止點，準備收尾。
-- **HARDSTOP** → 停止接新工作，進「收尾」。
-- **EMERGENCY** → 已燒穿 buffer（hook 也會開始擋工具），立刻用最少動作結束。
+| Stan 的說法 | 意思 | 參數 |
+|---|---|---|
+| 「不要用超過 5%」「這次最多用 5%」「只給你 5% 的額度」 | 這個 session 最多再花 5 個百分點 | `--budget 5` |
+| 「weekly 到 60% 就停」「不要讓 weekly 超過 60%」「停在 60%」 | weekly 的絕對水位 | `--cap 60` |
+| 「跑 30 分鐘就停」 | 時間上限，可跟上面併用 | `--minutes 30` |
+| 沒講數字，只說「別燒光」「省著點」 | 只防撞到 100% | 都不帶 |
+| 「5h 不用管」「只看 weekly」 | 忽略 5 小時限額 | `--mode 5h-override` |
 
-trigger 可能是 `time`、`5h`、`weekly`，或 `weekly[fable]` 這種 per-model 限制。
+「不要超過 N%」分不出是再花多少還是絕對水位時，用現在的 weekly 用量判斷：
 
-## 收尾
+- N 不高於現在用量：只可能是「再花 N」，用 `--budget`。
+- 現在用量加 N 超過 100：只可能是絕對水位，用 `--cap`。
+- 兩種都說得通：N 小（大約 15 以下）當 `--budget`，N 大當 `--cap`。
 
-到 HARDSTOP（或使用者喊停）：
+不管怎麼選，都在回報裡講明你用了哪種解讀，Stan 看一眼就能糾正。沒講數字的那種，也順便告訴他「沒給數字，所以只防撞到 100%」。
 
-- **任務已完成** → 印一段完成總結（做了什麼、狀態）。
-- **任務未完成** → 用剩下的 buffer 產交接：呼叫 `handoff` skill 寫一份 HANDOFF.md，內容涵蓋目前進度、還沒做的 roadmap、如何交接、下個 session 怎麼接手；同時把重點印出來。
+`--budget` 會同時套在 weekly 和每條模型專用的週限額上，各自從自己的起點加，先到的先停。原因是這個 session 用哪個模型，燒的就是那條，而那條通常漲得比全部模型那條快。`--cap` 只管全部模型的 weekly。
 
-收尾完成後刪掉基準檔：
-```bash
-rm -f "$ACTIVE"
+腳本會印出每條限制在幾 % 收尾、停手、硬擋。把那幾行濃縮成一兩行轉給 Stan，然後開始做事。
+
+- 印「沒開工」且 exit 4：用量讀不到。把它印的原因原樣轉給 Stan（裡面有處置，例如 token 過期要去 PowerShell 跑一次 CLI）。Stan 有給時間上限就只帶 `--minutes` 重跑，當純時間盒做；沒給就先停下來回報，因為沒有任何東西能告訴你何時該停。
+- 印「沒開工」且 exit 2：參數不對（例如 `--cap` 低於現在用量），照訊息修正或回問。
+
+### 3. 邊做邊檢查
+
+把任務切成段落，每做完一段先做步驟 1，再跑：
+
 ```
-（任務正常做完、或中途結束，都要刪，避免殘留 active.json 讓 hook 誤擋下一個 session。）
+py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/eval_pace.py"
+```
 
-## 門檻與微調（測試用）
+它印一行，開頭是裁決。把那一行原樣貼給 Stan（這就是他要的進度），再照裁決做：
 
-裁決門檻可用環境變數覆寫（eval_pace 會吃）：
-`QP_SOFT_RATIO`(0.10) `QP_HARD_RATIO`(0.05) `QP_FLOOR_PP`(3) `QP_EMERGENCY_PP`(1) `QP_STALE_SEC`(90) `QP_GRACE_MIN`(3) `QP_NOTICE_MIN`(2) `QP_REFRESH_COOLDOWN_SEC`(60)
+- `CONTINUE`：做下一段。
+- `WINDDOWN`：不開新的大段落，把手上的收到一個乾淨的停點。
+- `HARDSTOP`：不接新工作，進步驟 4。
+- `EMERGENCY`：已到上限，hook 會擋掉 pacer 腳本以外的所有工具。直接進步驟 4，交接內容寫在回覆裡。
 
-刷新紀錄：每次嘗試（含被冷卻擋下的）記一行在 `C:/Users/stans/.claude/quota-pacer/refresh.log`，讀數怪的時候先看最後幾行。
+段落大小跟著預算走，因為兩次檢查之間沒有任何東西攔你：
 
-資料源可覆寫：`QP_CRED_FILE`（OAuth credentials 路徑）、`QP_USAGE_URL`、`QP_USAGE_STATE`。
+- 預算在 5 個百分點以下時，一段控制在十來個工具呼叫以內。
+- 預算小的時候不要一次平行派好幾個 subagent。一次派一個，回來就檢查一次。subagent 的用量算在同一條額度上，而且它跑的時候你看不到。
+- 行尾出現 `⚠` 的話照它說的處理，那代表某條用量這次沒讀到。
 
-時間盒：`minutes−QP_GRACE_MIN` 強制收手寫交接、`minutes` 整為 hook 硬擋死線。
+### 4. 收工
 
-用量上限：設了 `ceiling` 的那條，收尾、停手、硬擋三條線都改成相對於那個上限算，固定的 pp 值（FLOOR 等）會跟著預算縮小。用量百分比通常是整數，所以很小的預算（1 到 2 個百分點）只分得出「還沒到」和「到了」。
+任務做完、到了 `HARDSTOP`、或 Stan 喊停，都要收工：
 
-測試時把 `QP_HARD_RATIO` 或門檻調到「現在就會踩到」的位置，即可在不真的燒爆的情況下驗證收手與交接流程。
+1. 做完了：回報做了什麼。
+2. 沒做完：留交接。在單一專案資料夾裡工作就用 `handoff` skill 在那個專案寫 HANDOFF.md；任務跨好幾個專案、或工作目錄是 `Projects` 根目錄，就不寫檔，把進度、還沒做的、下次怎麼接直接寫在回覆裡。
+3. 關掉 pacer：
+   ```
+   py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/end_pace.py"
+   ```
+   這支在 `EMERGENCY` 時也跑得動。忘了跑的話，hook 會繼續用舊的上限擋這個 session 的工具。
 
-## 限制
+## 出狀況時
 
-- 單一 session 假設：`active.json` 與 `usage-state.json` 都是全域單檔，兩個並行 pacer session 會互相蓋。
-- 互動 CLI 下 statusline 會用「無 scoped」版本蓋 `usage-state.json`；eval_pace 發現 u0 有 scoped 基準但檔案沒資料時會補刷一次（60s 冷卻），所以 scoped 裁決最多延遲一個冷卻窗。
-- 靠 skill 自律逐塊 check；hook 只是最後一層 EMERGENCY 硬保險（且不自動刷新，用的是最後一次已知用量），不是每塊的節奏控制。
+- 工具呼叫被擋，訊息開頭是 `[quota-pacer] EMERGENCY`：上限到了。跑步驟 4 的 `end_pace.py` 收工，不要換別的工具繞。
+- 讀數看起來不對：看 `C:/Users/stans/.claude/quota-pacer/refresh.log` 最後幾行，每次去 endpoint 拉用量的結果都記在那。
+- 預算只有 1 到 2 個百分點：用量是整數百分比，所以只分得出「還沒到」和「到了」，不會有收尾的緩衝。開工時跟 Stan 講一聲。
+- 一次只有一個 session 能開 pacer。hook 只擋開工的那個 session，但 `active.json` 是共用的，第二個 session 開工會蓋掉第一個的設定。
+- 開工超過 24 小時沒收工的設定會被 hook 當成殘留，不再生效。
+
+門檻的算法、`active.json` 格式、可調的環境變數在 `C:/Users/stans/.claude/local-plugins/quota-pacer/skills/quota-pacer/references/internals.md`，除錯或測試時才需要讀。
