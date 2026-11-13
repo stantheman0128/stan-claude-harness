@@ -295,18 +295,33 @@ def load_active(path=ACTIVE_FILE):
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
 
-def thresholds(u0):
-    avail = max(0.0, 100.0 - u0)
-    hs = max(HARD * avail, FLOOR)
-    wd = max(SOFT * avail, hs + GAP)
-    return wd, hs
+def _top(ceil):
+    """這條限制的上限：預設 100（平台的牆），active.json 的 ceiling 可以設得更低。"""
+    c = _num(ceil)
+    return 100.0 if c is None else max(0.0, min(100.0, c))
 
-def eval_limit(cur, u0):
+def thresholds(u0, ceil=None):
+    """回 (wind-down, hard-stop, emergency) 三條線，單位是「離上限還剩幾個百分點」。
+
+    上限是自訂預算時，FLOOR/GAP/EMERGENCY 這些固定 pp 值跟著預算縮小，
+    不然 5pp 的預算會被 3pp 的 FLOOR 吃掉大半。
+    """
+    top = _top(ceil)
+    avail = max(0.0, top - u0)
+    if top >= 100.0:
+        floor, gap, emg = FLOOR, GAP, EMERGENCY
+    else:
+        floor, gap, emg = min(FLOOR, 0.2 * avail), min(GAP, 0.2 * avail), min(EMERGENCY, 0.1 * avail)
+    hs = max(HARD * avail, floor)
+    wd = max(SOFT * avail, hs + gap)
+    return wd, hs, emg
+
+def eval_limit(cur, u0, ceil=None):
     if cur is None or u0 is None:
         return "CONTINUE"
-    rem = 100.0 - cur
-    wd, hs = thresholds(u0)
-    if rem <= EMERGENCY:
+    rem = _top(ceil) - cur
+    wd, hs, emg = thresholds(u0, ceil)
+    if rem <= emg:
         return "EMERGENCY"
     if rem <= hs:
         return "HARDSTOP"
@@ -347,11 +362,12 @@ def evaluate(usage, active):
     if usage is not None:
         mode = active.get("mode", "both")
         u0 = active.get("u0", {})
+        ceiling = active.get("ceiling") or {}  # 自訂上限（預算模式），沒有就是 100
         names = ["weekly"] if mode == "5h-override" else ["5h", "weekly"]
         for name in names:
             key = LIMITS[name]
             cur = usage.get(key, {}).get("pct")
-            v = eval_limit(cur, u0.get(key))
+            v = eval_limit(cur, u0.get(key), ceiling.get(key))
             if RANK[v] > RANK[verdict]:
                 verdict, trigger = v, name
 
@@ -359,9 +375,10 @@ def evaluate(usage, active):
         # 5h-override 不豁免——它們本質是 weekly。
         u0_scoped = u0.get("scoped") or {}
         usage_scoped = usage.get("scoped") or {}
+        ceil_scoped = ceiling.get("scoped") or {}
         for name, base in u0_scoped.items():
             cur = (usage_scoped.get(name) or {}).get("pct")
-            v = eval_limit(cur, _num(base))
+            v = eval_limit(cur, _num(base), ceil_scoped.get(name))
             if RANK[v] > RANK[verdict]:
                 verdict, trigger = v, "weekly[%s]" % name
 

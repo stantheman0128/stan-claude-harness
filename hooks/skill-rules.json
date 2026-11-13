@@ -539,6 +539,27 @@
         "just "
       ],
       "why": "發散型發想（命名/API 表面/架構有多組可行解）→ adhd（平行 5 框架＋剪枝，約 10 個 Agent、成本 5-10x，靠它自己的 pre-flight gate 把關）；只是要釐清需求意圖、一次一題收斂 → superpowers:brainstorming。2026-08-10 Stan 拍板加入自動觸發"
+    },
+    {
+      "skills": [
+        "quota-pacer:quota-pacer"
+      ],
+      "priority": "high",
+      "keywords": [
+        "用量上限",
+        "額度上限",
+        "quota pacer",
+        "額度感知",
+        "別把額度燒光"
+      ],
+      "intentPatterns": [
+        "(不要|別|不准|不能|勿).{0,6}(用|花|燒|超過).{0,8}\\d+\\s*(%|％|趴|個百分點)",
+        "(最多|頂多|只能|只給你).{0,6}(用|花|燒).{0,6}\\d+\\s*(%|％|趴|個百分點)",
+        "(weekly|週限額|周限額|用量|額度|usage).{0,10}(到|超過|上限).{0,4}\\d+\\s*(%|％|趴).{0,6}(就停|停|收手)?",
+        "\\d+\\s*(%|％|趴).{0,12}(weekly|週限額|周限額|usage|用量|額度)"
+      ],
+      "excludePatterns": [],
+      "why": "Stan 用白話給 session 設用量上限（不打 /quota-pace）；skill 會記基準、算上限、逐塊檢查、到線收手寫交接；2026-11-13 加"
     }
   ],
   "_watchlist_note": "評估紀錄簿（EVALUATIONS.md）「重評觸發」欄的編譯版：情境關鍵字命中時由 skill-suggest.py 發軟提醒（同 session 去重、不記 suggestions 不算失手）。條目增刪跟著紀錄簿走。2026-07-11 建。",

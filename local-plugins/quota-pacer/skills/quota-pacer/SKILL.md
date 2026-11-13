@@ -1,6 +1,6 @@
 ---
 name: quota-pacer
-description: 額度感知的任務節奏器。當 Stan 要在有限的用量下跑一個較長的任務、希望它邊做邊看用量、接近限制前主動收手並寫交接時使用。觸發詞：quota pacer、額度感知、邊做邊看用量、燒到快沒之前收手、pace against quota、5h-override、在 weekly 見底前收手。
+description: 額度感知的任務節奏器。Stan 用白話給這個 session 設用量上限時就載入，不用等他打斜線指令：例如「不要用超過 5% 的 weekly」「這次最多用 X%」「weekly 到 60% 就停」「別把額度燒光」「用量省著點、快到就收手」。也用於在有限用量下跑較長任務、要邊做邊看用量、接近限制前主動收手並寫交接。觸發詞：不要用超過、最多用、用量上限、額度上限、到 X% 就停、quota pacer、額度感知、邊做邊看用量、燒到快沒之前收手、pace against quota、5h-override、在 weekly 見底前收手。
 ---
 
 # Quota Pacer
@@ -26,21 +26,35 @@ description: 額度感知的任務節奏器。當 Stan 要在有限的用量下�
 
 ## 啟動
 
-1. 解析使用者意圖：**任務內容**、是否 `5h-override`（只管 weekly、忽略 5h）、以及可選的**時間上限**（例如「30m」「跑 30 分就停」→ minutes=30）。
-2. 先做上面「用量來源」那一步，再讀當前用量當基準（檔案過舊會自動打 endpoint 拉新）：
+Stan 多半不會打 `/quota-pace`，而是在交代任務時順口講一句上限。聽到就照這一節開工，不用請他改用指令。
+
+1. 解析使用者意圖：**任務內容**、**用量上限**（見下表）、是否 `5h-override`（只管 weekly、忽略 5h）、可選的**時間上限**（「30m」「跑 30 分就停」→ `--minutes 30`）。
+
+   | Stan 的說法 | 意思 | 參數 |
+   |---|---|---|
+   | 「不要用超過 5%」「這次最多用 5%」「只給你 5% 的額度」 | 這個 session 最多再花 5 個百分點 | `--budget 5` |
+   | 「weekly 到 60% 就停」「不要讓 weekly 超過 60%」「停在 60%」 | weekly 的絕對水位 | `--cap 60` |
+   | 沒講數字，只說「別燒光」「快沒就收手」 | 只防撞到 100% | 不帶 |
+
+   分不出是「再花多少」還是「絕對水位」時：數字不高於現在的 weekly 用量，只可能是前者，用 `--budget`；其餘照字面最接近的那一列選，並在第 3 步的回報裡講明你用了哪種解讀，Stan 一眼就能糾正。
+2. 先做上面「用量來源」那一步，再開工：
    ```bash
-   py "$SCRIPTS/read_usage.py" --json
+   py "$SCRIPTS/start_pace.py" [--budget <pp> | --cap <%>] [--minutes <N>] [--mode 5h-override]
    ```
-   - `usable` 是 true → 記下 u0（含 `scoped`，per-model weekly 如 fable）。某一條是 null（例如 endpoint 沒回 5h）就不要寫進 u0，那條不設 guard。
-   - `usable` 是 false（exit 4 或 3）：這份讀數不能記成 u0。把 `advice` 那一行原樣轉給使用者（它寫了原因和處置，例如 token 過期要去 PowerShell 跑一次 CLI）。接著：**若有給時間上限** → 走純時間盒照樣開工；**若沒給** → 純用量模式沒資料，別硬跑，回報使用者。
-3. 寫基準檔 `ACTIVE`（目錄不存在先建）。至少要有 `u0` 或 `minutes` 其一，否則沒有任何 guard：
-   ```json
-   { "mode": "both",
-     "u0": { "five_hour": <5h%>, "seven_day": <weekly%>, "scoped": { "fable": <fable%> } },
-     "started": <epoch>, "minutes": <時間上限或省略> }
-   ```
-   `scoped` 直接抄 read_usage --json 的 `scoped`（沒有就省略）。`5h-override` 時 `mode` 改 `"5h-override"`（scoped 仍然管——它本質是 weekly）；純時間盒可省略 `u0`/`mode`。
-4. 告訴使用者：記了什麼（u0 和/或 time-box 幾分）、會在大概什麼用量或第幾分鐘收手。
+   它讀當前用量記成基準、算好上限、寫 `ACTIVE`，並印出每條限制會在幾 % 收尾、停手、硬擋。
+   - `--budget` 同時套在 weekly（全部模型）和每條 per-model weekly（如 fable），各自從自己的起點加，先到的先觸發。
+   - `--cap` 只管 weekly（全部模型）。
+   - exit 4 = 用量讀不到。把它印的那行原因原樣轉給使用者（例如 token 過期要去 PowerShell 跑一次 CLI）。有給時間上限就改跑純時間盒（只帶 `--minutes`）；沒給就別硬跑，回報使用者。
+   - exit 2 = 參數不對（例如 `--cap` 低於現在的用量），照它印的訊息修正或回問。
+3. 把 `start_pace.py` 印的那幾行轉給使用者（一兩行就好）：上限是多少、會在幾 % 收手。
+
+`ACTIVE` 的格式（腳本寫的，除錯時才需要看）：
+```json
+{ "mode": "both", "started": <epoch>, "minutes": <可省>,
+  "u0": { "seven_day": 49, "scoped": { "fable": 52 } },
+  "ceiling": { "seven_day": 54, "scoped": { "fable": 57 } } }
+```
+`ceiling` 沒寫的那條上限就是 100。
 
 ## 工作迴圈
 
@@ -81,9 +95,11 @@ rm -f "$ACTIVE"
 
 時間盒：`minutes−QP_GRACE_MIN` 強制收手寫交接、`minutes` 整為 hook 硬擋死線。
 
+用量上限：設了 `ceiling` 的那條，收尾、停手、硬擋三條線都改成相對於那個上限算，固定的 pp 值（FLOOR 等）會跟著預算縮小。用量百分比通常是整數，所以很小的預算（1 到 2 個百分點）只分得出「還沒到」和「到了」。
+
 測試時把 `QP_HARD_RATIO` 或門檻調到「現在就會踩到」的位置，即可在不真的燒爆的情況下驗證收手與交接流程。
 
-## 限制（v0.3）
+## 限制
 
 - 單一 session 假設：`active.json` 與 `usage-state.json` 都是全域單檔，兩個並行 pacer session 會互相蓋。
 - 互動 CLI 下 statusline 會用「無 scoped」版本蓋 `usage-state.json`；eval_pace 發現 u0 有 scoped 基準但檔案沒資料時會補刷一次（60s 冷卻），所以 scoped 裁決最多延遲一個冷卻窗。

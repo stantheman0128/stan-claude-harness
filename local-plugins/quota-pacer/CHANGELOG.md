@@ -1,5 +1,15 @@
 # Quota Pacer CHANGELOG
 
+## 0.5.0 — 2026-11-13
+用量上限：Stan 講一句「不要用超過 5% 的 weekly」就能設，不用打斜線指令。
+
+- `pace_core`：`active.json` 新增 `ceiling`（每條限制各自的上限，沒寫就是 100）。收尾、停手、硬擋三條線改成相對於上限算；上限是自訂預算時，`FLOOR`、`GAP`、`EMERGENCY` 這些固定 pp 值跟著預算縮小。沒有 `ceiling` 的舊檔行為不變。
+- 新 `scripts/start_pace.py`：讀當前用量記基準、算上限、寫 `active.json`、印出每條限制在幾 % 收尾／停手／硬擋。`--budget <pp>`＝這次最多再用幾個百分點（weekly 和每條 per-model weekly 各自起點加）；`--cap <%>`＝weekly 的絕對水位；`--minutes`、`--mode` 照舊。用量讀不到 exit 4、參數不對 exit 2，都不寫檔。
+- SKILL：description 加上白話說法當觸發條件；啟動改成跑 `start_pace.py`，附一張「Stan 的說法 → 參數」對照表。
+- `hooks/skill-rules.json`（plugin 之外）：加一條規則，訊息裡出現「不要用超過 N%」這類說法時提示載入本 skill。
+- `/quota-pace` 多收 `budget=`、`cap=`。
+- 驗證（隔離環境、合成讀數）：49%／52% 起跑 `--budget 5` → 52% 收尾、53% 停手、54% 硬擋，hook 在 54% exit 2、53% 放行；`--cap 60` → 57／58／59；不帶上限與舊格式 `active.json` 的結果跟 0.4.0 相同；5 種壞輸入都不寫檔。**還沒驗的**：新 session 裡模型聽到白話上限會不會自己載入 skill。
+
 ## 0.4.0 — 2026-11-13
 桌面 App 裡優先用 App 內建的 `get_usage` 工具讀用量，不再依賴會過期的 token 檔。
 
