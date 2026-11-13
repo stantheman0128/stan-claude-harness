@@ -1,5 +1,5 @@
 {
-  "lastUpdated": 1794540505256,
+  "lastUpdated": 1794597291354,
   "skills": [
     {
       "skillId": "docs",
@@ -62,7 +62,7 @@
       "name": "google-workspace",
       "description": "Read this before the first Google Drive, Docs, Sheets or Slides connector call whenever the task creates or changes a Google file. Use this skill whenever the user wants to create or change a Google Doc, Sheet or Slides file in their Google Drive. Triggers include: a request that names Google Docs, Sheets, Slides or Drive and asks to make, edit, format, copy or rename a file; a docs.google.com link with a request to change that file, even a one-line fix or suggested edits; and any follow-up change to a Google file from earlier in the chat, even \"change it\" or \"add a tab\". Includes helper scripts for document positions, cell ranges and slide layout. However, if the user asks for a doc, deck or spreadsheet without naming Google, or gives a Google file only as source material for something new, use Claude's own output type instead. Do NOT use for read-only questions about a Google file, or for Word, Excel, PowerPoint or PDF files.",
       "source": "anthropic-example",
-      "updatedAt": "2026-11-13T02:00:18.531313Z"
+      "updatedAt": "2026-11-13T15:00:20.249384Z"
     },
     {
       "skillId": "mcp-builder",
@@ -177,10 +177,7 @@
       "name": "artifact-emulator",
       "description": "See a page, slide deck or design canvas artifact you made, close to how a person will see it: open its files in the real artifact viewer inside this cloud session, then screenshot it and read its console errors with a short Python Playwright script. Use it when the person asks to see or check how it looks, or when the artifact type's own instructions tell you to check. Where a type's instructions say not to check unless asked, they win. Never a step before saving or publishing, nor a routine after every save. Not for web apps or pages that are not artifacts. Cloud sessions only (built for cloud Cowork): elsewhere its script stops with a one-line reason. Only you see the result.",
       "source": "anthropic-example",
-      "updatedAt": "2026-11-10T16:00:27.522722Z"
+      "updatedAt": "2026-11-13T19:00:19.162410Z"
     }
-  ],
-  "pendingClaims": [
-    "140780:134390619964548392/google-workspace"
   ]
 }
