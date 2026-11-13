@@ -43,6 +43,9 @@ CRED_FILE = os.environ.get("QP_CRED_FILE") or os.path.join(
 USAGE_URL = os.environ.get("QP_USAGE_URL") or "https://api.anthropic.com/api/oauth/usage"
 REFRESH_COOLDOWN = _f("QP_REFRESH_COOLDOWN_SEC", 60)
 REFRESH_MARK = os.path.join(os.path.dirname(ACTIVE_FILE), ".refresh-attempt")
+# hook 看到「要跑 start_pace.py」時把 session_id 寫在這，start_pace.py 再抄進 active.json
+START_MARK = os.path.join(os.path.dirname(ACTIVE_FILE), ".starting-session")
+ACTIVE_MAX_AGE = _f("QP_ACTIVE_MAX_HOURS", 24) * 3600  # 超過就當殘留檔，hook 不理
 REFRESH_LOG = os.environ.get("QP_REFRESH_LOG") or os.path.join(
     os.path.dirname(ACTIVE_FILE), "refresh.log")
 REFRESH_LOG_MAX = 64 * 1024  # 超過就只留後半

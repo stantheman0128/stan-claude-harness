@@ -60,6 +60,16 @@ def main():
             fail("用量讀不到，也沒給 --minutes，沒有任何 guard。%s" % advice, 4)
 
     active = {"mode": mode, "started": time.time()}
+    # 綁定 session：hook 只擋開工的這個 session，殘留檔不會卡到別的 session
+    try:
+        if time.time() - os.path.getmtime(pc.START_MARK) < 120:
+            with open(pc.START_MARK, encoding="utf-8") as fh:
+                sid = fh.read().strip()
+            if sid:
+                active["session"] = sid
+        os.remove(pc.START_MARK)
+    except OSError:
+        pass
     lines = []
     if "minutes" in nums:
         active["minutes"] = nums["minutes"]
