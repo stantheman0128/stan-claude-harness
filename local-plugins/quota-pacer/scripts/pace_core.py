@@ -164,8 +164,13 @@ def _refresh_usage(force=False):
     global LAST_REFRESH
     if not force:
         try:
-            left = REFRESH_COOLDOWN - (time.time() - os.path.getmtime(REFRESH_MARK))
-            if left > 0:
+            mark = os.path.getmtime(REFRESH_MARK)
+            left = REFRESH_COOLDOWN - (time.time() - mark)
+            try:  # token 檔在上次嘗試之後被換過 → 免冷卻，修好就能馬上重讀
+                cred_newer = os.path.getmtime(CRED_FILE) > mark
+            except OSError:
+                cred_newer = False
+            if left > 0 and not cred_newer:
                 LAST_REFRESH = {"status": "cooldown", "wait": int(left) + 1}
                 return None
         except OSError:
