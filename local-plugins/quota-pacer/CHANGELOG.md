@@ -1,5 +1,21 @@
 # Quota Pacer CHANGELOG
 
+## 0.5.1 — 2026-11-13
+用 skill-creator 的準則複查 SKILL，並請一個沒看過它的 agent 紙上照做 6 則訊息，修掉查出來的問題。
+
+- **殘留設定不再卡到別的 session**：hook 看到要跑 `start_pace.py` 時記下 session id，`start_pace.py` 抄進 `active.json` 的 `session`；hook 只擋那個 session。開工超過 24 小時（`QP_ACTIVE_MAX_HOURS`）的設定當成殘留、不生效。沒有 `session` 欄的舊檔照舊全擋。起因：0.5.0 的自訂上限比 100% 低很多，忘了收工的話，別的 session 用量一超過那條線就會被擋。
+- **到線之後收得了工**：hook 永遠放行 pacer 自己的腳本和 `get_usage`。新 `scripts/end_pace.py` 取代 `rm -f active.json`。
+- `eval_pace.py`：開工時記了基準的 per-model 限制這次沒讀到時，行尾印 `⚠`，不再無聲略過。
+- SKILL 重寫：
+  - 指令全寫完整路徑（原本的 `$SCRIPTS`／`$ACTIVE` 只是文件代稱，照抄會跑不動）。
+  - 讀用量只要百分比，不再要求重置時間（`get_usage` 給的是相對時間，裁決也不看它）。
+  - 補上「現在用量加 N 超過 100 就是絕對水位」等判斷規則。
+  - 新增「一兩個工具呼叫就能做完的事不開 pacer」。
+  - 段落大小與 subagent 的用法跟著預算走，附原因。
+  - 交接檔放哪裡、被 hook 擋到時怎麼辦。
+  - 門檻算法、`active.json` 格式、環境變數搬到 `references/internals.md`。
+- 驗證：隔離環境 25 項檢查全過（session 綁定、五種放行、壞 stdin、殘留檔、收工、舊格式）。**還沒驗的**同 0.5.0：新 session 裡白話觸發與 `get_usage` 寫檔。
+
 ## 0.5.0 — 2026-11-13
 用量上限：Stan 講一句「不要用超過 5% 的 weekly」就能設，不用打斜線指令。
 
