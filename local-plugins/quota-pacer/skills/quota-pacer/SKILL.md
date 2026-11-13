@@ -61,6 +61,8 @@ rm -f "$ACTIVE"
 裁決門檻可用環境變數覆寫（eval_pace 會吃）：
 `QP_SOFT_RATIO`(0.10) `QP_HARD_RATIO`(0.05) `QP_FLOOR_PP`(3) `QP_EMERGENCY_PP`(1) `QP_STALE_SEC`(90) `QP_GRACE_MIN`(3) `QP_NOTICE_MIN`(2) `QP_REFRESH_COOLDOWN_SEC`(60)
 
+刷新紀錄：每次嘗試（含被冷卻擋下的）記一行在 `C:/Users/stans/.claude/quota-pacer/refresh.log`，讀數怪的時候先看最後幾行。
+
 資料源可覆寫：`QP_CRED_FILE`（OAuth credentials 路徑）、`QP_USAGE_URL`、`QP_USAGE_STATE`。
 
 時間盒：`minutes−QP_GRACE_MIN` 強制收手寫交接、`minutes` 整為 hook 硬擋死線。
