@@ -5,15 +5,29 @@ description: 額度感知的任務節奏器。當 Stan 要在有限的用量下�
 
 # Quota Pacer
 
-在有限用量下跑一個大任務：邊做邊印用量、接近綁定限制前主動收手、沒做完就寫交接。用量自己從官方 endpoint 拉（讀本機 OAuth credentials），**任何 harness 都能用**——互動 CLI、桌面 App、SDK、headless 皆可。
+在有限用量下跑一個大任務：邊做邊印用量、接近綁定限制前主動收手、沒做完就寫交接。用量有兩個來源：桌面 App 的 `get_usage` 工具（優先），和腳本自己打官方 endpoint（備援）。互動 CLI、桌面 App、SDK、headless 都能用。
 
 `SCRIPTS` = `C:/Users/stans/.claude/local-plugins/quota-pacer/scripts`
 `ACTIVE` = `C:/Users/stans/.claude/quota-pacer/active.json`
 
+## 用量來源：先 App，後 endpoint
+
+每次要讀用量之前（啟動時，以及工作迴圈每次裁決之前）先做這一步：
+
+1. 如果這個 session 有 `mcp__ccd_session_mgmt__get_usage`（桌面 App 才有；列在 deferred tools 時先用 ToolSearch 載入），呼叫它，不帶參數。它走 App 自己的登入，不會遇到 token 過期。
+2. 從回傳的 `plan` 取「已用百分比」和重置時間，交給腳本寫檔。沒有的那條就省略那個參數：
+   ```bash
+   py "$SCRIPTS/write_usage.py" --five-hour <5h%>@<重置時間> --weekly <weekly%>@<重置時間> --scoped fable=<fable%>@<重置時間>
+   ```
+   重置時間照工具給的原樣貼（ISO 8601 或 epoch 秒），沒有就只寫百分比。工具給的若是「剩餘」百分比，先換成已用（100 減它）。per-model 的每週限制每條一個 `--scoped 名稱=…`。
+3. 工具不存在、被權限擋、或 `plan` 狀態是 unavailable／not_applicable → 跳過這一步，不要停。後面的 `read_usage.py`／`eval_pace.py` 會自己打 endpoint。
+
+寫完之後檔案是新的，後面的腳本直接讀檔，不會再打 endpoint。
+
 ## 啟動
 
 1. 解析使用者意圖：**任務內容**、是否 `5h-override`（只管 weekly、忽略 5h）、以及可選的**時間上限**（例如「30m」「跑 30 分就停」→ minutes=30）。
-2. 讀當前用量當基準（檔案過舊會自動拉新，不必再叫使用者去 CLI 敲 Enter）：
+2. 先做上面「用量來源」那一步，再讀當前用量當基準（檔案過舊會自動打 endpoint 拉新）：
    ```bash
    py "$SCRIPTS/read_usage.py" --json
    ```
@@ -30,7 +44,7 @@ description: 額度感知的任務節奏器。當 Stan 要在有限的用量下�
 
 ## 工作迴圈
 
-把任務切成一塊塊做。**每做完一塊**就裁決一次：
+把任務切成一塊塊做。**每做完一塊**先做「用量來源」那一步更新檔案，再裁決一次：
 ```bash
 py "$SCRIPTS/eval_pace.py" "$ACTIVE"
 ```

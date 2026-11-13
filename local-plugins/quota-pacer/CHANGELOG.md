@@ -1,5 +1,14 @@
 # Quota Pacer CHANGELOG
 
+## 0.4.0 — 2026-11-13
+桌面 App 裡優先用 App 內建的 `get_usage` 工具讀用量，不再依賴會過期的 token 檔。
+
+- 新 `scripts/write_usage.py`：把模型從 `mcp__ccd_session_mgmt__get_usage` 讀到的數字寫進 `usage-state.json`（`source: "app"`，原子寫）。接受 `--five-hour`、`--weekly`、`--scoped 名稱=…`，值是「已用百分比」，可加 `@重置時間`。參數不對就不寫檔、exit 2。
+- SKILL：新增「用量來源」一節。啟動與每次裁決前先叫 `get_usage` 再寫檔；工具不存在、被擋或回 unavailable 時跳過，退回 0.3.x 的 endpoint 路徑。
+- 這個工具只有模型叫得到，Python 腳本叫不到，所以 `hardstop_guard` 仍讀檔，用的是最後一次寫入的數字。
+- 同日把 `Projects\.claude\settings.local.json` 的 `permissions.deny` 裡 `mcp__ccd_session_mgmt__get_usage` 那一條拿掉（其餘 677 條沒動）。重開 session 才生效。
+- 驗證：`write_usage.py` 正常寫入與 5 種壞參數全過；寫入後在沒有 credentials 的環境 `read_usage.py` 仍讀得到。**還沒驗的**：`get_usage` 的實際回傳格式，改權限的這個 session 叫不到，要在新 session 實跑一次。
+
 ## 0.3.3 — 2026-11-13
 token 檔換過就免冷卻。
 
