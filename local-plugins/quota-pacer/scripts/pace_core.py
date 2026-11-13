@@ -43,6 +43,9 @@ CRED_FILE = os.environ.get("QP_CRED_FILE") or os.path.join(
 USAGE_URL = os.environ.get("QP_USAGE_URL") or "https://api.anthropic.com/api/oauth/usage"
 REFRESH_COOLDOWN = _f("QP_REFRESH_COOLDOWN_SEC", 60)
 REFRESH_MARK = os.path.join(os.path.dirname(ACTIVE_FILE), ".refresh-attempt")
+REFRESH_LOG = os.environ.get("QP_REFRESH_LOG") or os.path.join(
+    os.path.dirname(ACTIVE_FILE), "refresh.log")
+REFRESH_LOG_MAX = 64 * 1024  # 超過就只留後半
 
 RANK = {"CONTINUE": 0, "WINDDOWN": 1, "HARDSTOP": 2, "EMERGENCY": 3}
 LIMITS = {"5h": "five_hour", "weekly": "seven_day"}
@@ -153,7 +156,7 @@ def fetch_usage(timeout=10):
         raise RefreshFail("empty")  # 200 但兩條主限制都沒數字，不寫檔
     return out
 
-def refresh_usage(force=False):
+def _refresh_usage(force=False):
     """拉新用量寫 USAGE_STATE。成功回 dict、失敗/冷卻中回 None，絕不覆寫壞資料。
 
     失敗原因記在 LAST_REFRESH（status + detail），呼叫端用 refresh_advice() 轉成處置。
@@ -192,6 +195,40 @@ def refresh_usage(force=False):
     LAST_REFRESH = {"status": "ok"}
     data = dict(data)
     data["_age"] = 0.0
+    return data
+
+def _log_refresh(force):
+    """每次刷新嘗試記一行 JSONL（含冷卻被擋的），事後查得到當時為什麼沒拉。
+
+    不記 token、不記回應內容。寫不進去就算了，不能讓記錄拖垮裁決。
+    """
+    import sys
+    try:
+        rec = dict(LAST_REFRESH)
+        rec.update(t=time.strftime("%Y-%m-%d %H:%M:%S"), force=bool(force), pid=os.getpid(),
+                   caller=os.path.basename(sys.argv[0] or "?"))
+        try:
+            rec["mark_age"] = round(time.time() - os.path.getmtime(REFRESH_MARK), 1)
+        except OSError:
+            rec["mark_age"] = None
+        os.makedirs(os.path.dirname(REFRESH_LOG), exist_ok=True)
+        try:
+            if os.path.getsize(REFRESH_LOG) > REFRESH_LOG_MAX:
+                with open(REFRESH_LOG, encoding="utf-8") as fh:
+                    lines = fh.readlines()
+                with open(REFRESH_LOG, "w", encoding="utf-8") as fh:
+                    fh.writelines(lines[len(lines) // 2:])
+        except OSError:
+            pass
+        with open(REFRESH_LOG, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec, ensure_ascii=False) + chr(10))
+    except Exception:
+        pass
+
+def refresh_usage(force=False):
+    """_refresh_usage 加紀錄。成功回 dict、失敗/冷卻中回 None，原因在 LAST_REFRESH 與 refresh.log。"""
+    data = _refresh_usage(force)
+    _log_refresh(force)
     return data
 
 def _fmt_dur(sec):
