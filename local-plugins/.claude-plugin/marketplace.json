@@ -18,6 +18,12 @@
       "version": "1.0.1",
       "source": "./loop-gate",
       "description": "Machine-enforced verification gate + fail-loud hook health for loop engineering"
+    },
+    {
+      "name": "quota-pacer",
+      "version": "0.4.0",
+      "source": "./quota-pacer",
+      "description": "Quota-aware task pacer: watch plan usage while working, wind down and hand off before a limit"
     }
   ]
 }
