@@ -33,4 +33,4 @@ rm ~/.claude/.careful-mode
 
 ## 機制
 
-Hook script 位於 `~/.claude/hooks/careful_guard.py`，註冊為 PreToolUse hook，每次 Bash 呼叫時檢查 flag 檔案是否存在。不存在則直接放行（零成本）。
+Hook script 位於 `~/.claude/hooks/mode_guard.py`（2026-11-14 與 research mode 的 guard 合併成一支，直接用 `C:/Python313/python.exe -I` 呼叫），註冊為 PreToolUse hook，每次 Bash 呼叫時檢查 flag 檔案是否存在，不存在就直接放行。舊的 `careful_guard.py` 留著備查，已不在 settings.json 裡。
