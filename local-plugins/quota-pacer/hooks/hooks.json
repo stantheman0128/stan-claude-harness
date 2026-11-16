@@ -5,7 +5,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "py \"${CLAUDE_PLUGIN_ROOT}/hooks/hardstop_guard.py\"",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "-I",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/hooks/hardstop_guard.py"
+            ],
             "timeout": 10
           }
         ]

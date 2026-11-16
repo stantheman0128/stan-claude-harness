@@ -1,5 +1,12 @@
 # Quota Pacer CHANGELOG
 
+## 0.5.3 — 2026-11-17
+hook 改成 exec form，每次工具呼叫少開幾個行程。
+
+- PreToolUse 的 `hardstop_guard.py` 不再經過 Git Bash 和 `py` launcher，直接由 `C:/Python313/pythonw.exe -I -X utf8` 執行。原本每次呼叫要開 bash 啟動器、bash、conhost、py.exe、python.exe；現在只剩一個 pythonw.exe。
+- 行為不變：`.starting-session` 照樣在看到 `start_pace.py` 時寫入，stdin 照樣以 UTF-8 讀。
+- 代價：直譯器路徑寫死在 hooks.json，Python 搬家要跟著改。
+
 ## 0.5.2 — 2026-11-13
 SKILL 第二輪試讀後的補充，只改文件。
 
