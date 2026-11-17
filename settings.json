@@ -100,6 +100,14 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://localhost:19280/"
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -143,6 +151,14 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://localhost:19280/"
+          }
+        ]
       }
     ],
     "Stop": [
@@ -155,6 +171,10 @@
               "C:/Users/stans/.claude/hooks/twify-session-name.py"
             ],
             "timeout": 15
+          },
+          {
+            "type": "http",
+            "url": "http://localhost:19280/"
           }
         ]
       },
@@ -193,6 +213,10 @@
               "C:/Users/stans/.claude/hooks/twify-session-name.py"
             ],
             "timeout": 15
+          },
+          {
+            "type": "http",
+            "url": "http://localhost:19280/"
           }
         ]
       },
@@ -221,6 +245,36 @@
               "main"
             ],
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://localhost:19280/"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://localhost:19280/"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://localhost:19280/"
           }
         ]
       }
