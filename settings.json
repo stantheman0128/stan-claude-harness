@@ -88,59 +88,30 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/careful_guard.py\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
         "matcher": "Bash|Edit|Write|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/research_guard.py\"",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "-I",
+              "C:/Users/stans/.claude/hooks/mode_guard.py"
+            ],
             "timeout": 5
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://localhost:19280/"
-          }
-        ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
-            "timeout": 10
           }
         ]
       }
     ],
     "SessionStart": [
       {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://localhost:19280/"
-          }
-        ]
-      },
-      {
         "matcher": "startup",
         "hooks": [
           {
             "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/skill-routing-watch.py\"",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "C:/Users/stans/.claude/hooks/skill-routing-watch.py"
+            ],
             "timeout": 10
           }
         ]
@@ -154,22 +125,35 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "-I",
+              "C:/Users/stans/Projects/guardian/hooks/guardian-adopt.py",
+              "claude",
+              "--instance",
+              "main",
+              "--context"
+            ],
+            "timeout": 30
+          }
+        ]
       }
     ],
     "Stop": [
       {
         "hooks": [
           {
-            "type": "http",
-            "url": "http://localhost:19280/"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
             "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/twify-session-name.py\"",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "C:/Users/stans/.claude/hooks/twify-session-name.py"
+            ],
             "timeout": 15
           }
         ]
@@ -178,7 +162,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/skill-usage-log.py\"",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "C:/Users/stans/.claude/hooks/skill-usage-log.py"
+            ],
             "timeout": 10
           }
         ]
@@ -187,56 +174,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/harness-autosync.py\"",
+            "command": "C:/Python313/python.exe",
+            "args": [
+              "C:/Users/stans/.claude/hooks/harness-autosync.py"
+            ],
             "timeout": 60
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://localhost:19280/"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://localhost:19280/"
-          }
-        ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/sentinel-gate.py\" --release"
           }
         ]
       }
@@ -245,16 +187,11 @@
       {
         "hooks": [
           {
-            "type": "http",
-            "url": "http://localhost:19280/"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
             "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/twify-session-name.py\"",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "C:/Users/stans/.claude/hooks/twify-session-name.py"
+            ],
             "timeout": 15
           }
         ]
@@ -263,7 +200,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/skill-suggest.py\"",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "C:/Users/stans/.claude/hooks/skill-suggest.py"
+            ],
             "timeout": 10
           }
         ]
@@ -272,102 +212,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/sentinel-inject.py\""
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://localhost:19280/"
-          }
-        ]
-      }
-    ],
-    "StopFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "TeammateIdle": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"C:/Users/stans/.claude/hooks/sentinel-gate.py\" --release-failure"
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ -f 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd' ]; then 'C:/Users/stans/.orca/agent-hooks/claude-hook.cmd'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "-I",
+              "C:/Users/stans/Projects/guardian/hooks/guardian-status.py",
+              "claude",
+              "--instance",
+              "main"
+            ],
             "timeout": 10
           }
         ]
