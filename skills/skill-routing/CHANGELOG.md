@@ -2,6 +2,8 @@
 
 （2026-09-19 自 SKILL.md 拆出，SKILL.md 只留路由表。新紀錄往上加。）
 
+- 2026-11-17 移除 `microsoft/TokenEconomizer`（Stan 拍板）：兩週實測省下的量幾乎量不到，tool pruning 反而在 22 個設定檔寫了 563～712 條 deny，擋掉 App 自己的工具。Stan 的 session 分散在大量資料夾、工作類型混雜，不符合它「同 repo 反覆跑同類工作」的前提。已用 TE 自己的 `toolprune restore` 還原 20 個仍存在的設定檔，驗證 deny 全空、其他鍵不變，再解除安裝 plugin 和 marketplace。還原前的設定檔備份在 `state/te-removal-2026-11-17/`（未入庫）。`~/.tokeneconomizer` 和 plugin cache 留待執行中的 session 重開後再丟回收筒。詳見 EVALUATIONS.md。
+
 - 2026-10-31 TokenEconomizer 桌面版彈窗修補：Stan 回報 09:55 起狂跳 Windows「選擇 App」視窗。原因是 hooks.json 的指令是 `"${CLAUDE_PLUGIN_ROOT}/scripts/te-hook"`，桌面版經 cmd 執行時把無副檔名的 sh 腳本丟給檔案關聯，hook 沒跑。改 `~/.claude/plugins/cache/tokeneconomizer/tokeneconomizer/0.1.0/hooks/hooks.json` 6 處為 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/te-hook"`（同 i-have-adhd hook 的寫法），備份 `hooks.json.orig`。cmd 實測回 `{}`、exit 0、約 0.4 秒。已開著的 session 要重開才吃到新指令。
 - 2026-10-31 router 假建議修正與 precision 紀錄：`skill-suggest.py` 跳過 harness 代送的 agent 回報。用隔離的 headless session 實抓 UserPromptSubmit stdin：背景任務或 agent 完成時，`prompt` 以 `<task-notification>` 開頭，排隊中送達也一樣；桌面 app 的 subagent 交回抓不到 stdin，依 transcript 判斷開頭幾行會有 `[Subagent hand-back]`。用新條件回頭算，近一週有動過的 101 份 transcript 裡，270 次 router 注入有 144 次會被擋掉。Skill 工具載入的 skill 內文不會觸發 UserPromptSubmit，近期 transcript 裡 105 次載入沒有一次觸發；稽核時歸給 claude-api 內文 Kotlin 的那次 chrisbanes 提醒，其實是緊接著送達的 queued agent 報告觸發的。`suggestions-<session>.jsonl` 每筆另記 `snippet`，即觸發訊息的前 120 字，之後能逐筆判斷建議切不切題；檔案在 gitignore 的 `skill-usage/`，只留本機。舊紀錄沒有 snippet，既有的失手統計仍含先前的假建議。
 - 2026-10-31 回報上游：Stan 拍板，以 stantheman0128 開 https://github.com/microsoft/TokenEconomizer/issues/87（side call 帶著全部 MCP server，一次 Haiku 約 572k effective tokens；建議修法同本機修補）。上游修好後撤掉本機修補。
