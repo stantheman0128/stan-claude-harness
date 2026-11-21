@@ -9,6 +9,8 @@ Stan 定 N1：以後在 worktree 分支寫稿，主資料夾不動，08-23 的�
 
 全域 skill 因此從 v1.4.0 直接換成本版。v1.4.0 的領域對照 few-shot（few-shot.md 第六節、selection-spec 16 類提案）還在主資料夾沒 commit，worktree 沒有，所以這段期間第 0 步不讀第六節，提案段照職缺七類。搬不搬看 `reports/n1_0823_review_2026-11-22.md`。
 
+另修 v1.5.0 漏改的一處：`channel-common.md` 第六節自檢清單的句長下限還寫 20 字，改成跟 R3 一樣的 28 字。
+
 ## v1.6.0（2026-11-21）｜擬大綱前先撈範本
 
 Stan 同意開始第 6 站。第二段新增第 0 步：用 `scripts/find_exemplars.py --recent 1` 撈 3 支真稿（1 支最新上架、2 支同領域較早）的全文加脈絡卡，讀完再排大綱。
