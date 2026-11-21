@@ -28,13 +28,15 @@ description: "以志祺七七（shasha77）YouTube 風格撰寫影片腳本，�
 
 動筆前先把這四份讀進脈絡（絕對路徑，spec 迭代時本 skill 不需同步）：
 
-1. `C:\Users\stans\Projects\shasha77\style-spec\channel-common.md` — 頻道共同層：硬規則（字數/語速/句長/詞彙）、口癖詞庫與上限、修辭手冊（R6-R10）、觀點段原則（R11-R15）、口語毛邊（R16 全套）、反 AI 慣性三則（R17-1 金句收束／R17-2 事實歸屬／R17-3 人稱視角）、真實感配方與破綻黑名單（R18）、**第六節定稿自檢清單**。
-1.5. `C:\Users\stans\Projects\shasha77\style-spec\content-editing.md` — **內容編輯規則 R19**（能不能刊，跟「像不像」分開管）：來源密度與類型靶區、時線自洽、正反形態、耳朵規則（單段數字/句長）、觀點段分工（資訊段給來源、判斷留觀點段）、標題支票、口播敘事紀律。基準值全部來自 30 支真稿實測（reports/content_baseline.md），不是編輯直覺。
+> 讀取根目錄：本檔所有路徑都指向 worktree 分支 `claude/zhigui-project-architecture-c37fb0`（2026-11-22 Stan 定 N1）。主資料夾 `C:\Users\stans\Projects\shasha77\` 有 Stan 08-23 沒 commit 的改動，寫稿時不要讀也不要寫。分支併回主資料夾後，把路徑前綴整批換回主資料夾即可。
+
+1. `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\channel-common.md` — 頻道共同層：硬規則（字數/語速/句長/詞彙）、口癖詞庫與上限、修辭手冊（R6-R10）、觀點段原則（R11-R15）、口語毛邊（R16 全套）、反 AI 慣性三則（R17-1 金句收束／R17-2 事實歸屬／R17-3 人稱視角）、真實感配方與破綻黑名單（R18）、**第六節定稿自檢清單**。
+1.5. `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\content-editing.md` — **內容編輯規則 R19**（能不能刊，跟「像不像」分開管）：來源密度與類型靶區、時線自洽、正反形態、耳朵規則（單段數字/句長）、觀點段分工（資訊段給來源、判斷留觀點段）、標題支票、口播敘事紀律。基準值全部來自 30 支真稿實測（reports/content_baseline.md），不是編輯直覺。
 2. **系列層（依系列參數擇一，只讀對應那份）**：
-   - 主線 → `C:\Users\stans\Projects\shasha77\style-spec\mainline.md`：八段骨架（開頭鉤子→hiho 自介→工商→背景→深入分析×N→我們的觀點→提問→結尾）、各段寫法、業配轉場固定文本、轉場句庫、CTA 公式、結尾框。
-   - 說書 → `C:\Users\stans\Projects\shasha77\style-spec\series\qiqi-shushu.md`：骨架同源，主體換成逐章導讀一本書（book_info→導讀章節×N→觀點兼書評→分享籲請塞書名→選配導購），附各環節出現率與固定框逐字。
-3. `C:\Users\stans\Projects\shasha77\style-spec\few-shot.md` — 真稿選段（逐字標出處）：第一到五節是通用錨（hook×3、轉場×3、觀點段×2、業配×2、outro×1）；**第六節領域對照 Hook 只讀本題領域那一則**，不要 16 則全塞進脈絡。仿寫時對照語感，不要整段抄。
-4. `C:\Users\stans\Projects\shasha77\style-spec\anti-examples.md` — 八類「這樣寫就不像」反例＋正解對照＋快速對照表。寫完拿它回頭掃自己的稿。
+   - 主線 → `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\mainline.md`：八段骨架（開頭鉤子→hiho 自介→工商→背景→深入分析×N→我們的觀點→提問→結尾）、各段寫法、業配轉場固定文本、轉場句庫、CTA 公式、結尾框。
+   - 說書 → `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\series\qiqi-shushu.md`：骨架同源，主體換成逐章導讀一本書（book_info→導讀章節×N→觀點兼書評→分享籲請塞書名→選配導購），附各環節出現率與固定框逐字。
+3. `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\few-shot.md` — 真稿選段（逐字標出處）：hook×3、轉場×3、觀點段×2、業配×2、outro×1。仿寫時對照語感，不要整段抄。
+4. `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\anti-examples.md` — 八類「這樣寫就不像」反例＋正解對照＋快速對照表。寫完拿它回頭掃自己的稿。
 
 嚴肅題（性暴力、殯葬、鎮壓、受害者、族群創傷）要先讀 channel-common R10：這類題全程關閉幽默、改共感語氣。
 
@@ -55,15 +57,16 @@ description: "以志祺七七（shasha77）YouTube 風格撰寫影片腳本，�
 
 目標：給定領域或粗略方向，產出可拍的題目與切入角度。
 
-1. 領域先對 `style-spec/selection-spec.md` 的 16 類與鑰匙（職缺七類當粗方向）。確認題目有知識點、查得到資料佐證，沒踩 S1-c 禁區。
-2. **查重**：讀 `C:\Users\stans\Projects\shasha77\data\corpus_index.json`（videos 陣列的 title 欄），確認志祺沒做過幾乎一樣的題；撞題就換切角或換題。
-3. 每個提案給：一句話主題、為什麼現在值得做、鉤子的反直覺點、預估的 3-7 個子問題方向、對應 hook 型（懸念提問／時事引入／數據衝擊／情境故事，見 mainline.md 段 1）、**對應 few-shot.md 第六節該領域那則**（POL 不要拿 HEA 迷思腔開場）。
+1. 領域對照職缺七類（生活法律／國際新聞／日韓文化／飲食文化／醫學議題／公共衛生／獵奇有趣），確認題目有知識點、查得到資料佐證。
+2. **查重**：讀 `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\data\corpus_index.json`（videos 陣列的 title 欄），確認志祺沒做過幾乎一樣的題；撞題就換切角或換題。
+3. 每個提案給：一句話主題、為什麼現在值得做、鉤子的反直覺點、預估的 3-7 個子問題方向、對應 hook 型（懸念提問／時事引入／數據衝擊／情境故事，見 mainline.md 段 1）。
 4. 產 2-3 個提案讓人選。**停，等人挑一個再進第二段。**
 
 ### 第二段｜寫作指引 + 大綱
 
 目標：把選定的題目攤成段落骨架與資料點清單，先給人審，不要直接開始寫逐字稿。
 
+0. **先撈範本**：跑 `python C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\scripts\find_exemplars.py --domain <領域> --region <地區> --recent 1 --bundle C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\drafts\XXX_exemplars.md`，把產出的範本包整份讀進來。領域代碼見 `selection-spec.md` S1 表（POL、BIZ…），地區代碼見 `scripts/topic_map_registry.py` 的 `REG`；不加 `--before` 就以今天為準。範本包有 3 支真稿的脈絡卡摘要與全文：第 1 支是最新上架的片，看頻道現在的開場順序與提問形式；另 2 支是同領域較早的片，看章數、章節標題寫法、章與章怎麼接。內容針對本題，不抄範本題材。範本跟 mainline.md 衝突時，以 mainline.md 的漂移註記和最新那支為準。依據：`reports/outline_backtest_2026-11-21.md`。
 1. 照 mainline.md 的八段骨架排章節序（出現率 90% 以上的環節必填）。
 2. 深入分析段列 3-7 個子問題，每個子問題標：要回答什麼、需要哪些數據／案例、可能的正反並陳點（爭議題才插辯證模組）。
 3. 標出每段要用的資料點缺口——哪些數字還沒查、哪些機構待證實，當作第三段 WebSearch 的清單。
@@ -73,14 +76,14 @@ description: "以志祺七七（shasha77）YouTube 風格撰寫影片腳本，�
 
 目標：照定稿大綱寫出完整口白逐字稿。
 
-1. **先查證存檔**：把大綱資料點缺口逐一 WebSearch 查證，結果寫成 research 檔存 `C:\Users\stans\Projects\shasha77\drafts\research_XXX.md`（沿用現有命名），每點列來源欄（含多來源鏈的層級）。逐字稿寫作時打開對應 research 檔，照來源欄一字不改抄歸屬（R17-2）。
-2. **觀點規劃表先行**：複製 `C:\Users\stans\Projects\shasha77\templates\viewpoint-plan.md` 為 `drafts\XXX_viewpoint.md` 填完（立場盤點/落點/責任切割/位置 C 問句），觀點段動筆前必須存在且填滿；觀點段每句承重話回對本表。
+1. **先查證存檔**：把大綱資料點缺口逐一 WebSearch 查證，結果寫成 research 檔存 `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\drafts\research_XXX.md`（沿用現有命名），每點列來源欄（含多來源鏈的層級）。逐字稿寫作時打開對應 research 檔，照來源欄一字不改抄歸屬（R17-2）。
+2. **觀點規劃表先行**：複製 `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\templates\viewpoint-plan.md` 為 `drafts\XXX_viewpoint.md` 填完（立場盤點/落點/責任切割/位置 C 問句），觀點段動筆前必須存在且填滿；觀點段每句承重話回對本表。
 3. 照 mainline.md 八段骨架寫。開場 `hiho～大家好，我是志祺！`、前置工商主公式、結尾框都是固定文本，直接複製（channel-common R5、mainline 第三節）。
 4. 全程守 channel-common 的硬規則與修辭規則：字數（R1）、句長偏長（R3）、口癖上限（第二節）、設問三位置（R6）、數據格式（R8）、觀點段（R11-R14）。
 5. 留住口語毛邊（R16 全套：章節標題卡、換氣填詞、口語冗餘、書面詞黑名單、功能詞回聲）。
 6. 拆掉 AI 慣性三破綻（R17：不寫自評式金句、歸屬不混併、第二人稱不過密）。
 7. 嚴肅題全程無吐槽、走共感（R10）。
-8. 寫完進**自檢迴圈**（見下）。過了再進第四段。機械自檢可先跑 `python C:\Users\stans\Projects\shasha77\scripts\check_draft.py`（字數/長句/口癖/歸屬弱代理）與 `python C:\Users\stans\Projects\shasha77\scripts\check_research.py`（research 檔格式），exit 0 再走人工清單。逐字稿存 `drafts\XXX_主題.md`。
+8. 寫完進**自檢迴圈**（見下）。過了再進第四段。機械自檢可先跑 `python C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\scripts\check_draft.py`（字數/長句/口癖/歸屬弱代理）與 `python C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\scripts\check_research.py`（research 檔格式），exit 0 再走人工清單。逐字稿存 `drafts\XXX_主題.md`。
 
 ### 第四段｜影片標題 ×3 + 縮圖標題 ×2 + 配圖說明
 
@@ -96,7 +99,7 @@ description: "以志祺七七（shasha77）YouTube 風格撰寫影片腳本，�
 
 需要逐詞計數的項目（自己動手數，別憑感覺）：
 
-- **口癖上限**：全文搜「其實」（≤5-6）、「那麼」（≤3）、「呢」「到底」等，對照 channel-common 第二節每個詞的上限。
+- **口癖上限**：全文搜「其實」「呢」「到底」「那麼」「欸」等，對照 channel-common 第二節每個詞的常見次數與上限（數字只寫在 spec，這裡不抄）。
 - **書面詞黑名單**（R16-4）：搜「象徵著／大舉／整體而言／值得注意／蔚為／彰顯／諸如…」等，零命中；同時確認沒誤殺志祺自己在用的詞（導致／因此／此外／高達）。
 - **功能詞回聲**（R16-5）：全文至少 4-7 處「也…也／的…的／越來越／有沒有」型回聲，一處都沒有就是磨太乾淨。
 - **金句黑名單**（R17-1）：搜「想一下就懂／聽起來很虛／變得很具體／說穿了／講白了／你只要記住」，命中即刪。
@@ -127,18 +130,18 @@ description: "以志祺七七（shasha77）YouTube 風格撰寫影片腳本，�
 
 | 用途 | 絕對路徑 |
 |---|---|
-| 規則（共同層＋自檢清單，兩系列共用） | `C:\Users\stans\Projects\shasha77\style-spec\channel-common.md` |
-| 規則（系列層：主線骨架） | `C:\Users\stans\Projects\shasha77\style-spec\mainline.md` |
-| 規則（系列層：說書手冊） | `C:\Users\stans\Projects\shasha77\style-spec\series\qiqi-shushu.md` |
-| 真稿選段（第一到五節通用錨；第六節按領域只讀一則） | `C:\Users\stans\Projects\shasha77\style-spec\few-shot.md` |
-| 反例集 | `C:\Users\stans\Projects\shasha77\style-spec\anti-examples.md` |
-| 內容編輯規則（R19＋清單） | `C:\Users\stans\Projects\shasha77\style-spec\content-editing.md` |
-| 內容基準值（30 支真稿實測） | `C:\Users\stans\Projects\shasha77\reports\content_baseline.md` |
-| 查重（志祺做過的題） | `C:\Users\stans\Projects\shasha77\data\corpus_index.json` |
-| 真稿全文（拿不準先搜） | `C:\Users\stans\Projects\shasha77\corpus\` |
-| research 查證檔 | `C:\Users\stans\Projects\shasha77\drafts\research_XXX.md` |
-| 逐字稿產出 | `C:\Users\stans\Projects\shasha77\drafts\XXX_主題.md` |
-| 盲評產卷/對分（主線） | `C:\Users\stans\Projects\shasha77\scripts\blind_judge_v4.py`、`score_single.py --mode test` |
-| 盲評產卷/對分（說書） | `C:\Users\stans\Projects\shasha77\scripts\blind_judge_shushu.py`、`score_single.py --mode shushu` |
-| 盲評報告（主線） | `C:\Users\stans\Projects\shasha77\reports\blind_judge_005.md` |
-| 盲評報告（說書） | `C:\Users\stans\Projects\shasha77\reports\blind_judge_shushu.md` |
+| 規則（共同層＋自檢清單，兩系列共用） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\channel-common.md` |
+| 規則（系列層：主線骨架） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\mainline.md` |
+| 規則（系列層：說書手冊） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\series\qiqi-shushu.md` |
+| 真稿選段 | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\few-shot.md` |
+| 反例集 | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\anti-examples.md` |
+| 內容編輯規則（R19＋清單） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\style-spec\content-editing.md` |
+| 內容基準值（30 支真稿實測） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\reports\content_baseline.md` |
+| 查重（志祺做過的題） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\data\corpus_index.json` |
+| 真稿全文（拿不準先搜） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\corpus\` |
+| research 查證檔 | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\drafts\research_XXX.md` |
+| 逐字稿產出 | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\drafts\XXX_主題.md` |
+| 盲評產卷/對分（主線） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\scripts\blind_judge_v4.py`、`score_single.py --mode test` |
+| 盲評產卷/對分（說書） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\scripts\blind_judge_shushu.py`、`score_single.py --mode shushu` |
+| 盲評報告（主線） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\reports\blind_judge_005.md` |
+| 盲評報告（說書） | `C:\Users\stans\Projects\shasha77\.claude\worktrees\zhigui-project-architecture-c37fb0\reports\blind_judge_shushu.md` |
