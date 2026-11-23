@@ -165,6 +165,25 @@ LOCKED = ("這個 session 的用量上限已經到了（%s），工具鎖住了�
           "只有 Stan 本人能解鎖：他要在對話裡親口說「豁免」「bypass」「繞過用量限制」這類的話。"
           "他只說「繼續」不算，這時請直接告訴他要講豁免才會放行。")
 
+def arm_lock(sid):
+    """放行 pacer 自己的腳本之前先看一眼：已經到 EMERGENCY 就先把鎖寫下去。
+
+    不然到線後下一個呼叫剛好是 start_pace.py（重新開工把上限蓋掉）的話，鎖永遠不會寫。
+    """
+    if not sid or pc.locked(sid) is not None:
+        return
+    try:
+        usage = pc.load_usage()
+        if usage.get("_age", 0) > pc.STALE:
+            usage = None
+    except (OSError, ValueError):
+        usage = None
+    for _path, active in pc.find_active(sid):
+        verdict, trigger = pc.evaluate(usage, active)
+        if verdict == "EMERGENCY":
+            pc.lock(sid, trigger)
+            return
+
 def session_gate(sid):
     why = pc.locked(sid)
     if why is not None:
@@ -223,7 +242,10 @@ def main():
         blob = json.dumps(ti, ensure_ascii=False).replace("\\\\", "/").lower()
         # 看的是「機器上有沒有任何限制」，不是「這個 session 有沒有」：
         # 不然沒開 pacer 的 session 可以去刪別的 session 的設定檔
-        if any(x in blob for x in STATE_FILES) and pc.any_limit():
+        # 完整路徑之外，也認「提到 quota-pacer 又提到狀態檔名」的寫法（cd 進去再刪、多打一個斜線）
+        touches = any(x in blob for x in STATE_FILES) or ("quota-pacer" in blob and any(
+            x in blob for x in ("wrap", "lock-", "bypass-", "sessions", "global.json", "active.json")))
+        if touches and pc.any_limit():
             block("pacer 的狀態檔不能直接改或刪。收工用 end_pace.py；" + ONLY_STAN)
 
     # 解除或改寫全機規則：到線之後不行，還沒到線時 --clear 也不行。只有 --status 隨時可以看。
@@ -235,6 +257,8 @@ def main():
 
     # pacer 自己的腳本與讀用量的工具永遠放行，不然到線之後連收工、補讀數都做不了
     if own or tool.endswith("get_usage") or tool == "ToolSearch":
+        if own:
+            arm_lock(sid)
         sys.exit(0)
 
     g = pc.load_global()

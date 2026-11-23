@@ -70,6 +70,8 @@ def main():
         print("已收工。上限已到（%s），這個 session 的工具從現在起鎖住，"
               "直到 Stan 本人在對話裡說「豁免」「bypass」「繞過用量限制」這類的話。"
               "把做到哪、還沒做什麼、下次怎麼接寫在回覆裡，結束這一輪。" % hit)
+    elif sid and pc.locked(sid) is not None:
+        print("已收工，但這個 session 先前到線的鎖還在，工具照擋，直到 Stan 本人說豁免。")
     else:
         print("已收工，pacer 關閉" if gone else "pacer 本來就沒開")
 

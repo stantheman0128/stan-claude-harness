@@ -59,6 +59,8 @@ def clear():
         pass
     try:
         for name in os.listdir(pc.WRAP_DIR):
+            if name.startswith("lock-"):
+                continue  # 單一 session 到線的鎖不歸全機規則管，只有 Stan 豁免才解
             try:
                 os.remove(os.path.join(pc.WRAP_DIR, name))
             except OSError:

@@ -10,6 +10,8 @@
 - 只有 Stan 親口豁免才解鎖，跟全機規則同一套說法。鎖最多維持 12 小時（`QP_LOCK_HOURS`）。
 - 任務做完、還沒到線就收工的不會鎖。別的 session 不受影響。
 - 鎖檔算進狀態檔保護：有鎖的時候不能直接刪 `wrap/` 底下的檔。
+- 獨立複驗抓到兩個解鎖的洞，已修：`global_pace.py --clear` 原本會把鎖檔一起清掉，現在跳過鎖檔；到線後下一個指令剛好是 `start_pace.py` 的話鎖不會寫，現在 hook 放行 pacer 腳本前會先補鎖。
+- 狀態檔保護多認幾種寫法（先 `cd` 進資料夾再刪、路徑多一個斜線）。萬用字元、`find -delete` 這類仍然擋不住：這層只是減速，同一個 Windows 帳號下的 session 真要動手是攔不了的。
 
 ## 0.8.1 — 2026-11-23
 到線後放行串在一行的 pacer 指令。起因：開新 session 實測時看到它把指令寫成 `write_usage.py … && start_pace.py …`、`write_usage.py …; eval_pace.py; end_pace.py`。0.6.1 起 hook 只放行單一指令，到線之後這種寫法會整行被擋，session 連檢查和收工都要多試一次。
