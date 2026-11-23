@@ -1,6 +1,6 @@
 ---
 name: skill-routing
-description: 重疊 skill 的分流表（測試、除錯、規劃、逼問、發想、code review、簡化、效能、前端、API 設計、安全、完工驗證、git、context 工程、寫 skill）。一個任務同時命中兩個以上 skill、不確定用哪個時查；裝了新 skill/plugin 要判重疊時也查。表上沒列的領域＝沒重疊，直接選。
+description: 重疊 skill 的分流表（除錯、規劃、逼問、發想、code review、簡化、前端、安全、完工驗證、git、寫 skill）。一個任務同時命中兩個以上 skill、不確定用哪個時查；裝了新 skill/plugin 要判重疊時也查。表上沒列的領域＝沒重疊，直接選。
 user-invocable: true
 ---
 
@@ -12,21 +12,23 @@ user-invocable: true
 
 | 領域 | 預設 | 改用時機 |
 |---|---|---|
-| 寫測試 / TDD | `superpowers:test-driven-development`（test-first） | 要決定測試種類（金字塔、test double、單元 vs 整合 vs E2E）或瀏覽器驗證 → `agent-skills:test-driven-development`。通則：一次一個 vertical slice；預期值來自獨立真值，別用同一套算法反推 |
-| 除錯 | `agent-skills:debugging-and-error-recovery`（快速 web bug triage） | flaky、效能回歸、多元件、或第一次就猜錯 → `diagnosing-bugs`（先建紅燈可重現迴圈再查）；連 3 次修不好 → `superpowers:systematic-debugging` |
-| 規劃 / spec | `guided-dev`（產品決策給人、技術決策給 Claude） | 每個 slice 的實作紀律 → `agent-skills:incremental-implementation`；大型高風險要可執行 runbook → `superpowers:writing-plans` |
-| 逼問既有計畫 | `grilling`（一次一題，能查 codebase 就自己查） | 還沒計畫、先抓 who/why/success → `grilling` 的「還沒有計畫」段（interview-me 的規則已併入）；已寫好的 artifact 要反方審 → `agent-skills:doubt-driven-development` |
-| 發想 | `superpowers:brainstorming`（一次一題收斂需求） | 已知要做什麼、但有多組可行解要拉開（命名、API 表面、架構取捨）→ `adhd`（5 個框架平行發散，約 10 個 agent、成本 5-10x；題目有唯一標準答案時它會自行 abort） |
-| code review | 內建 `/code-review` | 合併前要流程總檢查表（change sizing、依賴紀律）→ `agent-skills:code-review-and-quality`；處理收到的回饋 → `superpowers:receiving-code-review` |
-| 程式簡化 | `agent-skills:code-simplification` | 無 |
-| 效能 | `agent-skills:performance-optimization`（量到改到守，含後端/CI） | 線上單頁深度稽核且有 Chrome DevTools MCP → ❄️ `cloudflare:web-perf`（plugin 已停用） |
-| 前端視覺 / 設計品質 | `impeccable`（硬規則、absolute bans、slop test；`critique`/`audit` 可當設計審查） | 元件架構、狀態、React 寫法 → `agent-skills:frontend-ui-engineering`；元件庫慣例 → ❄️ `shadcn`；❄️ `frontend-design` 只在 impeccable 沒蓋到的具體情境復原用，冷藏不是判死刑 |
-| API / seam / 模組形狀 | `agent-skills:api-and-interface-design`（error shape、版本相容、驗證放哪、props、TS 型別） | deep-module / deletion test 方法論 → ❄️ `codebase-design` |
-| 安全 | `security-guidance`（edit/commit 時背景自動跑，不用主動叫） | 對整個 codebase 深度獵洞、找可實際利用的漏洞 → `security-audit`（很吃 token，小改動別用）；設計期威脅建模、供應鏈、LLM 安全 → `agent-skills:security-and-hardening`；安全敏感的實作（auth、秘鑰、驗證碼）→ 派 `security-executor` agent；掃描器比對 → ❄️ `static-analysis` |
-| 完工驗證 | `superpowers:verification-before-completion`（宣稱完成前跑指令拿證據） | 任務中途的高風險決策要反方檢查 → `agent-skills:doubt-driven-development` |
-| git | `agent-skills:git-workflow-and-versioning` | 隔離 worktree / 收尾分支 → `superpowers:using-git-worktrees` / `superpowers:finishing-a-development-branch`；卡在 merge/rebase 衝突 → `resolving-merge-conflicts`（找每個衝突的原始意圖、逐 hunk 解、跑專案自己的檢查、絕不 `--abort`） |
-| context 工程 | `agent-skills:context-engineering` | ❄️ `context-compression` / `context-optimization` |
-| 寫 / 改 skill | `writing-great-skills`（文筆與結構） | 驗證 skill 真的有效（pressure test、baseline）→ `superpowers:writing-skills`；eval / benchmark → ❄️ `skill-creator`（plugin 已停用）。通則：改 skill 前先在沒有它的情況下跑一次同樣的情境，逐字記下模型怎麼繞過或找藉口，改完再跑一次對照；沒做這個對照就不算驗證過 |
+| 寫測試 / TDD | 沒有專用 skill，照通則 | 通則：先看測試紅再實作；一次一個 vertical slice；預期值來自獨立真值，別用同一套算法反推 |
+| 除錯 | 一般 bug 直接修，先重現再改 | flaky、效能回歸、多元件、或第一次就猜錯 → `diagnosing-bugs`（先建紅燈可重現迴圈再查）；連 3 次修不好 → 停下回報 Stan，列出可能錯的假設 |
+| 規劃 / spec | `guided-dev`（產品決策給人、技術決策給 Claude、切可驗證 slice） | 需求還講不清 → `grilling` 的「還沒有計畫」段；步驟寫進 `tasks/todo.md`（CLAUDE.md 第 5 條） |
+| 逼問既有計畫 | `grilling`（一次一題，能查 codebase 就自己查） | 還沒計畫、先抓 who/why/success → `grilling` 的「還沒有計畫」段（interview-me 的規則已併入） |
+| 發想 | `grilling` 的「還沒有計畫」段（一次一題收斂需求） | 已知要做什麼、但有多組可行解要拉開（命名、API 表面、架構取捨）→ `adhd`（5 個框架平行發散，約 10 個 agent、成本 5-10x；題目有唯一標準答案時它會自行 abort） |
+| code review | 內建 `/code-review` | 收到 maintainer 回饋 → `oss-factory` 的「收到 maintainer review」段（receiving-code-review 的規則已併入） |
+| 程式簡化 | 內建 `/simplify` | 無。通則：既有測試要不改就過，要改測試才過＝行為變了 |
+| 效能 | 沒有專用 skill：先量、再改、再量 | 線上單頁深度稽核且有 Chrome DevTools MCP → ❄️ `cloudflare:web-perf`（plugin 已停用）；改壞才變慢 → `diagnosing-bugs` |
+| 前端視覺 / 設計品質 | `impeccable`（硬規則、absolute bans、slop test；`critique`/`audit` 可當設計審查） | 元件庫慣例 → ❄️ `shadcn`；❄️ `frontend-design` 只在 impeccable 沒蓋到的具體情境復原用，冷藏不是判死刑 |
+| API / seam / 模組形狀 | 沒有專用 skill | deep-module / deletion test 方法論 → ❄️ `codebase-design` |
+| 安全 | `security-guidance`（edit/commit 時背景自動跑，不用主動叫） | 對整個 codebase 深度獵洞、找可實際利用的漏洞 → `security-audit`（很吃 token，小改動別用）；安全敏感的實作（auth、秘鑰、驗證碼、LLM 輸出進系統）→ 派 `security-executor` agent；掃描器比對 → ❄️ `static-analysis` |
+| 完工驗證 | 跑指令拿證據；非瑣碎改動派 `verifier` agent | 無 |
+| git | 照 CLAUDE.md 第 5 條（一功能一版號一 commit） | 卡在 merge/rebase 衝突 → `resolving-merge-conflicts`（找每個衝突的原始意圖、逐 hunk 解、跑專案自己的檢查、絕不 `--abort`） |
+| context 工程 | 沒有專用 skill | ❄️ `context-compression` / `context-optimization` |
+| 寫 / 改 skill | `writing-great-skills`（文筆與結構） | eval / benchmark → ❄️ `skill-creator`（plugin 已停用）。通則：改 skill 前先在沒有它的情況下跑一次同樣的情境，逐字記下模型怎麼繞過或找藉口，改完再跑一次對照；沒做這個對照就不算驗證過 |
+
+`superpowers` 與 `agent-skills` 兩個 plugin 2026-11-23 移除，留下的規則已寫進 CLAUDE.md、agent 定義與上面幾列。要裝回：`claude plugin install superpowers@superpowers-marketplace` 或 `agent-skills@addy-agent-skills`；superpowers 裝回後要重套 `~/.claude/overlays/superpowers-stan-overlay.md`，否則 SessionStart 注入會回來。
 
 ## 各管各的（不重疊，直接用）
 

@@ -24,6 +24,9 @@ Keep the scope fixed. Touch only what the task needs. If you notice other bugs, 
 
 When you change code that can be run, built, or type-checked, run a real check that exercises the change before reporting it done. A syntax-only check, or a check command that failed to start, does not count. If no real check can run, say which one you did not run and why instead of reporting the change as done.
 
+<!-- Stan overlay 2026-11-23: full-suite and unchanged-tests rules, adapted from agent-skills code-simplification (MIT). -->
+Before reporting done, run the project's whole test suite, not only the tests you touched, and name every red test you saw, including ones that were already failing before your change. For a refactor, existing tests must pass without edits; if one needs changing to pass, behavior changed, so stop and report it instead of editing the test.
+
 Never babysit a long-running process. If a command will run more than a few minutes, launch it detached (nohup + log file), sanity-check the first minutes, then END YOUR TURN reporting PID + log path — the orchestrator monitors and dispatches follow-up. Never poll in a wait loop: one check, then yield with a status report. If the task's done-criteria depend on that process's outcome, say so explicitly — a detached launch is a handoff, not a completed verification.
 
 Your final message: outcome first (what now works, and the reproduction and checks that show it), then the edge cases you probed and what happened, then decisions you made and why, then follow-ups you noticed but did not do.
