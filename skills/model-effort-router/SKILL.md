@@ -43,7 +43,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 | 30 分鐘以上無人值守、長交付物（稽核、遷移、完整分析文件） | Opus 5.5 @ xhigh + 反早停 prompt | AA-Briefcase high 1682 → xhigh 1758；早停接法見硬規則 8 |
 | 完工複驗（verifier） | Opus 5.5 @ high | Thariq：「Verify and test on high effort」；不升 xhigh，完工檢查不要更慢；Opus 自評偏誤最小；複驗 Fable 5.2 的產出也用 Opus 5.5 |
 | 查找盤點（scout）、規格寫死的機械活（mech-executor） | Sonnet 5.5 @ high | Sonnet medium → high：CursorBench 4.1 +9.5、AA +10.7，是它最大的一跳；成本仍只有 Opus medium 的 49% 到 67% |
-| 大量平行 fan-out：coding | `model: "opus"` + `effort: "high"` | Ultra 只有「全部模型」與「Fable」兩條週額度，沒有 Sonnet 自己的額度可以分散（2026-11-23 改）。Opus high 對 Sonnet xhigh：CursorBench 4.1 54.5 對 49.9（每題 3.87 對 3.13 美元）、AA 51.8 對 49.9（3.46 對 4.09 美元，快 1.5 倍）、FrontierCode 2.0 36.3 對 36.5（2.42 對 3.32 美元） |
+| 大量平行 fan-out：coding | `model: "opus"` + `effort: "high"` | Ultra 只有「全部模型」與「Fable」兩條週額度，沒有 Sonnet 自己的額度可以分散（2026-11-23 改）。Opus high 對 Sonnet xhigh：CursorBench 4.1 54.5 對 49.9（每題 3.87 對 3.13 美元）、AA 51.8 對 49.9（3.46 對 4.09 美元，快 1.5 倍）、FrontierCode 2.0 36.3 對 36.5（2.42 對 3.31 美元） |
 | 大量平行 fan-out：審查 | 派唯讀的 `verifier` 角色，不另外帶 model、effort | 跟完工複驗同一個角色（Opus 5.5 @ high、沒有 Write 與 Edit）；有實證的是獨立 context 的審查者，疊更多審查者沒有 |
 | 大量平行 fan-out：工具自動化（一連串 API、SaaS 工具呼叫） | `model: "sonnet"` + `effort: "xhigh"`，派工單附硬規則 15 的官方段落 | 目前唯一 Sonnet 贏的類型：Zapier AutomationBench Sonnet xhigh 36.8% / 0.45 美元，Opus high 32.0% / 0.65 美元；AA 的 AutomationBench 65.5 對 63.2 |
 | 大量平行 fan-out：抽取、分類、摘要 | `model: "haiku"` + `effort: "high"`，派工單寫明只准碰哪些路徑 | Haiku medium → high：CursorBench 4.1 +3.3、AA +5.3；high 是官方建議的嚴格照指令檔；寫明邊界後越界率 30% → 1.8% |
@@ -60,7 +60,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 - **Fable 5.2**（`claude-fable-5-2`，2026-11-09）：Opus 5.5 @ high 與 xhigh 各試 2 次仍失敗才上，不用先問 Stan（2026-11-23；Fable 有自己的週額度），派之前照硬規則 16。贏 Opus 的項目見決策表；Opus 仍贏或打平的：GDPval-AA 與 AA-Briefcase（專業交付物留 Opus）、ProgramBench 單一長 context（harness 沒給剩餘 context 時）、Terminal-Bench 4.0、讀不受信任內容（它被改送 Opus 4.8 的比例最高）。effort：high 是升級後的預設；長程 agentic coding 用 xhigh；max 不開（FrontierCode 與 ARC-AGI-3（沒給規則、要自己摸出目標的回合制遊戲）在 max 退步，CursorBench 4.1 與 AA 比 high 多 3 到 5 分，但每題成本 2.9 到 4.6 倍）；不開 low。單 agent 跑（小隊只換到速度、token 更多）。主 session 配 Fable advisor（主模型在關鍵決策點去請教的第二個模型）未採用。
 - **Mythos 5.2**（`claude-mythos-5-2`）：跟 Fable 5.2 同一個模型、同價，放寬資安與生科 safeguards（分類器減量但仍在），只開給通過 Anthropic 資安或生科驗證計畫的組織（資安的叫 CVP）。Stan 帳號能用（2026-11-23 實測），額度桶未知。資安分工見硬規則 1；其他用法與防護同 Fable 5.2。
-- **Sonnet 5.5**：範圍清楚、有驗收方法的 coding、修 bug、文件簡報試算表、量大的派工。一律從 high 起，xhigh 只用在工具自動化的 fan-out（其他 coding fan-out 改 Opus high，2026-11-23）；不開 low（會沒驗證就回報完成）；max 不當起點（會自開 review 輪與 subagent，分數有漲但成本 2.4 到 6 倍），終端機為主的 agent 任務在 Opus xhigh 卡關後可以並列建議，由 Stan 決定。週額度緊時，規格清楚的活移到 Sonnet high（每題成本約 Opus medium 的一半到三分之二）。開放式長程判斷、長 context 精準檢索、多階段資安流程用 Opus 5.5。
+- **Sonnet 5.5**：範圍清楚、有驗收方法的 coding、修 bug、文件簡報試算表、量大的派工。一律從 high 起，xhigh 只用在工具自動化任務（fan-out 與升階都一樣；其他情況 high 不夠就換 Opus high，2026-11-23）；不開 low（會沒驗證就回報完成）；max 不當起點（會自開 review 輪與 subagent，分數有漲但成本 2.4 到 6 倍），終端機為主的 agent 任務在 Opus xhigh 卡關後可以並列建議，由 Stan 決定。週額度緊時，規格清楚的活移到 Sonnet high（每題成本約 Opus medium 的一半到三分之二）。開放式長程判斷、長 context 精準檢索、多階段資安流程用 Opus 5.5。
 - **Haiku 5.5**：大量抽取、分類、摘要，輸出可以逐條檢查。effort 用 high；不開 low（長 prompt 會跳過搜尋、提早停）、不開 xhigh/max（xhigh 多輪對話會空回覆，max 跟 Sonnet high 同價又慢；xhigh 的反向數據列觀察項）。prompt 維持 100K 以內。不給要判斷的實作、安全、複驗：輸入幻覺、重要遺漏、謊報完成三項都輸 Opus 5.5 與 Sonnet 5.5。scout 不換 Haiku，因為輸入幻覺正是 scout 最怕的錯。
 - **要不要從 Opus 降 Sonnet**：自己量，`/claude-api build-eval` 建評測、`/claude-api hillclimb` 調 prompt（CC v2.1.259 起）。
 
@@ -72,8 +72,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 Haiku 5.5 @ high（只限抽取、分類、摘要）
   ↓ 要判斷或要改檔
 Sonnet 5.5 @ high
-  ↓ 範圍清楚、只是難 → Sonnet 5.5 @ xhigh（Sonnet 最多到這）
-  ↓ 要判斷、長程、越做越大 → 直接跳下一格
+  ↓ 不過就換 Opus，不升 Sonnet xhigh（Opus medium 跟 Sonnet xhigh 同分又比較便宜，Opus high 更高分；官方：過了 high 改試大一號模型）；只有工具自動化任務先升 Sonnet 5.5 @ xhigh
 Opus 5.5 @ high（預設起點）
   ↓
 Opus 5.5 @ xhigh
@@ -93,10 +92,10 @@ max 不當任何角色或設定的預設（硬規則 3）。
 - 高檔派工單把範圍寫死：檔位越高越容易改到範圍外（Opus 5.5 p176）；跟 Fable 5.2 說「你擁有這個 codebase」也會大改。
 
 **升模型的訊號**：
-- 同模型已到頂仍失敗：Haiku 到 high、Sonnet 到 xhigh、Opus 到 xhigh。
+- 同模型已到頂仍失敗：Haiku 到 high、Sonnet 到 high（工具自動化到 xhigh）、Opus 到 xhigh。
 - 任務性質變了：本來範圍明確，做下去變成要持續判斷、跨很多檔、spec 邊做邊補。Sonnet 換 Opus（官方：開放式長程工作 Opus「clearly stronger」）。
 - 要在很長的 context 裡精準找東西：ProgramBench 1M 視窗 Sonnet 5.5 79.7、Opus 5.5 91.2（p118）。
-- Sonnet 5.5 @ xhigh 還是不過：換 Opus 5.5 @ high，不直接升 Sonnet max（Sonnet max 只在 Opus xhigh 也卡關後、經 Stan 同意）。
+- Sonnet 5.5 @ high 不過：換 Opus 5.5 @ high，不升 Sonnet xhigh 或 max（Sonnet max 只在 Opus xhigh 也卡關後、經 Stan 同意）。
 
 **不要升的情況**（升了沒用，甚至更糟）：
 - **讀錯題、方向錯**：Fable 5.1 從 low 到 max，「選錯解讀」由 25 增加到 47。訊號是成品很完整，但回答了別的問題。改 spec、叫它先訪談你或先複述任務，再用原檔位重跑。
@@ -132,7 +131,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
 - `xhigh` 支援：Haiku 5.5 / Sonnet 5.5 / Opus 5.5 / Fable 5.2 / Mythos 5.2 / Fable 5.1 / Mythos 5.1 / Fable 5 / Opus 5 / Sonnet 5 / Opus 4.8 / 4.7；Opus 4.6 / Sonnet 4.6 只有 low/medium/high/max。
 - **每升一檔多拿到什麼**（品質優先的判斷依據）：
   - Opus 5.5：medium → high 值得（各來源 +2.5 到 +4.9）；high → xhigh 沒人等著就值得（CursorBench 4.1 +2.2、AA +5.6、FrontierCode 2.0 +8.4）；xhigh → max 在知識型長交付物有實證，coding 證據偏弱，兩種都由 Stan 決定。
-  - Sonnet 5.5：medium → high、high → xhigh 都值得（AA +10.7、+8.4），但 xhigh 每題已跟 Opus high 差不多貴，只在工具自動化 fan-out 用；xhigh → max 分數有漲但成本 2.4 到 6 倍、每題 1884 秒，只當終端機任務卡關後的候選。
+  - Sonnet 5.5：medium → high、high → xhigh 都值得（AA +10.7、+8.4），但 xhigh 每題已跟 Opus high 差不多貴，只在工具自動化任務用；xhigh → max 分數有漲但成本 2.4 到 6 倍、每題 1884 秒，只當終端機任務卡關後的候選。
   - Haiku 5.5：medium → high 值得（CursorBench 4.1 +3.3、AA +5.3）；再往上照規則不開（觀察項見 references）。
   - Fable 5.2：medium → high 最值得（AA +5.4、FrontierCode 2.0 +7.4）；high → xhigh 只對長程 agentic coding 值得（FrontierCode 2.0 +4.0、AA +0.4）；xhigh → max 不值得（FrontierCode 2.0 -2.0、ARC-AGI-3 退步）。
 - 要它少想就降檔；在 prompt 叫 Sonnet、Haiku 或 Fable 5.2「少想一點」不可靠（Fable 5.2 medium 以上叫它直接答照樣會想）。

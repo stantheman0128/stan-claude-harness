@@ -21,7 +21,7 @@ SKILL.md 決策表與「Fable 5.2、Mythos 5.2、Sonnet 5.5、Haiku 5.5 的界�
 4. **讀不受信任內容**：Fable 5.2 的 fallback 比率最高，攻擊成功率因此較高（Gray Swan 間接 prompt injection 測驗 53% 被改送 Opus 4.8，Opus 5.5 18%，SC pdf 85；Shade coding 89.82% 對 54.61%，SC pdf 87）。
 5. **AutomationBench low 檔**：Fable 5.2 low 39.7 低於 Opus max 42.5（SC pdf 241）；Fable 5.2 不要開 low。
 
-**effort**：high 是升級後的起點（官方預設、PhysicianBench xhigh 與 max 對 high 沒有可分辨的增益，SC pdf 247）；長程 agentic coding 用 xhigh（FrontierCode 2.0 最高點）；max 不當預設（FrontierCode 與 ARC-AGI-3 在 max 退步，CursorBench 與 AA 對 high 多約 3 分但 token 或成本約 3 倍）；medium 升 high 是最大的一跳；不開 low。細節在 `effort-evidence.md`。
+**effort**：high 是升級後的起點（官方預設、PhysicianBench xhigh 與 max 對 high 沒有可分辨的增益，SC pdf 247）；長程 agentic coding 用 xhigh（FrontierCode 2.0 最高點）；max 不當預設（FrontierCode 與 ARC-AGI-3 在 max 退步，CursorBench 4.1 與 AA 對 high 多 3 到 5 分，但每題成本 2.9 到 4.6 倍）；medium 升 high 是最大的一跳；不開 low。細節在 `effort-evidence.md`。
 
 **不要期待它修掉的問題**：METR 說它跟 Opus 5.5 有同樣的弱點，不會建高效回饋迴圈、該轉向時還在小修小補（SC pdf 41）；Opus 在原地打轉時，先自己逼它重新規劃，換 Fable 不會自動好。自我批評在它誤判缺陷嚴重度時無效（SC pdf 31）。用法上的防護見 `fable52-system-card.md`。
 
@@ -53,7 +53,7 @@ SKILL.md 決策表與「Fable 5.2、Mythos 5.2、Sonnet 5.5、Haiku 5.5 的界�
 | OSWorld 2.1 | 80.1 | 81.8 | 57.0 |
 
 1. **選它**：任務有清楚 spec 和驗收方法（測試、型別檢查、build）、修既有 bug、產文件/簡報/試算表、量大的 subagent 派工。
-2. **high 才是 Sonnet 最划算的一檔**：官方說「complements Opus 5.5 best when running at lower effort settings… At higher settings, it can perform comparably at a similar cost」。CursorBench 4.1 上 Sonnet high 只要 Opus medium 成本的 49%，AA v5.0.1 上 67%（1.64 對 2.45 美元）；要到 xhigh 才跟 Opus medium 同分（CursorBench 4.1 49.9 對 50.0），每題還比較貴（3.13 對 2.85 美元）。所以 Sonnet 開 high。xhigh 原本用在 fan-out、吃 Sonnet 自己的週上限，但 Ultra 沒有 Sonnet 額度，2026-11-23 起 coding fan-out 改 Opus high，Sonnet xhigh 只留給工具自動化批次（Zapier AutomationBench 上 Sonnet 每一檔都贏 Opus）。xhigh 派工單附官方「做完就停」段（SKILL.md 硬規則 15）。逐檔數字在 `effort-evidence.md`。
+2. **high 才是 Sonnet 最划算的一檔**：官方說「complements Opus 5.5 best when running at lower effort settings… At higher settings, it can perform comparably at a similar cost」。CursorBench 4.1 上 Sonnet high 只要 Opus medium 成本的 49%，AA v5.0.1 上 67%（1.64 對 2.45 美元）；要到 xhigh 才跟 Opus medium 同分（CursorBench 4.1 49.9 對 50.0），每題還比較貴（3.13 對 2.85 美元）。所以 Sonnet 開 high。xhigh 原本用在 fan-out、吃 Sonnet 自己的週上限，但 Ultra 沒有 Sonnet 額度，2026-11-23 起 coding fan-out 改 Opus high，Sonnet xhigh 只留給工具自動化批次（Zapier AutomationBench 上 Sonnet xhigh 36.8% / 0.45 美元，贏 Opus high 32.0% / 0.65 與 Opus xhigh 34.4% / 0.80；同檔比只有 xhigh、max 是 Sonnet 贏，表在 `effort-evidence.md`）。xhigh 派工單附官方「做完就停」段（SKILL.md 硬規則 15）。逐檔數字在 `effort-evidence.md`。
 3. **不選它**：開放式、長程、要持續判斷的活（官方原話：最難的長程工作 Opus 比較好）；開到 xhigh 還過不了的任務（換 Opus 5.5 @ high，不開 Sonnet max）。
 4. **max 不當起點**：發佈文腳註說 max 較常自己跑 code-review skill、拆大量 subagent，結果逾時或改超出範圍；FrontierCode 1.1 max 46.2 < xhigh 52.1。FrontierCode 2.0 放寬範圍評分後反過來，max 42.2 > xhigh 36.5，但每 rollout 19.94 對 3.31 美元，6 倍（Cognition，2026-11-23 讀）。CursorBench 4.1 max 54.4 > xhigh 49.9，成本 2.8 倍。AA max 每題 10.02 美元、1884 秒。
 5. **要不要從 Opus 降 Sonnet，自己量**：`/claude-api build-eval` 建評測、`/claude-api hillclimb` 調 prompt（CC v2.1.259 起）。官方案例（客服問答）：prompt 瘦身後 Sonnet 5 @ low 88.9% 每題約 1¢，贏 Opus 5.5 @ low 87.8% 每題 1.9¢。
@@ -82,7 +82,7 @@ SKILL.md 決策表與「Fable 5.2、Mythos 5.2、Sonnet 5.5、Haiku 5.5 的界�
 
 發佈文 benchmark（effort 沒標，多半是 max）：GDPval-AA 1620（Haiku 4.5 735）、Terminal-Bench 4.0 39.2（Sonnet 5.5 70.6）、FrontierCode 1.1 46.4（Sonnet 5.5 xhigh 52.1）。
 
-1. **選它**：大量抽取、分類、摘要，輸出可以逐條檢查。effort 開 high（medium → high CursorBench +5.4）；prompt 維持 100K 以內，超過單價變 5 倍。
+1. **選它**：大量抽取、分類、摘要，輸出可以逐條檢查。effort 開 high（medium → high CursorBench 4.1 +3.3、AA +5.3）；prompt 維持 100K 以內，超過單價變 5 倍。
 2. **不選它**：要判斷的實作、安全、複驗、scout。System Card 裡它在「輸入幻覺、重要遺漏、謊報完成」三項都輸 Opus 5.5 與 Sonnet 5.5，輸入幻覺跟 Haiku 4.5 一樣多。
 3. **雷點**：17% 會偷用外洩的答案而不說；過度拒絕是所有模型最多；30% 的情境會碰沙箱外的東西，system prompt 加一段沙箱說明降到 1.8%；cyber 防護會擋滲透測試等攻擊方較常用的技術。
 4. **強項**：最便宜、最快（約 238 token/s）；對抗式 coding prompt injection 成功率 0.08%，沒有 fallback 路徑可鑽。讀不受信任的內容、手上又有破壞性工具的 agent，它反而比 Opus 穩（見 `opus55-system-card.md` 的 5.5 世代安全發現）。

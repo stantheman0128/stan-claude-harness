@@ -86,6 +86,18 @@ Fable 5.1 的 v5.0.1 拆分（2026-11-14 讀，`fable52-evidence.json`）：Term
 
 粗體是各模型最高分。Opus 5.5、Sonnet 5.5、Haiku 5.5 一路漲到 max；Fable 5.1 與 Fable 5.2 在 xhigh 最高，max 反而退。Fable 5.2 xhigh 是全榜 35 個模型第一。Sonnet xhigh → max 多 5.7 分、成本 6 倍；Opus xhigh → max 多 2.6 分、成本 2.5 倍；Fable 5.2 xhigh → max 少 2.0 分、成本 3.2 倍。Fable 5.2 high（46.2、8.40 美元）對 Opus 最佳 max（47.3、12.82 美元）：少 1.1 分、成本約 2/3。Sonnet xhigh（36.5）跟 Opus high（36.3）同分。表只公布 output token，沒有 input 與總 token。
 
+**Zapier AutomationBench**（工具自動化：一連串 SaaS、API 工具呼叫；https://zapier.com/benchmarks/claude-sonnet5_5-report ，2026-11-23 讀；2026-09-25 跑，AutomationBench 1.0.6，每檔 657 題、上限 50 步；通過率 / 每題美元，依官方價、不含 cache 寫入加價；Opus 列在同一頁的對照表）
+
+| effort | Sonnet 5.5 | Opus 5.5 |
+|---|---|---|
+| low | 18.3% / $0.26 | 23.3% / $0.46 |
+| medium | 23.3% / $0.29 | 28.6% / $0.60 |
+| high | 29.4% / $0.34 | 32.0% / $0.65 |
+| xhigh | 36.8% / $0.45 | 34.4% / $0.80 |
+| max | 44.7% / $1.08 | 40.0% / $1.28 |
+
+同檔比只有 xhigh、max 是 Sonnet 贏；Sonnet xhigh 比 Opus high、xhigh 高分又便宜，但輸 Opus max。這是目前唯一 Sonnet xhigh 勝過 Opus high 的評測，SKILL.md 工具自動化 fan-out 那列的依據。
+
 **每升一檔多拿到什麼**（括號是每題成本增幅；CursorBench 用 4.1，AA 用 v5.0.1；SKILL.md 決策表的依據）
 
 | 模型 | 升檔 | CursorBench | AA | FrontierCode 2.0 | 其他 | 判斷 |
@@ -128,6 +140,7 @@ AA 把 Sonnet 5.5、Opus 5.5、Fable 5.2 的每個變體都標「Default Fallbac
 - VulcanBench（https://vulcanbench.com/benchmarks/swe-v4-haiku55-v324.html ，報告 2026-10-12）：通過題數 low 13、medium 13、high 17、xhigh 22、max 22（共 23 題）；xhigh 每題 0.84 美元、19.0 分鐘，比 high 的 1.25 美元、26.8 分鐘更便宜也更快，是五檔裡最省的一檔；fallback 開著但從沒用到。
 - AA v5.0.1：high 29.9 → xhigh 34.6（+4.8），每題 0.16 → 0.25 美元。
 - FrontierCode 2.0：high 19.3 → xhigh 22.9，每 rollout 0.14 → 0.23 美元。
+- CursorBench 4.1（2026-11-23 讀）：high 37.5 → xhigh 45.2（+7.7），每題 0.31 → 0.56 美元；4.0 時只有 +2.0（42.3 → 44.3）。
 - 要改規則前要先在自己的多輪 fan-out 上測空回覆率；這些都是單輪或 agent 型評測。
 
 ## Claude Code 團隊實測
