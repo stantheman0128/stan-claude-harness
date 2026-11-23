@@ -81,10 +81,13 @@ def rel(path):
 
 
 def file_key(path):
+    # resolve 會打開路徑、跟著 symlink 走；路徑上有 symlink 就只用字面路徑
     try:
-        return os.path.normcase(str(Path(path).resolve()))
-    except (OSError, RuntimeError):
-        return os.path.normcase(str(Path(path).absolute()))
+        if link_on_path(path) is None:
+            return os.path.normcase(str(Path(path).resolve()))
+    except (OSError, RuntimeError, ValueError):
+        pass
+    return os.path.normcase(str(Path(path).absolute()))
 
 
 def as_list(value):
@@ -101,7 +104,41 @@ def is_link(path):
         return True
 
 
+def link_on_path(path):
+    """從 repo 根目錄往下逐層（含自己）用 lstat 檢查 symlink、junction，回傳第一個找到的那層，目標連 stat 都不做。
+    is_file、is_dir、resolve、open 都會跟著 symlink 走，指到 UNC 時 Windows 會連到對方主機，所以先查這個。"""
+    path = Path(path)
+    try:
+        cur, parts = ROOT, path.relative_to(ROOT).parts
+    except ValueError:
+        cur, parts = Path(path.anchor), path.parts[1:]
+    for part in parts:
+        cur = cur / part
+        if part not in (".", "..") and is_link(cur):
+            return cur
+    return None
+
+
+def no_link(path):
+    """路徑上沒有 symlink、junction 才回 True；有就記進 PROBLEMS。"""
+    link = link_on_path(path)
+    if link is None:
+        return True
+    PROBLEMS.append(f"{rel(link)} 是 symlink，沒跟進去掃")
+    return False
+
+
+def plain_file(path):
+    return no_link(path) and path.is_file()
+
+
+def plain_dir(path):
+    return no_link(path) and path.is_dir()
+
+
 def read_text(path):
+    if not no_link(path):
+        return None
     try:
         data = path.read_bytes()
     except OSError as e:
@@ -257,8 +294,7 @@ def risky_text(text, label, out):
 
 def scan_file(path, out):
     """掃一個檔的可疑行。文字檔不看副檔名一律掃；二進位檔只有圖片字型影音可以略過，其餘記成掃不到。"""
-    if is_link(path):
-        PROBLEMS.append(f"{rel(path)} 是 symlink，沒跟進去掃")
+    if not no_link(path):
         return
     key = file_key(path)
     if key in SEEN:
@@ -286,26 +322,34 @@ def scan_file(path, out):
 
 
 def walk_files(folder):
-    """資料夾底下所有檔（含子資料夾）。symlink、junction 不跟進去，讀不到的資料夾也記下來。"""
-    files = []
-
-    def failed(err):
-        PROBLEMS.append(f"讀不到資料夾 {rel(getattr(err, 'filename', None) or folder)}")
-
-    for dirpath, dirnames, filenames in os.walk(folder, onerror=failed):
-        here = Path(dirpath)
-        for name in sorted(dirnames):
-            if is_link(here / name):
-                PROBLEMS.append(f"{rel(here / name)} 是 symlink，沒跟進去掃")
-                dirnames.remove(name)
-        dirnames.sort()
-        files.extend(here / name for name in sorted(filenames))
+    """資料夾底下所有檔（含子資料夾），順序和 os.walk 一樣。os.walk 分辨檔案和資料夾時會跟著 symlink 去 stat，
+    所以改用 scandir 加 follow_symlinks=False；symlink、junction 不分指到哪裡都記進 PROBLEMS，留在清單裡
+    （bin/ 裡的 symlink 照樣列成 PATH 執行檔），讀不到的資料夾也記下來。"""
+    files, stack = [], [folder]
+    while stack:
+        here = stack.pop()
+        try:
+            with os.scandir(here) as it:
+                entries = sorted(it, key=lambda e: e.name)
+        except OSError:
+            PROBLEMS.append(f"讀不到資料夾 {rel(here)}")
+            continue
+        subdirs = []
+        for entry in entries:
+            path = Path(entry.path)
+            if is_link(path):
+                PROBLEMS.append(f"{rel(path)} 是 symlink，沒跟進去掃")
+                files.append(path)
+            elif entry.is_dir(follow_symlinks=False):
+                subdirs.append(path)
+            else:
+                files.append(path)
+        stack.extend(reversed(subdirs))
     return files
 
 
 def scan_folder(folder, out):
-    if is_link(folder):
-        PROBLEMS.append(f"{rel(folder)} 是 symlink，沒跟進去掃")
+    if not no_link(folder):
         return []
     files = walk_files(folder)
     out.append(f"  {rel(folder)}/：{len(files)} 個檔：{clean(', '.join(p.name for p in files[:20]), 200)}")
@@ -443,6 +487,8 @@ def component_path(base, value, where, out):
     if base is None:
         out.append(f"  [略過] {where}：{clean(value, 80)} 在外部 plugin 裡，這個 repo 沒有那些檔")
         return None
+    if not no_link(base):
+        return None
     try:
         base = base.resolve()
         cur = base
@@ -502,7 +548,7 @@ def manifest_report(data, base, where, out):
                     continue
                 if path.suffix.lower() in (".mcpb", ".dxt"):
                     PROBLEMS.append(f"{rel(path)} 是 MCP bundle 壓縮檔，沒辦法掃")
-                elif path.is_file():
+                elif plain_file(path):
                     config_file_report(path, kind, out)
                 else:
                     PROBLEMS.append(f"{where} 的 {key} 不是檔案：{rel(path)}")
@@ -514,7 +560,7 @@ def manifest_report(data, base, where, out):
             monitors_report(item, out)
         elif isinstance(item, str):
             path = component_path(base, item, f"{where} monitors", out)
-            if path is not None and path.is_file():
+            if path is not None and plain_file(path):
                 config_file_report(path, "monitors", out)
         elif item is not None:
             PROBLEMS.append(f"{where} 的 monitors 格式看不懂")
@@ -528,7 +574,7 @@ def manifest_report(data, base, where, out):
             elif isinstance(spec.get("source"), str):
                 path = component_path(base, spec["source"], f"{where} commands.{clean(name, 40)}", out)
                 if path is not None:
-                    scan_folder(path, out) if path.is_dir() else scan_file(path, out)
+                    scan_folder(path, out) if plain_dir(path) else scan_file(path, out)
             else:
                 PROBLEMS.append(f"{where} 的 commands.{clean(name, 40)} 格式看不懂")
     else:
@@ -543,11 +589,11 @@ def manifest_report(data, base, where, out):
                 continue
             if key == "skills" and path == base.resolve():
                 # "." 代表 plugin 根目錄本身：根目錄的 SKILL.md 和每個 <name>/SKILL.md 資料夾
-                if (path / "SKILL.md").is_file():
+                if plain_file(path / "SKILL.md"):
                     scan_file(path / "SKILL.md", out)
-                for child in sorted(p for p in path.iterdir() if p.is_dir() and (p / "SKILL.md").is_file()):
+                for child in sorted(p for p in path.iterdir() if plain_dir(p) and plain_file(p / "SKILL.md")):
                     scan_folder(child, out)
-            elif path.is_dir():
+            elif plain_dir(path):
                 scan_folder(path, out)
             else:
                 scan_file(path, out)
@@ -561,7 +607,7 @@ def plugin_report(proot, label, out):
     PLUGINS_SEEN.add(key)
     out.append(f"plugin {label}")
     manifest = proot / ".claude-plugin" / "plugin.json"
-    if manifest.is_file():
+    if plain_file(manifest):
         out.append(f"  {rel(manifest)}")
         data, err = load_json(manifest)
         if err:
@@ -571,13 +617,13 @@ def plugin_report(proot, label, out):
     for name, kind in (("hooks/hooks.json", "hooks"), (".mcp.json", "mcp"), (".lsp.json", "lsp"),
                        ("monitors/monitors.json", "monitors")):
         path = proot / name
-        if path.is_file() and file_key(path) not in SEEN:
+        if plain_file(path) and file_key(path) not in SEEN:
             config_file_report(path, kind, out)
-    if (proot / "SKILL.md").is_file():
+    if plain_file(proot / "SKILL.md"):
         scan_file(proot / "SKILL.md", out)
     for sub in PLUGIN_DIRS:
         folder = proot / sub
-        if not (folder.is_dir() or is_link(folder)):
+        if not plain_dir(folder):
             continue
         files = scan_folder(folder, out)
         if sub == "bin":
@@ -607,7 +653,7 @@ def marketplace_report(root, out):
             if plugin_root and src not in (".", "") and "/" not in src:
                 value = f"{plugin_root.rstrip('/')}/{src}"  # pluginRoot 底下的裸名稱
             path = component_path(root, value, f"{where} source", out)
-            if path is not None and path.is_dir():
+            if path is not None and plain_dir(path):
                 base = path
                 plugin_report(path, f"{rel(path)}（{where}）", out)
         else:
@@ -643,19 +689,19 @@ def main():
 
     for name in ("settings.json", "settings.local.json"):
         path = claude_dir / name
-        if path.is_file():
+        if plain_file(path):
             out.append(f".claude/{name}")
             settings_report(path, out)
 
     mcp = root / ".mcp.json"
-    if mcp.is_file():
+    if plain_file(mcp):
         out.append(".mcp.json")
         mcp_report(mcp, out)
 
     out.append("指令檔")
     for name in INSTRUCTION_FILES:
         path = root / name
-        if path.is_file():
+        if plain_file(path):
             SEEN.add(file_key(path))
             text = read_text(path) or ""
             out.append(f"  {name}：{len(text.splitlines())} 行")
@@ -664,7 +710,7 @@ def main():
 
     for sub in CLAUDE_DIRS:
         folder = claude_dir / sub
-        if folder.is_dir() or is_link(folder):
+        if plain_dir(folder):
             scan_folder(folder, out)
 
     nested = find_nested_instructions(root)
@@ -678,11 +724,11 @@ def main():
         follow_imports(path, out)
 
     plugin_dir = root / ".claude-plugin"
-    if plugin_dir.is_dir():
+    if plain_dir(plugin_dir):
         listed = ", ".join(sorted(p.name for p in plugin_dir.iterdir()))
         out.append(f"  .claude-plugin/：{clean(listed, 160)}（這個 repo 是 plugin 或 marketplace）")
         plugin_report(root, "（repo 根目錄）", out)
-        if (plugin_dir / "marketplace.json").is_file():
+        if plain_file(plugin_dir / "marketplace.json"):
             marketplace_report(root, out)
 
     if STATS["over"]:
