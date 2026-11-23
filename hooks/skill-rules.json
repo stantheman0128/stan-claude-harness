@@ -26,29 +26,16 @@
       "priority": "high",
       "enforce": "soft",
       "keywords": [
-        "做一個",
         "幫我做",
-        "開發",
-        "實作",
-        "做個",
-        "打造",
-        "建一個",
         "新功能",
         "new feature",
         "build a feature",
         "start a project",
         "新專案",
-        "從零做",
-        "寫一個",
-        "加功能",
-        "做功能",
-        "整合",
-        "串接"
+        "從零做"
       ],
       "intentPatterns": [
-        "(做|開發|建|實作|打造|生)\\s*(一)?\\s*個?.{0,10}(功能|app|應用|專案|系統|網站|工具|頁面|程式)",
-        "build (a|an|the)\\s+\\w+",
-        "implement (a|the)\\s"
+        "(做|開發|建|實作|打造|生)\\s*(一)?\\s*個?.{0,10}(功能|app|應用|專案|系統|網站|工具|頁面|程式)"
       ],
       "excludePatterns": [
         "bug",
@@ -67,11 +54,8 @@
       "priority": "high",
       "enforce": "soft",
       "keywords": [
-        "spec",
-        "規格",
         "prd",
         "需求文件",
-        "sdd",
         "規格驅動",
         "spec-driven"
       ],
@@ -91,14 +75,9 @@
       "priority": "high",
       "enforce": "soft",
       "keywords": [
-        "規劃",
-        "計畫",
         "拆任務",
-        "拆解",
-        "步驟",
         "roadmap",
         "task breakdown",
-        "分解成",
         "plan it"
       ],
       "intentPatterns": [
@@ -116,19 +95,14 @@
       "keywords": [
         "flaky",
         "間歇",
-        "偶爾",
         "時好時壞",
-        "有時候會",
         "intermittent",
-        "regression",
-        "回歸",
         "修不好",
         "又壞了",
         "還是壞",
         "still broken",
         "race condition",
-        "找不到原因",
-        "怎麼會這樣"
+        "找不到原因"
       ],
       "intentPatterns": [
         "(修|改)了.{0,6}(還是|又).{0,4}(壞|錯|失敗)",
@@ -145,14 +119,12 @@
       "keywords": [
         "重構",
         "refactor",
-        "簡化",
-        "clean up",
         "整理程式",
-        "太亂",
-        "太長",
         "tidy up"
       ],
-      "intentPatterns": [],
+      "intentPatterns": [
+        "(簡化|整理|精簡).{0,4}(程式|code|函式|這段)"
+      ],
       "excludePatterns": [],
       "why": "不改行為降複雜度 → 內建 /simplify；既有測試要不改就過，要改測試才過＝行為變了"
     },
@@ -163,13 +135,13 @@
       "priority": "medium",
       "keywords": [
         "merge conflict",
-        "衝突",
-        "rebase",
         "撞衝突",
         "衝突解不開",
         "conflict marker"
       ],
-      "intentPatterns": [],
+      "intentPatterns": [
+        "(merge|rebase|合併|cherry-pick).{0,8}衝突"
+      ],
       "excludePatterns": [],
       "why": "卡在 merge/rebase 衝突 → resolving-merge-conflicts（找原始意圖、逐 hunk 解、跑專案檢查、絕不 --abort）；commit 與版本號照 CLAUDE.md 第 5 條"
     },
@@ -187,7 +159,6 @@
         "succession",
         "怕忘記怎麼運作",
         "交接這個專案",
-        "onboard",
         "接手這個 repo",
         "把知識寫下來"
       ],
@@ -205,17 +176,12 @@
       "priority": "medium",
       "enforce": "soft",
       "keywords": [
-        "codex",
         "agents.md",
         "交給 codex",
         "派給 codex",
         "叫 codex",
         "丟給 codex",
-        "gpt-5",
-        "openai 那邊",
-        "hand to codex",
-        "另一個 ai",
-        "兩邊一起"
+        "hand to codex"
       ],
       "intentPatterns": [
         "(交|派|丟|給|叫).{0,6}codex",
@@ -257,12 +223,10 @@
         "貼文",
         "threads",
         "email",
-        "公開",
         "定稿",
         "po 文",
         "發文",
         "投稿",
-        "作業",
         "報告定稿",
         "寄出",
         "上線文案"
@@ -281,17 +245,9 @@
       ],
       "priority": "high",
       "keywords": [
-        "ui",
-        "排版",
-        "前端",
-        "畫面",
         "redesign",
         "重新設計",
         "美化",
-        "版面",
-        "樣式",
-        "好看",
-        "視覺",
         "畫面設計",
         "介面好醜"
       ],
@@ -314,15 +270,12 @@
       "priority": "medium",
       "keywords": [
         "安全稽核",
-        "漏洞",
-        "audit",
         "滲透",
         "pentest",
         "security review",
-        "資安",
-        "vulnerab*",
         "找洞",
-        "安全檢查"
+        "安全檢查",
+        "security audit"
       ],
       "intentPatterns": [],
       "excludePatterns": [
@@ -338,17 +291,10 @@
       ],
       "priority": "medium",
       "keywords": [
-        "pdf*",
-        "ocr",
-        "掃描",
         "轉成 markdown",
         "抽公式",
         "抽表格",
-        "掃描檔",
-        "辨識文字",
-        "轉文字",
-        "這份文件",
-        "這份論文"
+        "掃描檔"
       ],
       "intentPatterns": [
         "pdf.{0,6}(轉|抽|markdown|文字)"
@@ -365,13 +311,9 @@
       "keywords": [
         "逐字稿",
         "轉錄",
-        "字幕",
         "transcribe",
-        "這支影片",
-        "看片",
         "摘要影片",
-        "影片摘要",
-        "youtube"
+        "影片摘要"
       ],
       "intentPatterns": [
         "影片.{0,4}(轉|逐字|摘要|文字)"
@@ -553,5 +495,6 @@
       ],
       "note": "已冷藏（2026-07-10 零用量）：Chrome 擴充功能（MV3）工作出現時提醒復原（enabledPlugins 改回 true 即可）"
     }
-  ]
+  ],
+  "_tighten_note": "2026-11-23 收緊：拿掉日常對話常見、09-15 起建議後幾乎沒載入的寬關鍵字（ui、pdf、audit、codex、衝突、步驟、開發這類），保留意圖明確的詞與 intentPatterns。原檔備份在當次 session scratchpad，git 歷史也有。"
 }

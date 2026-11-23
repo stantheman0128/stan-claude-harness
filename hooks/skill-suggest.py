@@ -9,6 +9,18 @@ import sys, os, json, re
 HOOK_DIR = os.path.dirname(os.path.abspath(__file__))
 RULES = os.path.join(HOOK_DIR, "skill-rules.json")
 STATE_DIR = os.path.join(os.path.dirname(HOOK_DIR), "skill-usage")
+AUTO_BLOCKS = re.compile(
+    r"<system-reminder>.*?</system-reminder>"
+    r"|<pasted_content\b[^>]*>.*?</pasted_content\b[^>]*>",
+    re.S)
+AUTO_PREFIXES = (
+    "You monitor an AI coding agent",
+    "<task-notification>",
+    "<cross-session-message",
+    "<side-sessions-event",
+    "<ci-monitor-event",
+    "<agent-message",
+)
 
 
 def emit(ctx):
@@ -58,6 +70,14 @@ def main():
     #   桌面 app 的 subagent 交回：開頭幾行有 [Subagent hand-back]，前面可能多包一層 <agent-message>（依 transcript）
     # Skill 工具載入的 skill 內文不會觸發 UserPromptSubmit，不用處理。
     if prompt.startswith("<task-notification>") or "[Subagent hand-back]" in prompt[:300]:
+        return
+    # 2026-11-23 量測：有片段可查的 377 筆建議裡，只有 86 筆出自 Stan 自己打的字。
+    # 其餘來自 app 注入的 system-reminder（常黏在使用者訊息前面）、貼上的長文、
+    # 監看別的 agent 的自動 prompt、跨 session 訊息與 CI 事件。
+    # 做法：先拿掉 system-reminder 與 pasted_content 區塊，只比對剩下 Stan 自己的字；
+    # 剩下的開頭是自動訊息就整則跳過。
+    prompt = AUTO_BLOCKS.sub(" ", prompt).strip()
+    if not prompt or prompt.startswith(AUTO_PREFIXES) or "[Subagent hand-back]" in prompt[:300]:
         return
     with open(RULES, encoding="utf-8") as f:
         cfg = json.load(f)
