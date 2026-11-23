@@ -94,10 +94,9 @@ function verifierPrompt(t, report, context) {
 Task: ${t.task}
 Check to run: ${t.check}
 
-The worker reported:
-${clip(JSON.stringify(report, null, 1), 4000)}
+Files the worker says it changed: ${report && Array.isArray(report.changed) && report.changed.length ? report.changed.join(', ') : 'none listed'}
 
-Run the check yourself; do not rely on the worker's output. pass=true only if the check really passes and the task as written is done. If it fails, put the failing command and output lines in evidence. If you could not run or evaluate the check at all (broken environment, missing input, or it needs more than 10 minutes), set inconclusive=true and pass=false, and say in evidence what is missing and what would let a rerun decide. A check that runs and fails is not inconclusive.`
+Run the check yourself. pass=true only if the check really passes and the task as written is done. If it fails, put the failing command and output lines in evidence. If you could not run or evaluate the check at all (broken environment, missing input, or it needs more than 10 minutes), set inconclusive=true and pass=false, and say in evidence what is missing and what would let a rerun decide. A check that runs and fails is not inconclusive.`
 }
 
 async function runTask(t, args) {
