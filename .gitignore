@@ -91,3 +91,17 @@ id_ed25519*
 # Quota Pacer runtime (2026-07-18)
 /usage-state.json
 /quota-pacer/
+
+# Local state, uploads and backups (2026-11-23)
+/.claude.json
+/.i-have-adhd-always
+*.bak
+*.bak-*
+/skill-selfimprove-backups/
+/state/
+/uploads/
+/audits/
+/dev-mods/
+/scheduled-tasks/
+# Shims written by resource-sentinel's installer; the real hooks live in that repo
+hooks/sentinel-*.py
