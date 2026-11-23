@@ -38,7 +38,7 @@ Anthropic 沒用文字公布 Sonnet 5.5、Haiku 5.5 的逐檔分數，跨模型�
 
 網址：https://artificialanalysis.ai/models/claude-haiku-5-5 、/claude-sonnet-5-5 、/claude-opus-5-5 、/claude-fable-5-2（2026-11-23 讀）。各檔位的獨立網址（例如 `-high`）現在 308 轉回家族頁，數值取自家族頁 initialModels 陣列裡帶檔位後綴的 slug。Sonnet low 到 high、Haiku low 到 xhigh 只出現在自家家族頁，沒有第二頁可交叉核對。Opus 與 Fable 5.2 的分數與成本跟 11-14 讀數逐位相同，只有秒數小幅變動。
 
-**AA 逐項拆分**（同上來源，2026-11-23 從家族頁抽出；Briefcase 是 Elo，GDPval 已不在 v5 總分裡但頁面仍列；HLE 是 v5 用的 HLE Diamond；幻覺率是 AA-Omniscience hallucination rate，越低越好，量的是答不出來時硬掰的比例，跟 System Card 的「輸入幻覺」不是同一件事；FC-AA 是 AA 自己跑的 FrontierCode 2.0）
+**AA 逐項拆分**（同上來源，2026-11-23 從家族頁抽出；Briefcase 是 Elo（拿成品兩兩比較算出的相對分），GDPval 已不在 v5 總分裡但頁面仍列；HLE 是 v5 用的 HLE Diamond；幻覺率是 AA-Omniscience hallucination rate，越低越好，量的是答不出來時硬掰的比例，跟 System Card 的「輸入幻覺」不是同一件事；FC-AA 是 AA 自己跑的 FrontierCode 2.0）
 
 | 變體 | 總分 | Terminal-Bench 4.0 | Briefcase | GDPval | AutomationBench | HLE Diamond | 幻覺率 | FC-AA 2.0 |
 |---|---|---|---|---|---|---|---|---|
@@ -68,7 +68,7 @@ Fable 5.1 的 v5.0.1 拆分（2026-11-14 讀，`fable52-evidence.json`）：Term
 從這兩張 AA 表讀出的五點（2026-11-23 寫進 SKILL.md）：
 1. Sonnet xhigh 每題仍比 Opus high 貴（4.09 對 3.46 美元）、分數略低（49.9 對 51.8）、慢 1.5 倍；fan-out 選 Sonnet 的理由仍只有分散週額度。
 2. Opus xhigh → max 的 Terminal-Bench 仍是 0 增益（59.6 對 59.6），漲分在 Briefcase +39、GDPval +30、HLE Diamond +3.9、AutomationBench +4.6，幻覺率 0.65 → 0.50；每題成本 1.66 倍。
-3. Sonnet max 的 Terminal-Bench 63.6 仍是 Anthropic 全系列最高（Fable 5.2 最高是 xhigh 61.6）；AutomationBench 71.8 已被 Fable 5.2 high 以上超過。代價從 10-18 的每題 5.46 美元、905 秒變成 10.02 美元、1884 秒。
+3. Sonnet max 的 Terminal-Bench 63.6 仍是 Anthropic 全系列最高（Fable 5.2 最高是 xhigh 61.6）；AutomationBench 71.8 已被 Fable 5.2 xhigh 以上超過（xhigh 74.2、max 76.4；high 71.4 還差一點）。代價從 10-18 的每題 5.46 美元、905 秒變成 10.02 美元、1884 秒。
 4. Fable 5.2 high（61.8、每題 9.08 美元）已高過 Opus max（59.1、10.04 美元）；同檔比，Briefcase 與 GDPval 要到 xhigh、max 才是 Opus 高；low 與 medium 是 Fable 5.2 持平或較高，high 互有輸贏（Briefcase 1677 對 1682、GDPval 1718 對 1709）。
 5. Fable 5.2 medium → high 是它最大的一跳（+5.4，成本 2.4 倍）；high → xhigh 只 +0.4；xhigh → max 的 Terminal-Bench 從 61.6 退到 59.6。
 
@@ -98,7 +98,7 @@ Fable 5.1 的 v5.0.1 拆分（2026-11-14 讀，`fable52-evidence.json`）：Term
 | Haiku 5.5 | high → xhigh | +2.0 | +4.8（+57%） | +3.6 | 多輪對話會空回覆；VulcanBench 反而更好（見觀察項） | 照規則不開，列觀察項 |
 | Fable 5.2 | medium → high | +2.1（+108%） | +5.4（+139%） | +7.4 | 官方：增益最大的一步 | 值得，升級後的起點 |
 | Fable 5.2 | high → xhigh | -0.6（+60%） | +0.4（+63%） | +4.0（+111%） | FrontierCode 的最高點 | 長程 agentic coding 值得 |
-| Fable 5.2 | xhigh → max | +3.7（+112%） | +2.3（+79%） | -2.0（+215%） | ARC-AGI-3 high 79.26 → max 65.66（SC pdf 243）；Terminal-Bench（AA）61.6 → 59.6 | 不當預設 |
+| Fable 5.2 | xhigh → max | +3.7（+112%） | +2.3（+79%） | -2.0（+215%） | ARC-AGI-3（沒給規則的回合制解謎遊戲）high 79.26 → max 65.66（SC pdf 243）；Terminal-Bench（AA）61.6 → 59.6 | 不當預設 |
 
 Fable 5.1 的升檔數字留在 10-18 版（high → xhigh CursorBench +2.4；xhigh → max +0.2），只當 legacy 參考。
 
@@ -117,7 +117,7 @@ AA 把 Sonnet 5.5、Opus 5.5、Fable 5.2 的每個變體都標「Default Fallbac
 
 - **VulcanBench Frontier v4（舊名 SWE v4），Opus 5.5**（https://vulcanbench.com/benchmarks/swe-v4-opus55-v315.html#fallback ，2026-11-23 讀；報告 2026-09-26，Claude Code 2.1.280、Max 訂閱，每格 23 次）：回覆由 Opus 4.8 產生的比例，low 0.0%、medium 6.4%、high 20.9%、xhigh 32.4%、max 47.8%（有 Opus 4.8 回合的 run：0、3、7、8、12 次）。頁面說 max 幾乎是兩個模型各半，高檔分數有一部分其實在量 Opus 4.8。high 有一次被分類器停下、留下空 patch 算 0 分。
 - **VulcanBench，Fable 5.2**（https://vulcanbench.com/benchmarks/swe-v4-fable52-v330.html ，2026-11-23 讀；報告 2026-11-13，Claude Code 2.1.321）：fallback 開著但從沒接手，115 次全由 `claude-fable-5-2` 回答。這組是良性 coding 題。
-- **Fable 5.2 System Card 的 fallback 比率**（偏攻擊與資安情境，比 Opus 5.5、Fable 5.1 高很多）：Gray Swan IPI 被改送 Opus 4.8 的比例 Fable 5.2 53%、Fable 5.1 23%、Opus 5.5 18%（SC pdf 85）；Shade coding 攻擊 Fable 5.2 99.5%、Opus 5.5 64%、Fable 5.1 60%（SC pdf 87）；Terminal-Bench 4.0 這種良性科學工程題，Fable 5.2 與 Opus 5.5 都是 2.5% 的請求被標記、影響 10% 的 trial（SC pdf 211）。
+- **Fable 5.2 System Card 的 fallback 比率**（偏攻擊與資安情境，比 Opus 5.5、Fable 5.1 高很多）：Gray Swan 間接 prompt injection 測驗（IPI）被改送 Opus 4.8 的比例 Fable 5.2 53%、Fable 5.1 23%、Opus 5.5 18%（SC pdf 85）；Shade coding 攻擊 Fable 5.2 99.5%、Opus 5.5 64%、Fable 5.1 60%（SC pdf 87）；Terminal-Bench 4.0 這種良性科學工程題，Fable 5.2 與 Opus 5.5 都是 2.5% 的請求被標記、影響 10% 的 trial（SC pdf 211）。
 - Claude Code 自動 fallback 時，被標記那則請求的 effort 會帶到 fallback 模型（https://code.claude.com/docs/en/model-config ，2026-11-14 讀）。
 
 ## 觀察項：Haiku 5.5 xhigh

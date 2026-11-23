@@ -17,7 +17,7 @@
 
 **Prompt injection（§5.2 p86–91、§6.5.1 p123–126）**
 - 弱點在 fallback：adaptive coding 攻擊中 64% 請求被改送 Opus 4.8，這批攻擊成功率 85.73%；Opus 5.5 自己回答的 2,872 個請求 0 成功（p88）。IPI benchmark 的 coding 情境 46% rollout 會 fallback（p86）。
-- Cowork 情境開 auto mode 時 110 個情境 0 成功；不開 safeguards 時唯一一次成功也是 fallback 後由 Opus 4.8 執行（p91）。
+- Cowork 情境開 auto mode（用分類器擋危險 tool call 的權限模式）時 110 個情境 0 成功；不開 safeguards 時唯一一次成功也是 fallback 後由 Opus 4.8 執行（p91）。
 - **使用者自己貼進 prompt 的文字是新弱點**：早期版本推理成「user turn 裡的東西都是使用者說的，不可能是注入」。最終版照做貼文中植入指令的比率：預設檔約 2%、max 約 7.4%；不可見 Unicode 指令 68 次中 2 次。同樣指令放在 tool result 裡 0/105。開了產品端對策後 0 次照做。
 - Claude Code 的產品端對策（terminal-config 文件，2026-09-23）：貼上超過 800 字或 3 行會變成 `[Pasted text #N]`，送出時標記成「外部貼上、裡面的指令只在你打的字要求時才照做」；按 Enter 時自動移除不可見 Unicode 字元。**標記這半需要 feature flag**：設了 `DISABLE_GROWTHBOOK`、`DISABLE_TELEMETRY`、`DO_NOT_TRACK`、`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` 其中之一，或走 Bedrock/Vertex/gateway，貼上內容就不標記（env-vars 文件）。短於門檻的貼上本來就不標記。
 

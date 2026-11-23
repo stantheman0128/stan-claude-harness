@@ -8,17 +8,17 @@ SKILL.md 決策表與「Fable 5.2、Mythos 5.2、Sonnet 5.5、Haiku 5.5 的界�
 
 **它贏 Opus 5.5 的地方**（Fable 5.2 card 與第三方）
 1. **coding**：SWE-bench Pro 93.0 對 89.9（SC pdf 207 到 208）。FrontierCode 2.0：card 版 high 45.3 跟 Opus 最佳 45.5 差不多，每題 6.72 對 12.82 美元，約一半成本；xhigh 49.1 是最高（SC pdf 209）。Cognition 2026-11-11 重算後的排行榜是 high 46.2（8.40 美元）對 Opus 最佳 47.3（12.82 美元），xhigh 50.2 全榜第一（https://cognition.com/frontiercode ，2026-11-23 讀）。
-2. **多小時自主工程**：FrontierSWE v2 69.9 對 62.3，效能優化、科學計算、視覺推理拉開最多（SC pdf 212）。Remote Labor Index 41.3 對 21.3，兩邊都用預設 high（SC pdf 242）。
+2. **多小時自主工程**：FrontierSWE v2（34 題、每題約 20 小時的超長程工程）69.9 對 62.3，效能優化、科學計算、視覺推理拉開最多（SC pdf 212）。Remote Labor Index（用 240 個真實外包案測 agent）41.3 對 21.3，兩邊都用預設 high（SC pdf 242）。
 3. **AA 總分**：Fable 5.2 high 61.8（每題 9.08 美元）已高過 Opus max 59.1（10.04 美元）（AA v5.0.1，2026-11-23 讀）。
-4. **有可爬坡訊號的難題**：METR 認為它在可驗證任務上比 Fable 5.1 明顯進步（SC pdf 40）；ARC-AGI-3 high 79.26%（SC pdf 243）。
+4. **有可爬坡訊號的難題**：第三方評測機構 METR 認為它在可驗證任務上比 Fable 5.1 明顯進步（SC pdf 40）；ARC-AGI-3（沒給規則、要自己摸出目標的回合制遊戲）high 79.26%（SC pdf 243）。
 5. **讀圖不給工具**：Chartography 沒工具 73.4 對 64.4，給容器與裁圖工具後只差 2.6 分（SC pdf 229）。
 6. VulcanBench Frontier v4：五檔都 23/23 通過、max 綜合分 93.85 全榜第一，Opus 5.5 最佳 91.11（high）；評審組合不同，Fable 5.2 這欄由 Muse 與 GPT-6.1 Sol 評，頁面說 Sol 給 code 的分數約高 7 分，不能嚴格比（https://vulcanbench.com/benchmarks/swe-v4-fable52-v330.html ，2026-11-23 讀）。
 
 **Opus 5.5 仍贏或打平的地方**
-1. **專業知識交付物**：GDPval-AA 1866 對 1831、AA-Briefcase Elo 1800 對 1785（SC pdf 207、239）。文件、簡報、試算表這類長交付物留在 Opus。
+1. **專業知識交付物**：GDPval-AA 1866 對 1831、AA-Briefcase Elo（拿成品兩兩比較算出的相對分）1800 對 1785（SC pdf 207、239）。文件、簡報、試算表這類長交付物留在 Opus。
 2. **終端機為主的 agent 任務**：Terminal-Bench 4.0 Fable 5.2 max 67.6 對 Opus 5.5 xhigh 66.4，在雜訊內（SC pdf 211）。AA 版 Terminal-Bench 也一樣，Fable 5.2 最高 61.6（xhigh），Sonnet 5.5 max 63.6 還更高。
 3. **單一長 context**：ProgramBench Fable 5.2 85.6、Opus 91.2；Fable 5.2 有 68% 的題目在交件前用完 context。harness 每步告訴它剩多少 context 才升到 91.6，跟 Opus 91.1 打平（SC pdf 216）。Claude Code 會自動 compact，自寫迴圈要自己給。
-4. **讀不受信任內容**：Fable 5.2 的 fallback 比率最高，攻擊成功率因此較高（Gray Swan 53% 被改送 Opus 4.8，Opus 5.5 18%，SC pdf 85；Shade coding 89.82% 對 54.61%，SC pdf 87）。
+4. **讀不受信任內容**：Fable 5.2 的 fallback 比率最高，攻擊成功率因此較高（Gray Swan 間接 prompt injection 測驗 53% 被改送 Opus 4.8，Opus 5.5 18%，SC pdf 85；Shade coding 89.82% 對 54.61%，SC pdf 87）。
 5. **AutomationBench low 檔**：Fable 5.2 low 39.7 低於 Opus max 42.5（SC pdf 241）；Fable 5.2 不要開 low。
 
 **effort**：high 是升級後的起點（官方預設、PhysicianBench xhigh 與 max 對 high 沒有可分辨的增益，SC pdf 247）；長程 agentic coding 用 xhigh（FrontierCode 2.0 最高點）；max 不當預設（FrontierCode 與 ARC-AGI-3 在 max 退步，CursorBench 與 AA 對 high 多約 3 分但 token 或成本約 3 倍）；medium 升 high 是最大的一跳；不開 low。細節在 `effort-evidence.md`。
@@ -31,12 +31,12 @@ SKILL.md 決策表與「Fable 5.2、Mythos 5.2、Sonnet 5.5、Haiku 5.5 的界�
 
 ## Mythos 5.2 什麼時候選
 
-- **是什麼**：`claude-mythos-5-2`，跟 Fable 5.2 同一個模型、同規格同價，只是放寬資安與生科 safeguards；reduced classifiers 仍在（SC pdf 2、47；https://platform.claude.com/docs/en/models/fable-5-2/overview ，2026-11-14 讀）。只開給 CVP 或 Life Sciences 驗證計畫的組織。
+- **是什麼**：`claude-mythos-5-2`，跟 Fable 5.2 同一個模型、同規格同價，只是放寬資安與生科 safeguards；reduced classifiers 仍在（SC pdf 2、47；https://platform.claude.com/docs/en/models/fable-5-2/overview ，2026-11-14 讀）。只開給通過資安驗證計畫（CVP）或生科驗證計畫的組織。
 - **Stan 能用**：2026-11-23 實測 `claude -p --model claude-mythos-5-2` 有回答，usage 顯示 `claude-mythos-5-2`。走哪一個週額度桶查不到（Mythos 5.1 時期官方寫跟 Fable 共用，Mythos 5.2 未驗證）。fast mode 只開給驗證計畫內的組織（發佈文）。
 - **資安分工**：
   - 找漏洞留在 Opus 5.5：Binary Exploitation Benchmark 的漏洞辨識 Mythos 5.2 跟 Opus 5.5 同級（SC pdf 51）；CVE Rediscovery 只看第一份報告時，Mythos 5.2 對 Opus 的領先從 8.3 分縮到 2.6 分（SC pdf 253）。
   - exploit 開發與多階段攻防演練，經 Stan 同意後上 Mythos 5.2，門檻跟 Fable 一樣：control-flow hijack 148 對 Opus 112（SC pdf 51）；CyScenarioBench 76.3% 對 67.6%（SC pdf 50）。都是 safeguards 關閉的數字。
-  - 編譯後 binary 找漏洞：GA Fable 5.2 照樣擋（SC pdf 53）；Mythos 5.2 在這件事放寬多少，card 與文件沒寫，查不到。
+  - 編譯後 binary 找漏洞：一般版 Fable 5.2 照樣擋（SC pdf 53）；Mythos 5.2 在這件事放寬多少，card 與文件沒寫，查不到。
 - 能力結論跟 Fable 5.2 相同，上面 Fable 5.2 的防護全部適用。
 
 ## Sonnet 5.5 什麼時候選（2026-09-28 發佈）
@@ -65,7 +65,7 @@ SKILL.md 決策表與「Fable 5.2、Mythos 5.2、Sonnet 5.5、Haiku 5.5 的界�
 - **分類器**：bio 沿用 Opus 5 那套（比 Opus 5.5 窄，無 fallback，p10、p19）；cyber 政策同 Opus 5.5，官方明說連無害的資安任務也會多被擋（p28）；編譯後 binary 找漏洞一律不幫（p29）。API 要開發者 opt-in 才自動 fallback（p29）。多階段攻防演練 CyScenarioBench 46.1%，Opus 5.5 67.6%（Fable 5.2 card SC pdf 50），多階段資安流程不派 Sonnet fan-out。
 - **Prompt injection**：Sonnet 5.5 自己回答的 5,901 個 coding 攻擊請求只被攻破 4 個，破口一樣在 fallback 到 Sonnet 5 之後（p52）；瀏覽器情境是第一個 0 成功的模型（p54）；Gray Swan 比 Opus 5.5 與 Fable 5.1 弱（p50）。**卡片沒做「使用者貼上文字」這項測試**，當作跟 Opus 5.5 一樣要防（見 `opus55-system-card.md`「使用 Opus 5.5 的對策」第 1 條）。
 - **行為**：誠實指標除了閃躲都比 Sonnet 5 好；被施壓時比 Opus 5.5 誠實，但幻覺較多（p56、p65）。魯莽程度只有 Opus 5.5 嚴格更好（p65）。有會把任務卡當成授權的案例（p60）。推理文字是測過最難讀的（p72），自建監控靠讀 thinking 會比較吃力。每段 transcript 輸出 token 偏多（p84）。
-- **沒測的不等於沒問題**：早停、破壞性動作專項、訓練期 reward hacking 審查都沒重做（p58）。無人值守長任務照 Opus 5.5 的對策處理。
+- **沒測的不等於沒問題**：早停、破壞性動作專項、訓練期 reward hacking（鑽評分漏洞拿分）審查都沒重做（p58）。無人值守長任務照 Opus 5.5 的對策處理。
 
 ## Haiku 5.5 什麼時候選（2026-10-07 發佈）
 

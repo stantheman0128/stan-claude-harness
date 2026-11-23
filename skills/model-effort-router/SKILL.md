@@ -15,7 +15,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 | 檔案 | 內容 | 什麼時候讀 |
 |---|---|---|
-| `references/effort-evidence.md` | 各模型五檔的 CursorBench、AA、FrontierCode 2.0 表與升檔增益、fallback 比率、觀察項 | 要不要升檔，或被問為什麼是這一檔 |
+| `references/effort-evidence.md` | 各模型五檔的 CursorBench、Artificial Analysis（下稱 AA）、FrontierCode 2.0 表與升檔增益、fallback 比率、觀察項 | 要不要升檔，或被問為什麼是這一檔 |
 | `references/model-picks.md` | Fable 5.2 什麼時候選（贏與輸的清單）、Mythos 5.2 資安分工、Sonnet 5.5 與 Haiku 5.5 什麼時候選 | 在模型之間猶豫，或要引數字 |
 | `references/models-and-cc.md` | 規格、legacy、換模型丟不丟推理、CC 現況（alias、預設、effort、fast、Stan 現況）、advisor 與未採用提案、prompt 技巧 | 寫 API 整合、設定 CC、寫 prompt |
 | `references/fable52-system-card.md` | Fable 5.2 / Mythos 5.2 System Card 摘要、行為風險、對策、官方段落原文 | 派工給 Fable 5.2 或 Mythos 5.2 之前 |
@@ -32,7 +32,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 ## 決策表
 
-預設答案是 **Opus 5.5 @ high**。官方原話：「Most workloads start with Claude Opus 5.5」；檔位比官方預設 medium 高一格，因為 medium 升 high 在四個來源都多 2.5 到 4.2 分。Sonnet 5.5 一律從 high 起（預設 medium 是它最弱的實用檔）；Haiku 5.5 只接輸出可以逐條檢查的量產活；Fable 5.2 只當 Opus 卡關後的一格。
+預設答案是 **Opus 5.5 @ high**。官方原話：「Most workloads start with Claude Opus 5.5」；檔位比官方預設 medium 高一格，因為 medium 升 high 在五個來源都多 2.5 到 4.9 分。Sonnet 5.5 一律從 high 起（預設 medium 是它最弱的實用檔）；Haiku 5.5 只接輸出可以逐條檢查的量產活；Fable 5.2 只當 Opus 卡關後的一格。
 
 | 任務類型 | 模型 @ effort | 依據 |
 |---|---|---|
@@ -45,10 +45,10 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 | 查找盤點（scout）、規格寫死的機械活（mech-executor） | Sonnet 5.5 @ high | Sonnet medium → high：CursorBench +8.6、AA +10.7，是它最大的一跳；成本仍只有 Opus medium 的 41% 到 67% |
 | 大量平行 fan-out：coding、審查 | `model: "sonnet"` + `effort: "xhigh"`，派工單附硬規則 15 的官方段落 | 選 Sonnet 是為了吃它自己的週上限、分散 Opus 額度，不是比較便宜：AA 上 Opus high 更高分、更便宜、更快（51.8 分、3.46 美元、558 秒對 49.9 分、4.09 美元、839 秒）；FrontierCode 2.0 同分。Opus 額度寬鬆時改派 Opus high |
 | 大量平行 fan-out：抽取、分類、摘要 | `model: "haiku"` + `effort: "high"`，派工單寫明只准碰哪些路徑 | Haiku medium → high：CursorBench +5.4、AA +5.3；high 是官方建議的嚴格照指令檔；寫明邊界後越界率 30% → 1.8% |
-| 電腦操作、vision、圖表/簡報/試算表知識工作 | Opus 5.5 @ high；長交付物 xhigh | GDPval-AA 與 AA-Briefcase 是 Opus 最高，連 Fable 5.2 都輸 |
+| 電腦操作、vision、圖表/簡報/試算表知識工作 | Opus 5.5 @ high；長交付物 xhigh | GDPval-AA 與 AA-Briefcase 都是 Opus 贏 Fable 5.2；AA 自己的表上 GDPval 仍是 Opus max 最高，Briefcase 則是 Sonnet max 1813 略高於 Opus max 1797 |
 | 要求準確、怕幻覺的知識型長交付物（研究報告、分析文件），Opus 5.5 @ xhigh 仍不夠 | 回報 Stan，建議 Opus 5.5 @ max（只開當次 session） | AA xhigh → max：Briefcase +39、GDPval +30、HLE +3.9、AutomationBench +4.6，幻覺率 0.65 → 0.50；每題成本約 1.7 倍 |
 | coding 卡關（Opus 5.5 @ xhigh 試 2 次仍同一失敗） | 回報 Stan，建議 Opus 5.5 @ max（只開當次 session）；以終端機、CLI 操作為主的 agent 任務，並列建議 Sonnet 5.5 @ max；長程 agentic coding 看下一列 | 證據偏弱：xhigh → max 只有 CursorBench +1.8、FrontierCode 2.0 +2.6（成本 2.5 倍），AA Terminal-Bench 持平。Sonnet max 的 AA Terminal-Bench 63.6 仍是全系列最高，每題 10.02 美元、1884 秒；代價見硬規則 3 |
-| 模糊根因、架構決策、多小時自主工程與長程 agentic coding、Opus 修不好的弱點、研究級深推理（Opus 高檔試過仍不行） | 回報 Stan，建議 Fable 5.2 @ high；長程 agentic coding 用 xhigh | SWE-bench Pro 93.0 對 Opus 89.9；FrontierCode 2.0 xhigh 全榜最高；AA high 已高過 Opus max；FrontierSWE v2、Remote Labor Index 大幅領先；派工照硬規則 16 |
+| 模糊根因、架構決策、多小時自主工程與長程 agentic coding、Opus 修不好的弱點、研究級深推理（Opus 高檔試過仍不行） | 回報 Stan，建議 Fable 5.2 @ high；長程 agentic coding 用 xhigh | SWE-bench Pro 93.0 對 Opus 89.9；FrontierCode 2.0 xhigh 全榜最高；AA high 已高過 Opus max；FrontierSWE v2（每題約 20 小時的工程題）、Remote Labor Index（真實外包案）大幅領先；弱點修補只有 Fable 5.1 的數據；派工照硬規則 16 |
 | 互動式 live debug 要快 | Opus 5.5 + `/fast` | 同模型同品質、輸出快 2.5x；每百萬 token 8/40 美元，訂閱方案只能走 usage credits |
 | 大規模平行（稽核全 repo、遷移、多視角驗證） | ultracode 或明講「用 workflow」 | 這是編排方式不是檔位；引擎上限 16 併發 / 1000 agent |
 
@@ -56,8 +56,8 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 細節、benchmark 與頁碼在 `references/model-picks.md`。
 
-- **Fable 5.2**（`claude-fable-5-2`，2026-11-09）：Opus 5.5 @ high 與 xhigh 各試 2 次仍失敗才上，回報 Stan 由他決定（Fable 有自己的週額度）。贏 Opus 的項目見決策表；Opus 仍贏或打平的：GDPval-AA 與 AA-Briefcase（專業交付物留 Opus）、ProgramBench 單一長 context（harness 沒給剩餘 context 時）、Terminal-Bench 4.0、讀不受信任內容（它被改送 Opus 4.8 的比例最高）。effort：high 是升級後的預設；長程 agentic coding 用 xhigh；max 不開（FrontierCode 與 ARC-AGI-3 在 max 退步，CursorBench 與 AA 比 high 小漲但 token 或成本約 3 倍）；不開 low。單 agent 跑（小隊只換到速度、token 更多）。主 session 配 Fable advisor 未採用。
-- **Mythos 5.2**（`claude-mythos-5-2`）：跟 Fable 5.2 同一個模型、同價，放寬資安與生科 safeguards（分類器減量但仍在），只開給 CVP 這類驗證計畫。Stan 帳號能用（2026-11-23 實測），額度桶未知。資安分工見硬規則 1；其他用法與防護同 Fable 5.2。
+- **Fable 5.2**（`claude-fable-5-2`，2026-11-09）：Opus 5.5 @ high 與 xhigh 各試 2 次仍失敗才上，回報 Stan 由他決定（Fable 有自己的週額度）。贏 Opus 的項目見決策表；Opus 仍贏或打平的：GDPval-AA 與 AA-Briefcase（專業交付物留 Opus）、ProgramBench 單一長 context（harness 沒給剩餘 context 時）、Terminal-Bench 4.0、讀不受信任內容（它被改送 Opus 4.8 的比例最高）。effort：high 是升級後的預設；長程 agentic coding 用 xhigh；max 不開（FrontierCode 與 ARC-AGI-3（沒給規則、要自己摸出目標的回合制遊戲）在 max 退步，CursorBench 與 AA 比 high 小漲但 token 或成本約 3 倍）；不開 low。單 agent 跑（小隊只換到速度、token 更多）。主 session 配 Fable advisor（主模型在關鍵決策點去請教的第二個模型）未採用。
+- **Mythos 5.2**（`claude-mythos-5-2`）：跟 Fable 5.2 同一個模型、同價，放寬資安與生科 safeguards（分類器減量但仍在），只開給通過 Anthropic 資安或生科驗證計畫的組織（資安的叫 CVP）。Stan 帳號能用（2026-11-23 實測），額度桶未知。資安分工見硬規則 1；其他用法與防護同 Fable 5.2。
 - **Sonnet 5.5**：範圍清楚、有驗收方法的 coding、修 bug、文件簡報試算表、量大的派工。一律從 high 起，fan-out coding 用 xhigh；不開 low（會沒驗證就回報完成）；max 不當起點（會自開 review 輪與 subagent，分數有漲但成本 2.4 到 6 倍），終端機為主的 agent 任務在 Opus xhigh 卡關後可以並列建議，由 Stan 決定。Opus 週額度緊時，規格清楚的活移到 Sonnet high。開放式長程判斷、長 context 精準檢索、多階段資安流程用 Opus 5.5。
 - **Haiku 5.5**：大量抽取、分類、摘要，輸出可以逐條檢查。effort 用 high；不開 low（長 prompt 會跳過搜尋、提早停）、不開 xhigh/max（xhigh 多輪對話會空回覆，max 跟 Sonnet high 同價又慢；xhigh 的反向數據列觀察項）。prompt 維持 100K 以內。不給要判斷的實作、安全、複驗：輸入幻覺、重要遺漏、謊報完成三項都輸 Opus 5.5 與 Sonnet 5.5。scout 不換 Haiku，因為輸入幻覺正是 scout 最怕的錯。
 - **要不要從 Opus 降 Sonnet**：自己量，`/claude-api build-eval` 建評測、`/claude-api hillclimb` 調 prompt（CC v2.1.259 起）。
@@ -99,7 +99,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
 
 **不要升的情況**（升了沒用，甚至更糟）：
 - **讀錯題、方向錯**：Fable 5.1 從 low 到 max，「選錯解讀」由 25 增加到 47。訊號是成品很完整，但回答了別的問題。改 spec、叫它先訪談你或先複述任務，再用原檔位重跑。
-- **在小修小補裡打轉**：METR 說 Fable 5.2 跟 Opus 5.5 有同樣弱點，該轉向時還在小修。先逼它重新規劃，換 Fable 不會自動好。
+- **在小修小補裡打轉**：第三方評測機構 METR 說 Fable 5.2 跟 Opus 5.5 有同樣弱點，該轉向時還在小修。先逼它重新規劃，換 Fable 不會自動好。
 - **Sonnet 或 Haiku subagent 中途停下來問**：派工單規格不夠。補規格重派，不是換大模型。
 - **被分類器擋**：不是能力問題，照硬規則 1。
 - **環境壞了**：依賴沒裝、指令起不來、權限不足。先修環境。
@@ -130,7 +130,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
 - 是行為訊號不是硬預算，影響所有 token（thinking、tool call 數、前後言）。同一檔裡，只處理工具結果的回合可能不思考，對話越長每回合想得越少。
 - `xhigh` 支援：Haiku 5.5 / Sonnet 5.5 / Opus 5.5 / Fable 5.2 / Mythos 5.2 / Fable 5.1 / Mythos 5.1 / Fable 5 / Opus 5 / Sonnet 5 / Opus 4.8 / 4.7；Opus 4.6 / Sonnet 4.6 只有 low/medium/high/max。
 - **每升一檔多拿到什麼**（品質優先的判斷依據）：
-  - Opus 5.5：medium → high 值得（各來源 +2.5 到 +4.2）；high → xhigh 沒人等著就值得（AA +5.6、FrontierCode 2.0 +8.4）；xhigh → max 在知識型長交付物有實證，coding 證據偏弱，兩種都由 Stan 決定。
+  - Opus 5.5：medium → high 值得（各來源 +2.5 到 +4.9）；high → xhigh 沒人等著就值得（AA +5.6、FrontierCode 2.0 +8.4）；xhigh → max 在知識型長交付物有實證，coding 證據偏弱，兩種都由 Stan 決定。
   - Sonnet 5.5：medium → high、high → xhigh 都值得（AA +10.7、+8.4）；xhigh → max 分數有漲但成本 2.4 到 6 倍、每題 1884 秒，只當終端機任務卡關後的候選。
   - Haiku 5.5：medium → high 值得（+5.4）；再往上照規則不開（觀察項見 references）。
   - Fable 5.2：medium → high 最值得（AA +5.4、FrontierCode 2.0 +7.4）；high → xhigh 只對長程 agentic coding 值得（FrontierCode 2.0 +4.0、AA +0.4）；xhigh → max 不值得（FrontierCode 2.0 -2.0、ARC-AGI-3 退步）。
@@ -139,18 +139,18 @@ max 不當任何角色或設定的預設（硬規則 3）。
 
 ## 硬規則（逐條檢查）
 
-1. **安全/攻防/漏洞任務從 Opus 起，不用 Fable 起手**：Fable 5.2 與 Opus 5.5 執行同一套 cyber 政策，換 Fable 不會比較少被擋；原始碼找漏洞允許，編譯後 binary 找漏洞在 GA Fable 5.2 照樣擋。被 cyber 分類器擋下的請求改送 Opus 4.8（API 要 opt-in）；攻擊與 prompt injection 情境下 Fable 5.2 被改送的比例比 Opus 5.5 高很多，良性 coding 沒差（Terminal-Bench 4.0 兩者都 2.5%，VulcanBench 上 Fable 5.2 從沒改送）。**Stan 設了 `switchModelsOnFlag: false`，Claude Code 裡被標記的請求會讓 session 暫停，不會默默改送 fallback 模型**，看到暫停就停下回報 Stan。Sonnet 5.5 也有 cyber 分類器，被擋改送 Sonnet 5；bio 被擋直接拒絕，沒有 fallback。**Mythos 5.2 分工**：找漏洞留在 Opus 5.5 @ xhigh（漏洞辨識兩者同級）；exploit 開發與多階段攻防演練，經 Stan 同意後改 Mythos 5.2，門檻同 Fable；Opus 修不好的弱點修補照升階路徑建議 Fable 5.2。數字在 `references/model-picks.md`。
+1. **安全/攻防/漏洞任務從 Opus 起，不用 Fable 起手**：Fable 5.2 與 Opus 5.5 執行同一套 cyber 政策，換 Fable 不會比較少被擋；原始碼找漏洞允許，編譯後 binary 找漏洞在一般版 Fable 5.2 照樣擋。被 cyber 分類器擋下的請求改送 Opus 4.8（API 要 opt-in）；攻擊與 prompt injection 測試裡 Fable 5.2 被改送的比例比 Opus 5.5 高（Fable 5.2 card pdf 85、87）；良性 coding 反過來，VulcanBench 上 Opus 5.5 medium 到 max 有 6.4% 到 47.8% 的回覆改由 Opus 4.8 產生，Fable 5.2 是 0%（兩次跑的 CC 版本不同），Terminal-Bench 4.0 兩者都 2.5%。**Stan 設了 `switchModelsOnFlag: false`，Claude Code 裡被標記的請求會讓 session 暫停，不會默默改送 fallback 模型**，看到暫停就停下回報 Stan。Sonnet 5.5 也有 cyber 分類器，被擋改送 Sonnet 5；bio 被擋直接拒絕，沒有 fallback。**Mythos 5.2 分工**：找漏洞留在 Opus 5.5 @ xhigh（漏洞辨識兩者同級）；exploit 開發與多階段攻防演練，經 Stan 同意後改 Mythos 5.2，門檻同 Fable；Opus 修不好的弱點修補照升階路徑建議 Fable 5.2。數字在 `references/model-picks.md`。
 2. **中途換檔看模型**：Claude Code 裡 Opus 5.5、Sonnet 5.5、Haiku 5.5 與 Fable 5.1 用 API key 或訂閱登入時，換 effort 保 cache、不跳確認（Fable 5.1 要 v2.1.260 起）；**Fable 5.2 在 CC 換 effort 會不會保 cache 文件沒寫，當作未驗證**。其他模型換檔整段重讀，cache 還熱時 CC 會先問。例外（Bedrock 等平台照樣重讀）與 API 端 per-message effort 見 `references/models-and-cc.md`。存檔與只套 session 的差別見「怎麼升」。換模型（含分類器自動 fallback）一定整段重讀。
 3. **max 不當預設**：官方原話「Reserve xhigh and max for work where you've measured a quality gain」。FrontierCode 2.0（Cognition 2026-11-21 版）：Opus、Sonnet、Haiku 5.5 一路漲到 max，但 xhigh → max 成本 2.5 倍（Opus +2.6 分）到 6 倍（Sonnet +5.7 分）；Fable 5.1 與 5.2 在 xhigh 最高，max 反而退。Opus 5.5 的 Terminal-Bench max 不比 xhigh 高。max 只有三種用法，都由 Stan 決定開、都只開當次 session：要求準確的知識型長交付物在 Opus 5.5 @ xhigh 不夠時開 Opus max（AA 上漲分最實在的一種）；coding 在 Opus 5.5 @ xhigh 卡關後開 Opus max，終端機為主的任務可改 Sonnet max；無人看管的漏洞搜尋，而且多抓到一個就值得 3 倍以上成本。另外 max 會提高照做「貼上文字裡被植入的指令」的比率（預設檔約 2%，max 約 7.4%，p126），開 max 時不要讀沒包裝的外部貼文。
-4. **Opus 5.5 / Sonnet 5.5 / Haiku 5.5 / Fable 5.2 在 CC 預設 medium，不是 high**：user settings 頂層的 `effortLevel` 對 Opus 5.5 **不生效**，要在 `modelSettings["claude-opus-5-5"].effortLevel`（Sonnet 是 `"claude-sonnet-5-5"`，Haiku 是 `"claude-haiku-5-5"`）明寫，或在 session 裡直接打 `/effort high` 存（v2.1.251 起就是存到 `modelSettings`）。**Fable 5.2 要跑 high：切到 Fable 5.2 後打 `/effort high`，存到 `modelSettings["claude-fable-5-2"]`**；頂層 `effortLevel` 對 Fable 5.2 有沒有效，文件沒寫。project/local/managed 設定裡的頂層 `effortLevel` 仍有效；`max` 兩個鍵都不收。Stan 現況（2026-10-14）：`modelSettings["claude-opus-5-5"].effortLevel: "high"` 已寫入；頂層 `effortLevel: "high"` 確定吃得到的只剩 Fable 5.1。
+4. **Opus 5.5 / Sonnet 5.5 / Haiku 5.5 / Fable 5.2 在 CC 預設 medium，不是 high**：user settings 頂層的 `effortLevel` 對 Opus 5.5 **不生效**，要在 `modelSettings["claude-opus-5-5"].effortLevel`（Sonnet 是 `"claude-sonnet-5-5"`，Haiku 是 `"claude-haiku-5-5"`）明寫，或在 session 裡直接打 `/effort high` 存（v2.1.251 起就是存到 `modelSettings`）。**Fable 5.2 要跑 high：切到 Fable 5.2 後打 `/effort high`，存到 `modelSettings` 裡 Fable 5.2 那格**（鍵名文件沒寫，存完看 settings 檔確認）；頂層 `effortLevel` 對 Fable 5.2 有沒有效，文件沒寫。project/local/managed 設定裡的頂層 `effortLevel` 仍有效；`max` 兩個鍵都不收。Stan 現況（2026-10-14）：`modelSettings["claude-opus-5-5"].effortLevel: "high"` 已寫入；頂層 `effortLevel: "high"` 確定吃得到的只剩 Fable 5.1。
 5. **ultracode 不是 effort 檔位**：是 Claude Code 設定＝送 xhigh + 自動 workflow 編排，session-only；ultracode 不是任何設定鍵或環境變數的值。`CLAUDE_CODE_EFFORT_LEVEL` 收 max，是 max 能跨 session 的唯一方法，照硬規則 3 不設。
 6. **xhigh/max 要配大 max_tokens**：API 端至少 64K，16K 會截斷約 25% 的 Opus 與 43% 的 Fable 5.1 嘗試；Opus 5.5 官方實測長 agentic turn 直接給 128k（模型上限）。Fable 5.2 官方：high 以上就要給大 max_tokens。thinking 算進 max_tokens，即使沒回傳。
 7. **API breaking change**：寫 API 整合前先讀 `references/models-and-cc.md` 的「API breaking change」節，5.5 家族與 Fable 5.2 各有一批會回 400 的參數。
 8. **無人值守長任務要接早停**：Opus 5.5 會在部分完成時用純文字 end_turn 回報，harness 把它當完工就斷了。對策：checklist 檔 + 剩餘項目 nudge（最多 2-3 次）+ system prompt 末尾點名不要的四種停法（官方有整段範本）。人在線的互動 session 不要加。Fable 5.2 早停更常見，照硬規則 16。
-9. **tool call 之間的文字進 thinking block**：Opus 5.5 / Fable 5.1 把進度說明放 progress-update thinking block，預設 `display: "omitted"` 看起來像卡住。自寫的 API 整合要設 `display: "updates"`（beta header 見 models-and-cc）。
-10. **別叫 Opus 5.5 把推理寫進回答**：會觸發 `reasoning_extraction` refusal，且 server-side fallback 對此類不重試。要推理就開 `display: "summarized"`。Skill/prompt 裡「先寫出你的推理再回答」這種句子要拔。
-11. **fast mode 是速度不是智力**：同模型同權重，只快輸出（OTPS），首 token 不快。訂閱方案走 usage credits 不算訂閱額度；開啟當下要付整段 context 的未快取 input 價，所以要開就 session 一開始開。只有一段對話第一次開 fast 會整段重讀；之後關掉、被限流退回標準速度、再打開都保 cache（fast-mode 文件 2026-11 版說每次切換都重讀，衝突未解，見 `sources.md`）。Fable 5.2 要在它上面打 `/fast` 才開得起來。
-12. Haiku 5.5 / Sonnet 5.5 / Sonnet 5 / Fable 5.1 / Opus 5.5 都是新 tokenizer，同文字比 Opus 4.7 前（含 Haiku 4.5）約 +30% token：從舊模型搬來的 max_tokens/成本估算要重算（Sonnet 5 → 5.5 同 tokenizer，不用重算）。
+9. **tool call 之間的文字進 thinking block**：Opus 5.5 / Fable 5.1 / Fable 5.2 把進度說明放 progress-update thinking block，預設 `display: "omitted"` 看起來像卡住。自寫的 API 整合要設 `display: "updates"`（beta header 見 models-and-cc）。
+10. **別叫 Opus 5.5、Fable 5.2 把推理寫進回答**：Opus 5.5 會觸發 `reasoning_extraction` refusal，且 server-side fallback 對此類不重試；Fable 5.2 的 prompting 指南也要你拔掉這類指示，refusal 類別同樣有 `reasoning_extraction`，fallback 會不會重試未驗證。要推理就開 `display: "summarized"`。Skill/prompt 裡「先寫出你的推理再回答」這種句子要拔。
+11. **fast mode 是速度不是智力**：同模型同權重，只快輸出（OTPS），首 token 不快。訂閱方案走 usage credits 不算訂閱額度；fast 與標準速度各用一份 cache：第一次開要付整段 context 的未快取 input 價，之後每次切換也會重讀部分或全部對話（fast-mode 文件 2026-11-14 讀；舊版「之後都保 cache」已改掉，見 `sources.md`）。要開就 session 一開始開，開了別來回切。Fable 5.2 要在它上面打 `/fast` 才開得起來。
+12. Haiku 5.5 / Sonnet 5.5 / Sonnet 5 / Fable 5.1 / Fable 5.2 / Opus 5.5 都是新 tokenizer，同文字比 Opus 4.7 前（含 Haiku 4.5）約 +30% token：從舊模型搬來的 max_tokens/成本估算要重算（Sonnet 5 → 5.5 同 tokenizer，不用重算）。
 13. **Sonnet 5.5 與 Haiku 5.5 要逼它驗證**：官方承認 Sonnet low 有時沒跑能驗到改動的檢查就回報完成（例如依賴沒裝就跳過測試），low/medium 長任務會停下來問本來可以自己決定的事；Haiku medium 以下會跳過驗證，謊報完成也比 Opus、Sonnet 多。對策：派工單或 system prompt 貼官方那段「改了能跑的程式就先跑真的測試、型別檢查或 build 再回報；跑不了就說哪個沒跑、為什麼」，要它做完再停就加官方「Keep working until everything the user asked for is done…」段。
 14. **Haiku 5.5 的位置**（2026-10-13 解禁，規格已查證）：每百萬 token 0.10/0.50 美元（prompt 超過 100K 變 0.50/2.50）、cache read 0.01、1M context、CC 預設 medium、五檔都支援；`haiku` 別名 v2.1.293 起指向它。只接大量抽取、分類、摘要，effort 開 high；派工單加一段工作邊界說明（只准碰哪些路徑、不准做什麼），System Card 實測越界率從 30% 降到 1.8%。要判斷的實作、安全、複驗、scout 不給它。Haiku 4.5 不再使用。
 15. **fan-out 一律帶 model 也帶 effort**：照 CLAUDE.md §2，coding、審查帶 `model: "sonnet"` + `effort: "xhigh"`（Opus 額度寬鬆時改 `model: "opus"` + `effort: "high"`），抽取、分類帶 `model: "haiku"` + `effort: "high"`。沒帶 effort 時，跟主 session 不同模型的 subagent 跑該模型的存檔或預設（v2.1.317 起，不再跟 session 走），Sonnet、Haiku 5.5 沒存檔就是 medium。**Sonnet xhigh 的派工單附官方「做完就停」段**（xhigh、max 會自己加 review 回合、開 reviewer subagent；官方 max 實測加這段後成本約少 1/3、品質不變）。原文逐字（platform.claude.com prompting-claude-sonnet-5-5，Steer initiative and scope 節，2026-11-23 讀）：
@@ -163,7 +163,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
     - agentic 或容器工作在 system prompt 加一小段沙箱說明與留在裡面的規則（越界率 31% → 1.2%）；「繼續做、別放棄」的迴圈一定配上明確邊界。
     - 不要跟它說真實系統是測試或模擬。
     - 複驗用 Opus 5.5，不用 Opus 4.8；不靠讀它的 thinking 當檢查。
-    - 資安工作把範圍、授權與目的寫在第一則請求（被拒後很少改口）；讀不受信任內容時 auto mode 保持開。
+    - 資安工作把範圍、授權與目的寫在第一則請求（被拒後很少改口）；讀不受信任內容時 auto mode（CC 用分類器擋危險 tool call 的權限模式）保持開。
 
 ## 輸出格式
 
