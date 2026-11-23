@@ -20,6 +20,10 @@ AUTO_PREFIXES = (
     "<side-sessions-event",
     "<ci-monitor-event",
     "<agent-message",
+    # 協調 session 的轉述。附註是它寫的，有時附上它挑的 Stan 原話；
+    # 收到的 session 該做什麼以附註為準，所以整則跳過。project_claude_message 外層包著 relay。
+    "<relay",
+    "<project_claude_message",
 )
 
 
