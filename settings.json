@@ -102,6 +102,20 @@
         ]
       },
       {
+        "matcher": "^(Bash|mcp__(?!ccd_).*__(send_message|create_draft|update_draft|reply|forward|slack_send_message|slack_send_message_draft|slack_schedule_message|create_issue|update_issue|add_issue_comment|create_pull_request|update_pull_request|create_pull_request_review))$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "-I",
+              "C:/Users/stans/.claude/hooks/event-skill-nudge.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "hooks": [
           {
             "type": "http",
@@ -255,6 +269,36 @@
           {
             "type": "http",
             "url": "http://localhost:19280/"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "-I",
+              "C:/Users/stans/.claude/hooks/event-skill-nudge.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "-I",
+              "C:/Users/stans/.claude/hooks/event-skill-nudge.py"
+            ],
+            "timeout": 10
           }
         ]
       }
