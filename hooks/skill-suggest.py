@@ -15,6 +15,7 @@ AUTO_BLOCKS = re.compile(
     re.S)
 AUTO_PREFIXES = (
     "You monitor an AI coding agent",
+    "An AI coding agent is stuck in a",  # 迴圈監看的自動 prompt，11-24 量測時佔「真打字」建議的大宗
     "<task-notification>",
     "<cross-session-message",
     "<side-sessions-event",
