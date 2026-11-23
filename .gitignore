@@ -103,5 +103,8 @@ id_ed25519*
 /audits/
 /dev-mods/
 /scheduled-tasks/
+# harness-autosync 的 gitleaks 紀錄會寫出哪個檔第幾行疑似秘鑰，不能進公開 repo（2026-11-24）
+hooks/harness-autosync.log
+__pycache__/
 # Shims written by resource-sentinel's installer; the real hooks live in that repo
 hooks/sentinel-*.py

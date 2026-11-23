@@ -7,7 +7,15 @@
 #   - git 操作失敗（網路 / 並行 session 衝突）→ fail-open：告警但不卡 session。
 #   - 只碰 skills/、agents/、local-plugins/，其餘變動一律不動。
 #   - 任何未預期例外都 exit 0，收尾不受影響。
-import sys, os, re, json, subprocess
+#
+# gitleaks 第二層掃描（自製指紋掃描之後、commit 之前執行，只掃 staged 內容）：
+#   - 開關：環境變數 HARNESS_GITLEAKS_MODE
+#       observe（預設；未設定或值無法辨識都算 observe）：有發現只寫 log 並告警，commit/push 決定不變。
+#       enforce：有發現就走上面同一套 fail-closed（unstage、告警、不 commit 不 push）。
+#   - gitleaks 找不到、逾時（30 秒）或出錯 → fail-open：記一筆失敗、告警，照原本流程走。
+#   - 紀錄檔：本檔同目錄的 harness-autosync.log（每行一筆 JSON），只記時間、檔名、規則 ID、行號。
+#   - 一律帶 --redact=100，報告只取檔名、規則 ID、行號三欄，秘鑰原文不進 log 也不進 stderr。
+import sys, os, re, json, shutil, subprocess
 from datetime import datetime
 
 try:
@@ -62,6 +70,113 @@ def warn(msg):
     sys.stderr.write(f"\n[harness-autosync] {msg}\n")
 
 
+GITLEAKS_TIMEOUT = 30    # 秒，整個 gitleaks 子程序的上限
+GITLEAKS_LEAK_EXIT = 77  # 自訂「有發現」退出碼；gitleaks 出錯時退出碼是 1，兩者才分得開
+LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "harness-autosync.log")
+
+
+def gitleaks_mode():
+    """回傳 (模式, 無法辨識的原值或 None)。只有明確寫 enforce 才擋，其餘一律 observe。"""
+    raw = os.environ.get("HARNESS_GITLEAKS_MODE", "").strip().lower()
+    if raw in ("", "observe"):
+        return "observe", None
+    if raw == "enforce":
+        return "enforce", None
+    return "observe", raw
+
+
+def find_gitleaks():
+    found = shutil.which("gitleaks")
+    if found:
+        return found
+    # hook 的 PATH 可能沒帶 winget 的 Links 目錄，補查 winget 預設安裝位置
+    local = os.environ.get("LOCALAPPDATA")
+    if local:
+        cand = os.path.join(local, "Microsoft", "WinGet", "Links", "gitleaks.exe")
+        if os.path.isfile(cand):
+            return cand
+    return None
+
+
+def log_event(event, **fields):
+    """寫一筆 JSON 到 LOG_PATH；寫不進去就算了，不能影響同步。"""
+    rec = {"ts": datetime.now().isoformat(timespec="seconds"), "event": event, **fields}
+    try:
+        with open(LOG_PATH, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def run_gitleaks():
+    """對 staged 內容跑 gitleaks，回傳 (findings, error)。
+    findings 是 [(檔名, 規則 ID, 行號)]；error 是失敗原因，None 表示有正常跑完。
+    報告裡的 Secret、Match 等欄位已遮蔽，但這裡仍只取三個欄位，stderr 也不讀。"""
+    exe = find_gitleaks()
+    if not exe:
+        return [], "找不到 gitleaks 執行檔"
+    cmd = [
+        exe, "git", "--pre-commit", "--staged",
+        "--redact=100", "--no-banner", "--no-color", "--log-level", "error",
+        "--report-format", "json", "--report-path", "-",
+        "--exit-code", str(GITLEAKS_LEAK_EXIT),
+        "--timeout", str(GITLEAKS_TIMEOUT - 5),
+        REPO,
+    ]
+    try:
+        r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=GITLEAKS_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return [], f"逾時，超過 {GITLEAKS_TIMEOUT} 秒"
+    except OSError as e:
+        return [], f"無法執行 gitleaks：{type(e).__name__}"
+    if r.returncode == 0:
+        return [], None
+    if r.returncode != GITLEAKS_LEAK_EXIT:
+        return [], f"gitleaks 退出碼 {r.returncode}"
+    findings = []
+    try:
+        for f in json.loads(r.stdout or "[]"):
+            findings.append((str(f.get("File", "?")), str(f.get("RuleID", "?")), str(f.get("StartLine", "?"))))
+    except Exception:
+        findings = []
+    # 退出碼已表示有發現，報告解析不了也要算一筆，enforce 時才不會因此放行
+    return findings or [("?", "report-unparsed", "?")], None
+
+
+def gitleaks_gate():
+    """第二層 gitleaks 閘門。回傳要擋下的 findings；空 list 代表照原流程繼續。
+    只有 enforce 模式且有發現才回非空；任何失敗都回空 list（fail-open）。"""
+    try:
+        mode, bad = gitleaks_mode()
+        if bad is not None:
+            log_event("gitleaks-bad-mode", value=bad[:40], used="observe")
+            warn(f"HARNESS_GITLEAKS_MODE={bad[:40]} 無法辨識，本次以 observe 執行。")
+        findings, err = run_gitleaks()
+        if err:
+            log_event("gitleaks-failed", mode=mode, reason=err)
+            warn(f"gitleaks 第二層掃描沒有跑成（{err}），照原流程繼續；已記錄到 {LOG_PATH}")
+            return []
+        if not findings:
+            return []
+        log_event("gitleaks-findings", mode=mode, count=len(findings),
+                  action="block" if mode == "enforce" else "continue",
+                  findings=[{"file": f, "rule": r, "line": ln} for f, r, ln in findings])
+        if mode == "enforce":
+            return findings
+        warn(f"gitleaks 觀察模式發現 {len(findings)} 筆，這次照舊 push，請檢查：")
+        for f, r, ln in findings[:10]:
+            warn(f"  - {r} @ {f}:{ln}")
+        if len(findings) > 10:
+            warn(f"  另有 {len(findings) - 10} 筆，見紀錄檔")
+        warn(f"紀錄檔：{LOG_PATH}")
+        return []
+    except Exception as e:
+        log_event("gitleaks-failed", reason=f"未預期例外（{type(e).__name__}）")
+        warn(f"gitleaks 第二層掃描發生未預期例外（{type(e).__name__}），照原流程繼續。")
+        return []
+
+
 def main():
     try:
         sys.stdin.read()
@@ -94,6 +209,15 @@ def main():
         warn("偵測到疑似秘鑰，已中止自動同步（未 commit、未 push）：")
         for f, n in uniq:
             warn(f"  - {n} @ {f}")
+        warn("若為誤報，請自行檢視後手動 commit/push；若確為秘鑰，先移出追蹤並輪換。")
+        return
+
+    blocked = gitleaks_gate()
+    if blocked:
+        git("reset", "-q", "HEAD", "--", *watched)
+        warn("gitleaks（enforce 模式）偵測到疑似秘鑰，已中止自動同步（未 commit、未 push）：")
+        for f, r, ln in sorted(set(blocked)):
+            warn(f"  - {r} @ {f}:{ln}")
         warn("若為誤報，請自行檢視後手動 commit/push；若確為秘鑰，先移出追蹤並輪換。")
         return
 
