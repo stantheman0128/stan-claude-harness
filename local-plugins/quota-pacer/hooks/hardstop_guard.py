@@ -38,16 +38,28 @@ _OWN_RE = re.compile(
     r'(?:py|python|python3)(?:\.exe)?[ \t]+"?([A-Za-z0-9_:./~-]+)"?'
     r'((?:[ \t]+[A-Za-z0-9_@+=:.%,/-]+)*)')
 
-def own_script(cmd):
-    """整行是單一 pacer 腳本呼叫就回腳本檔名，否則回空字串。"""
-    m = _OWN_RE.fullmatch((cmd or "").strip(" " + chr(9)))  # 換行也不准，整行只能有這一個呼叫
-    if not m:
-        return ""
-    path = m.group(1).replace("\\", "/")
-    head, _, name = path.rpartition("/")
-    if name not in OWN or head.lower() != SCRIPTS.lower():
-        return ""
-    return name
+_SEP_RE = re.compile("[ \t]*(?:&&|;)[ \t]*")
+_REDIR_RE = re.compile("[ \t]*(?:2>&1|>[ \t]*/dev/null)[ \t]*$")
+
+def own_calls(cmd):
+    """整行全是 pacer 腳本呼叫（可以用 && 或 ; 串好幾個）就回 [(腳本檔名, 那一段指令)]，否則回空 list。
+
+    session 習慣把「寫讀數、檢查、收工」串成一行。每一段都要通過才算；
+    只要混進一段別的指令（ls、grep、子指令、換行）就整行不算。
+    """
+    out = []
+    for part in _SEP_RE.split((cmd or "").strip(" \t")):
+        while _REDIR_RE.search(part):        # 段尾的 >/dev/null、2>&1 不影響做了什麼
+            part = _REDIR_RE.sub("", part)
+        m = _OWN_RE.fullmatch(part)
+        if not m:
+            return []
+        path = m.group(1).replace("\\", "/")
+        head, _, name = path.rpartition("/")
+        if name not in OWN or head.lower() != SCRIPTS.lower():
+            return []
+        out.append((name, part))
+    return out
 
 def block(msg):
     print("[quota-pacer] " + msg, file=sys.stderr)
@@ -177,7 +189,7 @@ def main():
     tool = data.get("tool_name") or ""
     ti = data.get("tool_input")
     cmd = (ti.get("command") or "") if isinstance(ti, dict) else ""
-    own = own_script(cmd) if tool in ("Bash", "PowerShell") else ""
+    own = own_calls(cmd) if tool in ("Bash", "PowerShell") else []
 
     # 這個 session 正要開工：先記下是誰，start_pace.py 會抄進 active.json。
     # 這裡只是記名字，寬鬆比對就好；放行與否看上面的 own。
@@ -203,9 +215,10 @@ def main():
             block("pacer 的狀態檔不能直接改或刪。收工用 end_pace.py；全機" + ONLY_STAN)
 
     # 解除或改寫全機規則：到線之後不行，還沒到線時 --clear 也不行。只有 --status 隨時可以看。
-    if own == "global_pace.py" and "--status" not in cmd:
+    if any(n == "global_pace.py" and "--status" not in part for n, part in own):
         g = pc.load_global()
-        if g is not None and (isinstance(g.get("stopped"), dict) or "--clear" in cmd):
+        if g is not None and (isinstance(g.get("stopped"), dict) or any(
+                n == "global_pace.py" and "--clear" in part for n, part in own)):
             block("全機" + ONLY_STAN)
 
     # pacer 自己的腳本與讀用量的工具永遠放行，不然到線之後連收工、補讀數都做不了

@@ -1,5 +1,12 @@
 # Quota Pacer CHANGELOG
 
+## 0.8.1 — 2026-11-23
+到線後放行串在一行的 pacer 指令。起因：開新 session 實測時看到它把指令寫成 `write_usage.py … && start_pace.py …`、`write_usage.py …; eval_pace.py; end_pace.py`。0.6.1 起 hook 只放行單一指令，到線之後這種寫法會整行被擋，session 連檢查和收工都要多試一次。
+
+- 整行每一段都是 pacer 腳本呼叫就放行，段與段之間可以是 `&&` 或 `;`，段尾可以有 `>/dev/null`、`2>&1`。
+- 只要混進一段別的指令就整行不放行，跟之前一樣。串起來的指令裡有 `global_pace.py --clear` 照樣擋。
+- 新 session 實測結果（0.8.0）：只給一句「不要用超過 2% 的 weekly usage」加一個要讀 59 個專案的任務，它第一個動作就載入 skill，用 `get_usage` 讀數、`start_pace.py --budget 2` 開工（上限 weekly 71%、Fable 72%）、做完跑檢查並收工。
+
 ## 0.8.0 — 2026-11-23
 用量只從桌面 App 的 `get_usage` 讀。Stan 定案：不要再走 CLI 那條路。
 
