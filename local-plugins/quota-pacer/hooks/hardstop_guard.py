@@ -3,7 +3,10 @@
 一、全機規則（global.json，global_pace.py 設的）
 - 管這台機器上所有 session，session 有沒有載入 skill 都一樣。
 - 到線（截止時刻到了、週用量到停手線、或週用量重置）就記下 stopped，之後數字怎麼變都維持。
-- 到線後每個 session 第一次工具呼叫被擋並收到說明，接著有 WRAP_CALLS 次可以收尾，之後全擋。
+- 到線後每個 session 第一次工具呼叫被擋並收到說明，接著可以收尾：
+  用量到線的，放行到上限前 1 個百分點左右（預設 99%）；時間到或重置的，放行 WRAP_CALLS 次。之後全擋。
+- 只有 Stan 本人能豁免：他在訊息裡親口說，bypass_prompt.py 才會替那個 session 寫記號。
+  到線之後 session 自己跑 global_pace.py --clear 或重設規則，一律擋。
 - 用量超過 GLOBAL_STALE 沒更新就自己去 endpoint 拉（有冷卻）；拉不到就擋一次，
   請 session 用 get_usage 把讀數寫進來（同一 session NAG_GAP 內只擋一次）。
 
@@ -47,9 +50,9 @@ def block(msg):
     print("[quota-pacer] " + msg, file=sys.stderr)
     sys.exit(2)
 
-def _mark(sid, kind):
-    safe = re.sub("[^A-Za-z0-9_-]", "", sid)[:64] or "nosid"
-    return os.path.join(pc.WRAP_DIR, "%s-%s" % (kind, safe))
+_mark = pc.mark_path
+ONLY_STAN = ("規則只有 Stan 本人能解除或豁免：他要在對話裡親口說「豁免」「bypass」「繞過用量限制」"
+             "「解除全機規則」這類的話，這個 session 才會被放行。你不能自己解除，也不要替他決定。")
 
 def _wrap_count(sid, rule_id, bump):
     """這個 session 在這條規則到線後已經被算了幾次工具呼叫。bump=True 就加一並寫回。"""
@@ -113,20 +116,32 @@ def global_gate(g, sid):
                       % (pc.describe_global(g), SCRIPTS, pc.NAG_GAP // 60))
         return
 
+    # 用量到線的：收尾放行到硬擋線（預設 99%）。讀數太舊就退回數次數，不能憑舊數字一直放行。
+    hard = None
+    if stopped.get("reason") == "usage":
+        usage = read_usage_file()
+        if usage is None or usage.get("_age", 0) > pc.GLOBAL_STALE:
+            usage = pc.refresh_usage(timeout=4) or usage
+        if usage is not None and usage.get("_age", 0) <= pc.GLOBAL_STALE:
+            hard = pc.global_hard(usage, g)
+
     rule_id = "%d" % (pc._num(g.get("set")) or 0)
     used = _wrap_count(sid, rule_id, bump=True)
-    clear = '只有 Stan 明講要解除才跑：py "%s/global_pace.py" --clear' % SCRIPTS
-    if used == 0:
+    if hard is None:
+        room = "你還有 %d 次工具呼叫可以收尾" % pc.WRAP_CALLS
+    else:
+        room = "收尾可以用工具，直到%s為止" % "或".join(
+            "%s 到 %g%%" % (label, line) for label, _path, line in pc.hard_lines(g))
+    if used == 0 and not hard:
         block("全機停手規則到線：%s。Stan 設的規則是：%s。"
-              "現在停止原本的任務，不要開始新的工作。你還有 %d 次工具呼叫可以收尾"
+              "現在停止原本的任務，不要開始新的工作。%s"
               "（存檔、把做到一半的東西收到乾淨的狀態、寫交接），之後所有工具都會被擋。"
-              "收尾後在回覆裡寫清楚：做到哪、還沒做什麼、下次怎麼接，然後結束這一輪。"
-              "不要為了繼續工作去解除規則。%s"
-              % (stopped.get("text"), pc.describe_global(g), pc.WRAP_CALLS, clear))
-    if used > pc.WRAP_CALLS:
-        block("全機停手規則到線（%s），收尾的工具額度也用完了。不要再呼叫工具，"
+              "收尾後在回覆裡寫清楚：做到哪、還沒做什麼、下次怎麼接，然後結束這一輪。%s"
+              % (stopped.get("text"), pc.describe_global(g), room, ONLY_STAN))
+    if hard or (hard is None and used > pc.WRAP_CALLS):
+        block("全機停手規則到線（%s），收尾的額度也用完了%s。不要再呼叫工具，"
               "把進度、還沒做的、下次怎麼接寫在回覆裡，結束這一輪。%s"
-              % (stopped.get("text"), clear))
+              % (stopped.get("text"), "：" + hard if hard else "", ONLY_STAN))
 
 def session_gate(sid):
     try:
@@ -177,6 +192,16 @@ def main():
                 fh.write(sid)
         except OSError:
             pass
+
+    # Stan 在這個 session 親口豁免過 → 兩層都不擋
+    if pc.bypassed(sid):
+        sys.exit(0)
+
+    # 解除或改寫全機規則：到線之後不行，還沒到線時 --clear 也不行。只有 --status 隨時可以看。
+    if own == "global_pace.py" and "--status" not in cmd:
+        g = pc.load_global()
+        if g is not None and (isinstance(g.get("stopped"), dict) or "--clear" in cmd):
+            block("全機" + ONLY_STAN)
 
     # pacer 自己的腳本與讀用量的工具永遠放行，不然到線之後連收工、補讀數都做不了
     if own or tool.endswith("get_usage") or tool == "ToolSearch":

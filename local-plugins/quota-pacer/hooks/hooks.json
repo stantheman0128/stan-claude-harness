@@ -16,6 +16,23 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Python313/pythonw.exe",
+            "args": [
+              "-I",
+              "-X",
+              "utf8",
+              "${CLAUDE_PLUGIN_ROOT}/hooks/bypass_prompt.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

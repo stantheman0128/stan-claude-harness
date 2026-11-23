@@ -59,6 +59,7 @@ GLOBAL_HOLD = _f("QP_GLOBAL_HOLD_HOURS", 3) * 3600   # 到線後規則再維持�
 GLOBAL_MAX = _f("QP_GLOBAL_MAX_HOURS", 48) * 3600    # 一直沒到線的規則最多活多久
 WRAP_CALLS = int(_f("QP_WRAP_CALLS", 10))            # 到線後每個 session 還能用幾次工具收尾
 NAG_GAP = _f("QP_NAG_GAP_SEC", 600)                  # 「用量讀不到」的提醒，同一 session 多久一次
+BYPASS_AGE = _f("QP_BYPASS_HOURS", 12) * 3600        # Stan 親口豁免後，這個 session 放行多久
 RESET_DROP = _f("QP_RESET_DROP_PP", 3)               # 週用量比最高點低這麼多就當成已重置
 RESET_LATE = _f("QP_RESET_LATE_SEC", 3600)           # 記下的重置時刻過了這麼久，沒讀數也當成已重置
 
@@ -542,6 +543,42 @@ def global_trip(g, usage, now=None):
         except OSError:
             pass
     return g.get("stopped")
+
+def mark_path(sid, kind):
+    """wrap/ 底下這個 session 的記號檔：wrap（收尾次數）、nag（提醒節流）、bypass（Stan 親口豁免）。"""
+    import re
+    safe = re.sub("[^A-Za-z0-9_-]", "", sid or "")[:64] or "nosid"
+    return os.path.join(WRAP_DIR, "%s-%s" % (kind, safe))
+
+def bypassed(sid):
+    """Stan 有沒有在這個 session 親口豁免（bypass_prompt.py 寫的記號，BYPASS_AGE 內有效）。"""
+    if not sid:
+        return False
+    try:
+        return time.time() - os.path.getmtime(mark_path(sid, "bypass")) < BYPASS_AGE
+    except OSError:
+        return False
+
+def hard_lines(g):
+    """用量到線後還能收尾到哪：[(顯示名, 路徑, 硬擋線%)]，每條有記起點的週限額一筆。"""
+    out = []
+    ceiling = g.get("ceiling") or {}
+    for label, path in _tracked(g):
+        base = _num(_dig(g.get("u0") or {}, path))
+        if base is None:
+            continue
+        ceil = _dig(ceiling, path)
+        out.append((label, path, _top(ceil) - thresholds(base, ceil)[2]))
+    return out
+
+def global_hard(usage, g):
+    """用量到線後，有沒有哪條已經到硬擋線（上限前 1 個百分點左右）。回那條的說明或空字串。"""
+    cur_by = {path: cur for _, path, cur, _rs in weekly_rows(usage)}
+    for label, path, line in hard_lines(g):
+        cur = cur_by.get(path)
+        if cur is not None and cur >= line:
+            return "%s 已用 %g%%，到了硬擋線 %g%%" % (label, cur, line)
+    return ""
 
 def describe_global(g):
     """一句話講這條規則：什麼情況會停。"""

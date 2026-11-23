@@ -9,7 +9,8 @@ session 有沒有載入 skill 都會被擋，所以適合「睡前交代一句�
   py global_pace.py --until 05:00 --budget 10  從現在起最多再用 10 個百分點
   py global_pace.py --until 05:00 --time-only  只看時間，不看用量
   py global_pace.py --status                   看現在有沒有規則、到線了沒
-  py global_pace.py --clear                    解除（Stan 明講才跑）
+  py global_pace.py --clear                    解除。在 session 裡跑會被 hook 擋，除非 Stan 在那個 session 親口豁免；
+                                               Stan 自己在 PowerShell 跑不受限
 
 --until 接受 05:00、5（下一個這個時刻），或 2026-11-24T05:00。
 
@@ -45,7 +46,7 @@ def status():
         until = pc._num(g.get("until")) or 0
         ends = max(until, pc._num(stopped.get("t")) or 0) + pc.GLOBAL_HOLD
         print("  已到線（%s）：%s" % (pc.fmt_clock(stopped.get("t") or 0), stopped.get("text")))
-        print("  所有 session 的工具都被擋，%s 自動失效，或跑 --clear 解除" % pc.fmt_clock(ends))
+        print("  所有 session 的工具都被擋，%s 自動失效；Stan 本人說豁免的 session 例外" % pc.fmt_clock(ends))
     else:
         print("  還沒到線")
 
@@ -144,8 +145,12 @@ def main():
 
     pc.save_json(pc.GLOBAL_FILE, g)
     print("已設定全機規則：%s" % pc.describe_global(g))
-    print("  到線後每個 session 還能用 %d 次工具收尾，之後全擋" % pc.WRAP_CALLS)
-    print("  到線後 %g 小時自動失效；提早解除跑 global_pace.py --clear" % (pc.GLOBAL_HOLD / 3600))
+    lines = pc.hard_lines(g)
+    if lines:
+        print("  用量到線後可以收尾到 %s，之後全擋" % "、".join(
+            "%s %g%%" % (label, line) for label, _path, line in lines))
+    print("  時間到或重置而到線的，每個 session 還能用 %d 次工具收尾，之後全擋" % pc.WRAP_CALLS)
+    print("  到線後 %g 小時自動失效。要提早繼續，只有 Stan 本人在對話裡說豁免才行" % (pc.GLOBAL_HOLD / 3600))
 
 if __name__ == "__main__":
     main()
