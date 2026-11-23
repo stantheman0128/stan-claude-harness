@@ -1,13 +1,13 @@
 # impeccable — Stan overlay patch 檔（重貼指引）
 
-plugin 升級會建新版本目錄、不會帶走這些 overlay。**每次 `claude plugin update impeccable` 後，把本檔各段重貼進新版本目錄的對應檔案**（路徑：`~/.claude/plugins/cache/impeccable/impeccable/<新版本>/skills/impeccable/`）。貼完用 `grep -rn "Stan overlay" <新版本目錄>` 驗證 4 個標記都在。
+plugin 升級會建新版本目錄、不會帶走這些 overlay。**每次 `claude plugin update impeccable` 後，把本檔各段重貼進新版本目錄的對應檔案**（路徑：`~/.claude/plugins/cache/impeccable/impeccable/<新版本>/skills/impeccable/`）。貼完用 `grep -rn "Stan overlay" <新版本目錄>` 驗證 5 個標記行都在（數量也寫在 `overlays/markers.json`，開場的 overlay watch 會比對）。
 
-目前套用於：3.9.1（2026-07-11 升級；共 5 個標記行、10 條規則，grep 實測 5）。升級法備註：3.8.0→3.9.1 上游沒動 animate.md/harden.md，用「copy-forward 舊檔」代替手動重貼、零轉錄風險——之後升級若上游同樣沒動 overlay 所在檔，優先用這招。3.9.1 仍無 ios.md/android.md。
-相關記憶：[[project-impeccable-overlay]]。升級注意：上游 3.9.x 的 critique/layout/typeset 已改雙隔離 subagent、HEAD 有未釋出的原生平台層（ios.md/android.md——出了之後 LINE Notify+ 的 PRODUCT.md 要加 `## Platform: android`）。可考慮把 taste 兩條 bans 開 PR 回饋上游（Apache-2.0 相容），成功就少貼半套。
+目前套用於：4.10.0（2026-11-23 重貼；5 個標記行、10 條規則，grep 實測 5，`claude plugin validate` 通過；上游原檔備份在 `4.10.0/.stan-upstream/`）。4.x 大改：bans 從 SKILL.md 搬到 `reference/craft-floor.md` 的「## Refuse」，animate.md 整篇重寫，沒有 NEVER 清單也沒有 reduced-motion CSS 區塊，所以第 1 到 3 段換了位置，第 2、3 段改成 4.x 的寫法；第 4 段位置不變。升級法備註：上游沒動 overlay 所在檔時，用「copy-forward 舊檔」代替手動重貼（3.8.0→3.9.1 用過）；有動就照各段標的錨點重貼。
+相關記憶：[[project-impeccable-overlay]]。升級注意：4.10.0 已有原生平台層（reference/ios.md、android.md），平台由 init 記進 PRODUCT.md。原本記的待辦「LINE Notify+ 的 PRODUCT.md 要加 android 平台」格式改照 4.10.0 的 init（2026-11-23 沒查是否已做）。可考慮把 taste 兩條 bans 開 PR 回饋上游（Apache-2.0 相容），成功就少貼半套。
 
 ---
 
-## 1. `SKILL.md` — Absolute bans 清單尾端（2026-07-05，源 Leonxlnx/taste-skill，MIT）
+## 1. `reference/craft-floor.md`：「## Refuse」清單尾端，接在「- Light or dark picked by category.」那條後面（2026-07-05，源 Leonxlnx/taste-skill，MIT；4.x 以前在 SKILL.md 的 Absolute bans）
 
 ```markdown
 <!-- Stan overlay 2026-07-05: next 2 bans harvested from Leonxlnx/taste-skill (MIT). Re-apply if a plugin update overwrites this file. -->
@@ -15,23 +15,27 @@ plugin 升級會建新版本目錄、不會帶走這些 overlay。**每次 `clau
 - **The premium-consumer palette rotation.** Beige + brass/gold + oxblood + espresso deployed as a set because the brief says "premium" or "luxury". Every AI-generated luxury site ships this exact skin. Any one of these colors can be right alone; the four-piece uniform is the tell.
 ```
 
-## 2. `reference/animate.md` — Accessibility 節的 NEVER 清單（2026-07-05＋2026-07-10，源 emilkowalski/skills，MIT）
+## 2. `reference/animate.md`：「## Implement to the runtime」節尾，接在「Keep content visible in the default state…」那段後面，前面空一行（2026-07-05＋2026-07-10，源 emilkowalski/skills，MIT）
 
-插在「Enter from `scale(0)`…」與「Use bounce or elastic…」之間：
+4.x 以前插在 Accessibility 節的 NEVER 清單裡，句子省略了 NEVER；4.x 沒有那張清單，改成 Don't 開頭：
 
 ```markdown
 <!-- Stan overlay 2026-07-05: next 2 rules harvested from emilkowalski/skills (MIT). Re-apply if a plugin update overwrites this file. -->
-- Animate keyboard-initiated or high-frequency actions (100+ times a day: shortcuts, command palettes, tab switches); repetition makes motion feel slow, not smooth
-- Enter from `scale(0)`; nothing in the physical world appears from nothing. Use `scale(0.95)` + `opacity: 0` instead
+- Don't animate keyboard-initiated or high-frequency actions (100+ times a day: shortcuts, command palettes, tab switches); repetition makes motion feel slow, not smooth.
+- Don't enter from `scale(0)`; nothing in the physical world appears from nothing. Use `scale(0.95)` + `opacity: 0` instead.
 <!-- Stan overlay 2026-07-10: next 2 rules harvested from emilkowalski/skills (MIT). Re-apply if a plugin update overwrites this file. -->
-- Scale popovers/dropdowns/tooltips from the default center origin; set `transform-origin` to the trigger side so they grow from where they came from (Radix exposes `--radix-*-content-transform-origin`). Modals are exempt — they own the screen
-- Animate Framer Motion `x`/`y` shorthands for performance-critical motion; independent transforms skip hardware acceleration — animate the full `transform` string instead
+- Don't scale popovers, dropdowns, or tooltips from the default center origin; set `transform-origin` to the trigger side so they grow from where they came from (Radix exposes `--radix-*-content-transform-origin`). Modals are exempt because they own the screen.
+- Don't animate Framer Motion `x`/`y` shorthands for performance-critical motion; independent transforms skip hardware acceleration, so animate the full `transform` string instead.
 ```
 
-## 3. `reference/animate.md` — Accessibility 節的 reduced-motion CSS 區塊之後（2026-07-10，源 emilkowalski/skills，MIT）
+## 3. `reference/animate.md`：「## Accessibility and control」節，接在「Every web animation needs a `prefers-reduced-motion` path…」那段後面，前面空一行（2026-07-10，源 emilkowalski/skills，MIT）
+
+4.x 以前接在 reduced-motion 的 CSS 區塊後面；4.x 那段只剩文字，所以多一行引言，註解裡的節名也跟著換：
 
 ```markdown
-<!-- Stan overlay 2026-07-10: harvested from emilkowalski/skills (MIT). Motion Materials above promotes glass/backdrop-filter surfaces — these two fallbacks cover the a11y signals those surfaces need. Re-apply if a plugin update overwrites this file. -->
+<!-- Stan overlay 2026-07-10: harvested from emilkowalski/skills (MIT). "Choose material by meaning" above allows backdrop and blur surfaces; these two fallbacks cover the a11y signals those surfaces need. Re-apply if a plugin update overwrites this file. -->
+Give glass and backdrop-blur surfaces these fallbacks:
+
 ```css
 @media (prefers-reduced-transparency: reduce) {
   .glass { backdrop-filter: none; background: var(--surface-solid); }
@@ -42,7 +46,7 @@ plugin 升級會建新版本目錄、不會帶走這些 overlay。**每次 `clau
 ```
 ```
 
-## 4. `reference/harden.md` — 「## Testing Strategies」之前插整節（2026-07-10，源 vercel-labs/web-interface-guidelines，MIT）
+## 4. `reference/harden.md`：「## Testing Strategies」之前插整節，後面空一行（2026-07-10，源 vercel-labs/web-interface-guidelines，MIT）
 
 ```markdown
 <!-- Stan overlay 2026-07-10: this whole section harvested from vercel-labs/web-interface-guidelines (MIT). Re-apply if a plugin update overwrites this file. -->
