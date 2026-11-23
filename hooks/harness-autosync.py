@@ -12,10 +12,15 @@
 #   - 開關：環境變數 HARNESS_GITLEAKS_MODE
 #       observe（預設；未設定或值無法辨識都算 observe）：有發現只寫 log 並告警，commit/push 決定不變。
 #       enforce：有發現就走上面同一套 fail-closed（unstage、告警、不 commit 不 push）。
-#   - gitleaks 找不到、逾時（30 秒）或出錯 → fail-open：記一筆失敗、告警，照原本流程走。
+#   - gitleaks 找不到、逾時（25 秒）或出錯 → fail-open：記一筆失敗、告警，照原本流程走。
 #   - 紀錄檔：本檔同目錄的 harness-autosync.log（每行一筆 JSON），只記時間、檔名、規則 ID、行號。
 #   - 一律帶 --redact=100，報告只取檔名、規則 ID、行號三欄，秘鑰原文不進 log 也不進 stderr。
-import sys, os, re, json, shutil, subprocess
+#   - 被掃的 repo 不能放寬掃描：gitleaks 會到掃描目標找 .gitleaks.toml 和 .gitleaksignore，
+#     所以目標改成每次新建的空暫存資料夾，再用 GIT_DIR、GIT_WORK_TREE 讓 git 讀 REPO 的 staged 內容。
+#     規則一律用 gitleaks 內建預設；env 拿掉 GITLEAKS_ 開頭的變數（GITLEAKS_CONFIG、GITLEAKS_CONFIG_TOML）；
+#     帶 --ignore-gitleaks-allow 讓行內 gitleaks:allow 失效；GIT_ATTR_SOURCE 指到空 tree，
+#     repo 的 .gitattributes 就不能把檔案標成 binary 讓 diff 看不到內容。
+import sys, os, re, json, shutil, subprocess, tempfile
 from datetime import datetime
 
 try:
@@ -40,8 +45,9 @@ SECRET_PATTERNS = [
 ]
 
 
-def git(*args):
-    return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True, encoding="utf-8", errors="replace")
+def git(*args, env=None):
+    return subprocess.run(["git", *args], cwd=REPO, env=env, capture_output=True, text=True, encoding="utf-8",
+                          errors="replace")
 
 
 def paths_present():
@@ -50,7 +56,9 @@ def paths_present():
 
 def scan_staged():
     """回傳 [(檔案, 指紋名)]，只掃新增行；不回傳命中的字串本身，避免把秘鑰寫進 log。"""
-    diff = git("diff", "--cached", "--unified=0")
+    # repo 的 .gitattributes 能把檔案標成 binary（例如 *.md -diff），diff 就只剩 Binary files differ；
+    # GIT_ATTR_SOURCE 指到空 tree，只剩 git 自己的二進位判斷
+    diff = git("diff", "--cached", "--unified=0", env={**os.environ, "GIT_ATTR_SOURCE": EMPTY_TREE})
     if diff.returncode != 0:
         return []
     hits, cur = [], "?"
@@ -70,8 +78,9 @@ def warn(msg):
     sys.stderr.write(f"\n[harness-autosync] {msg}\n")
 
 
-GITLEAKS_TIMEOUT = 30    # 秒，整個 gitleaks 子程序的上限
+GITLEAKS_TIMEOUT = 25    # 秒，整個 gitleaks 子程序的上限；這個 Stop hook 在 settings 的總時限是 60 秒
 GITLEAKS_LEAK_EXIT = 77  # 自訂「有發現」退出碼；gitleaks 出錯時退出碼是 1，兩者才分得開
+EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"  # git 內建的空 tree，當 GIT_ATTR_SOURCE 用
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "harness-autosync.log")
 
 
@@ -115,17 +124,35 @@ def run_gitleaks():
     exe = find_gitleaks()
     if not exe:
         return [], "找不到 gitleaks 執行檔"
-    cmd = [
-        exe, "git", "--pre-commit", "--staged",
-        "--redact=100", "--no-banner", "--no-color", "--log-level", "error",
-        "--report-format", "json", "--report-path", "-",
-        "--exit-code", str(GITLEAKS_LEAK_EXIT),
-        "--timeout", str(GITLEAKS_TIMEOUT - 5),
-        REPO,
-    ]
+    loc = git("rev-parse", "--absolute-git-dir", "--show-toplevel")
+    parts = loc.stdout.splitlines() if loc.returncode == 0 else []
+    if len(parts) != 2:
+        return [], "找不到 repo 的 git 目錄"
+    # repo 可以改的東西都不能影響規則：拿掉 GITLEAKS_ 開頭的 env，掃描目標和 -i 都指到空暫存資料夾
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GITLEAKS_")}
+    env.update(GIT_DIR=parts[0], GIT_WORK_TREE=parts[1], GIT_ATTR_SOURCE=EMPTY_TREE)
     try:
-        r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=GITLEAKS_TIMEOUT)
+        with tempfile.TemporaryDirectory(prefix="harness-gitleaks-", ignore_cleanup_errors=True) as box:
+            # 報告寫進暫存資料夾、不接 pipe：逾時砍掉 gitleaks 後，留著的子程序不會拖住 hook
+            report = os.path.join(box, "report.json")
+            cmd = [
+                exe, "git", "--pre-commit", "--staged",
+                "--ignore-gitleaks-allow", "--gitleaks-ignore-path", box,
+                "--redact=100", "--no-banner", "--no-color", "--log-level", "error",
+                "--report-format", "json", "--report-path", report,
+                "--exit-code", str(GITLEAKS_LEAK_EXIT),
+                "--timeout", str(GITLEAKS_TIMEOUT - 5),
+                box,
+            ]
+            r = subprocess.run(cmd, cwd=box, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, timeout=GITLEAKS_TIMEOUT)
+            raw = ""
+            if r.returncode == GITLEAKS_LEAK_EXIT:
+                try:
+                    with open(report, encoding="utf-8", errors="replace") as fh:
+                        raw = fh.read()
+                except OSError:
+                    raw = ""
     except subprocess.TimeoutExpired:
         return [], f"逾時，超過 {GITLEAKS_TIMEOUT} 秒"
     except OSError as e:
@@ -136,7 +163,7 @@ def run_gitleaks():
         return [], f"gitleaks 退出碼 {r.returncode}"
     findings = []
     try:
-        for f in json.loads(r.stdout or "[]"):
+        for f in json.loads(raw or "[]"):
             findings.append((str(f.get("File", "?")), str(f.get("RuleID", "?")), str(f.get("StartLine", "?"))))
     except Exception:
         findings = []
