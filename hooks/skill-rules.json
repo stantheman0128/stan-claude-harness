@@ -1,7 +1,7 @@
 {
   "version": 2,
   "maxSuggestionsPerTurn": 3,
-  "_note": "關鍵字→skill 對照表，2026-07-10 起為 skill-routing 分流表的「編譯版」：每條 why 寫成『預設 X；情境 Y → Z』濃縮判準，skills 順序＝表的預設排第一。表變更後要重編譯本檔（見 skill-routing SKILL.md 編譯規範）。enforce:mandatory 走【強制區】：命令式、每則注入、不去重；其餘軟提醒+同session去重。skill-suggest.py 會把兩區建議記到 suggestions-<session>.jsonl 供 Stop hook 對帳。漏詞/誤觸改這檔即生效，免重開 session。",
+  "_note": "關鍵字→skill 對照表，2026-07-10 起為 skill-routing 分流表的「編譯版」：每條 why 寫成『預設 X；情境 Y → Z』濃縮判準，skills 順序＝表的預設排第一。表變更後要重編譯本檔（見 skill-routing SKILL.md 編譯規範）。enforce:mandatory 走【強制區】：命令式、每則注入、不去重；其餘軟提醒+同session去重。skill-suggest.py 會把兩區建議記到 suggestions-<session>.jsonl 供 Stop hook 對帳。漏詞/誤觸改這檔即生效，免重開 session。英文關鍵字整字比對，容許 s/ed/ing 這類詞尾；要比字首就在結尾加 *，例如 vulnerab*。中文關鍵字是子字串比對。",
   "rules": [
     {
       "skills": [
@@ -165,7 +165,8 @@
         "怎麼會這樣"
       ],
       "intentPatterns": [
-        "(修|解|查|找).{0,4}(bug|錯|問題|原因)"
+        "(修|解|查|找).{0,4}(bug|錯|問題|原因)",
+        "(?-i:[a-z](?:Error|Exception)(?:Id)?\\b)"
       ],
       "excludePatterns": [],
       "why": "預設 debugging-and-error-recovery（快速 web/runtime bug triage，錯誤輸出當不可信資料）；flaky/間歇、效能回歸、多元件、第一次就猜錯 → diagnosing-bugs（先建可重現紅燈迴圈）；連 3 次修不好 → systematic-debugging 並質疑架構"
@@ -403,7 +404,7 @@
         "pentest",
         "security review",
         "資安",
-        "vulnerab",
+        "vulnerab*",
         "找洞",
         "安全檢查"
       ],
@@ -421,7 +422,7 @@
       ],
       "priority": "medium",
       "keywords": [
-        "pdf",
+        "pdf*",
         "ocr",
         "掃描",
         "轉成 markdown",
