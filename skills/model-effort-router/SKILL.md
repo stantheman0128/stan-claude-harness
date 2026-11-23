@@ -48,7 +48,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 | 電腦操作、vision、圖表/簡報/試算表知識工作 | Opus 5.5 @ high；長交付物 xhigh | GDPval-AA 與 AA-Briefcase 都是 Opus 贏 Fable 5.2；AA 自己的表上 GDPval 仍是 Opus max 最高，Briefcase 則是 Sonnet max 1813 略高於 Opus max 1797 |
 | 要求準確、怕幻覺的知識型長交付物（研究報告、分析文件），Opus 5.5 @ xhigh 仍不夠 | 回報 Stan，建議 Opus 5.5 @ max（只開當次 session） | AA xhigh → max：Briefcase +39、GDPval +30、HLE +3.9、AutomationBench +4.6，幻覺率 0.65 → 0.50；每題成本約 1.7 倍 |
 | coding 卡關（Opus 5.5 @ xhigh 試 2 次仍同一失敗） | 回報 Stan，建議 Opus 5.5 @ max（只開當次 session）；以終端機、CLI 操作為主的 agent 任務，並列建議 Sonnet 5.5 @ max；長程 agentic coding 看下一列 | 證據偏弱：xhigh → max 只有 CursorBench +1.8、FrontierCode 2.0 +2.6（成本 2.5 倍），AA Terminal-Bench 持平。Sonnet max 的 AA Terminal-Bench 63.6 仍是全系列最高，每題 10.02 美元、1884 秒；代價見硬規則 3 |
-| 模糊根因、架構決策、多小時自主工程與長程 agentic coding、Opus 修不好的弱點、研究級深推理（Opus 高檔試過仍不行） | 回報 Stan，建議 Fable 5.2 @ high；長程 agentic coding 用 xhigh | SWE-bench Pro 93.0 對 Opus 89.9；FrontierCode 2.0 xhigh 全榜最高；AA high 已高過 Opus max；FrontierSWE v2（每題時限 20 小時的工程題）、Remote Labor Index（真實外包案）大幅領先；弱點修補只有 Fable 5.1 的數據；派工照硬規則 16 |
+| 模糊根因、架構決策、多小時自主工程與長程 agentic coding、Opus 修不好的弱點、研究級深推理（Opus 高檔試過仍不行） | Fable 5.2 @ high，不用先問 Stan（2026-11-23）；長程 agentic coding 用 xhigh；主 session 換不了模型就派 `model: "fable"` 的 subagent | SWE-bench Pro 93.0 對 Opus 89.9；FrontierCode 2.0 xhigh 全榜最高；AA high 已高過 Opus max；FrontierSWE v2（每題時限 20 小時的工程題）、Remote Labor Index（真實外包案）大幅領先；弱點修補只有 Fable 5.1 的數據；派工照硬規則 16 |
 | 互動式 live debug 要快 | Opus 5.5 + `/fast` | 同模型同品質、輸出快 2.5x；每百萬 token 8/40 美元，訂閱方案只能走 usage credits |
 | 大規模平行（稽核全 repo、遷移、多視角驗證） | ultracode 或明講「用 workflow」 | 這是編排方式不是檔位；引擎上限 16 併發 / 1000 agent |
 
@@ -64,7 +64,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 ## 升階路徑（起點不夠時）
 
-決策表給的是起點，跑起來不夠才照這裡升，一次一格。依據：Thariq 實測（effort 多買的是驗證與邊界覆蓋）、官方「調 effort 常比換模型更好的槓桿」。停損次數與「卡關後由 Stan 決定」是 Stan 的自訂規則，不是官方數字。
+決策表給的是起點，跑起來不夠才照這裡升，一次一格。依據：Thariq 實測（effort 多買的是驗證與邊界覆蓋）、官方「調 effort 常比換模型更好的槓桿」。停損次數、「卡關後可以自己升 Fable 5.2，max 與 Mythos 由 Stan 決定」是 Stan 的自訂規則（2026-11-23 改），不是官方數字。
 
 ```
 Haiku 5.5 @ high（只限抽取、分類、摘要）
@@ -75,11 +75,10 @@ Sonnet 5.5 @ high
 Opus 5.5 @ high（預設起點）
   ↓
 Opus 5.5 @ xhigh
-  ↓ 各試 2 次仍同一失敗 → 停下回報 Stan，附建議的下一格：
-  ├ 知識型長交付物要準確 → Opus 5.5 @ max（只開當次 session）
-  ├ coding 卡關 → Opus 5.5 @ max；終端機、CLI 為主的任務並列 Sonnet 5.5 @ max
-  ├ 資安的 exploit 開發、多階段攻防演練 → Mythos 5.2（硬規則 1）
-  └ 模糊根因、架構、多小時自主工程、Opus 修不好的弱點、研究級深推理 → Fable 5.2 @ high（長程 agentic coding 用 xhigh）
+  ↓ 各試 2 次仍同一失敗：
+  ├ 模糊根因、架構、多小時自主工程、Opus 修不好的弱點、研究級深推理 → 自己升 Fable 5.2 @ high（長程 agentic coding 用 xhigh）；主 session 換不了模型，就把難的那塊派給 `model: "fable"` 的 subagent
+  └ 要開 max 才停下回報 Stan：知識型長交付物要準確 → Opus 5.5 @ max；coding 卡關 → Opus 5.5 @ max，終端機、CLI 為主的任務並列 Sonnet 5.5 @ max（都只開當次 session）
+Mythos 5.2 不排進路由，只在 Stan 指定時用（硬規則 1）。
 ```
 
 max 不當任何角色或設定的預設（硬規則 3）。
@@ -105,7 +104,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
 - **環境壞了**：依賴沒裝、指令起不來、權限不足。先修環境。
 - **Opus 5.5 做一半用純文字停下**：這是早停，接法在硬規則 8，升檔不會好。
 
-**停損**（自訂）：同一格最多試 2 次。到 Opus 5.5 @ xhigh 還是同一個失敗，就停下來，把失敗樣本、試過的檔位和建議的下一格回報 Stan，由 Stan 決定開不開 max、Fable 5.2 或 Mythos 5.2，不自己往上爬。
+**停損**（自訂）：同一格最多試 2 次。到 Opus 5.5 @ xhigh 還是同一個失敗，適合 Fable 的題型就自己升 Fable 5.2（2026-11-23 Stan：Fable 不用先問）；Fable 也不行、或下一格是 max，就停下來，把失敗樣本、試過的檔位和建議的下一格回報 Stan，由 Stan 決定開不開 max。派出去的批次要自動升級用 `cascade` workflow（`~/.claude/workflows/cascade.js`）。
 
 **怎麼升**：
 - 主 session 臨時升降：打 `/effort`（不帶參數）開滑桿，選好按 `s`，只套這個 session。**直接打 `/effort high` 或滑桿按 Enter 會存成這個模型之後的預設**（寫進 user settings 的 `modelSettings`）；`/effort auto` 清掉存檔。Opus 5.5、Sonnet 5.5、Haiku 5.5、Fable 5.1 換檔保 cache；Fable 5.2 在 CC 未驗證（硬規則 2）。
@@ -153,7 +152,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
 12. Haiku 5.5 / Sonnet 5.5 / Sonnet 5 / Fable 5.1 / Fable 5.2 / Opus 5.5 都是新 tokenizer，同文字比 Opus 4.7 前（含 Haiku 4.5）約 +30% token：從舊模型搬來的 max_tokens/成本估算要重算（Sonnet 5 → 5.5 同 tokenizer，不用重算）。
 13. **Sonnet 5.5 與 Haiku 5.5 要逼它驗證**：官方承認 Sonnet low 有時沒跑能驗到改動的檢查就回報完成（例如依賴沒裝就跳過測試），low/medium 長任務會停下來問本來可以自己決定的事；Haiku medium 以下會跳過驗證，謊報完成也比 Opus、Sonnet 多。對策：派工單或 system prompt 貼官方那段「改了能跑的程式就先跑真的測試、型別檢查或 build 再回報；跑不了就說哪個沒跑、為什麼」，要它做完再停就加官方「Keep working until everything the user asked for is done…」段。
 14. **Haiku 5.5 的位置**（2026-10-13 解禁，規格已查證）：每百萬 token 0.10/0.50 美元（prompt 超過 100K 變 0.50/2.50）、cache read 0.01、1M context、CC 預設 medium、五檔都支援；`haiku` 別名 v2.1.293 起指向它。只接大量抽取、分類、摘要，effort 開 high；派工單加一段工作邊界說明（只准碰哪些路徑、不准做什麼），System Card 實測越界率從 30% 降到 1.8%。要判斷的實作、安全、複驗、scout 不給它。Haiku 4.5 不再使用。
-15. **fan-out 一律帶 model 也帶 effort**：照 CLAUDE.md §2，coding、審查帶 `model: "sonnet"` + `effort: "xhigh"`（Opus 額度寬鬆時改 `model: "opus"` + `effort: "high"`），抽取、分類帶 `model: "haiku"` + `effort: "high"`。沒帶 effort 時，跟主 session 不同模型的 subagent 跑該模型的存檔或預設（v2.1.317 起，不再跟 session 走），Sonnet、Haiku 5.5 沒存檔就是 medium。**Sonnet xhigh 的派工單附官方「做完就停」段**（xhigh、max 會自己加 review 回合、開 reviewer subagent；官方 max 實測加這段後成本約少 1/3、品質不變）。原文逐字（platform.claude.com prompting-claude-sonnet-5-5，Steer initiative and scope 節，2026-11-23 讀）：
+15. **fan-out 一律帶 model 也帶 effort**：照 CLAUDE.md §2，coding、審查帶 `model: "sonnet"` + `effort: "xhigh"`（Opus 額度寬鬆時改 `model: "opus"` + `effort: "high"`），抽取、分類帶 `model: "haiku"` + `effort: "high"`。沒帶 effort 時，跟主 session 不同模型的 subagent 跑該模型的存檔或預設（v2.1.317 起，不再跟 session 走），Sonnet、Haiku 5.5 沒存檔就是 medium。2026-11-23 起 settings env 設了 `CLAUDE_CODE_SUBAGENT_EFFORT=high`：沒帶 effort 的 subagent 與 workflow agent 一律 high（實測：不設時同模型跟主 session 跑 max、Sonnet 與 Fable 掉到 medium），角色定義檔與派工時帶的 effort 仍優先。**Sonnet xhigh 的派工單附官方「做完就停」段**（xhigh、max 會自己加 review 回合、開 reviewer subagent；官方 max 實測加這段後成本約少 1/3、品質不變）。原文逐字（platform.claude.com prompting-claude-sonnet-5-5，Steer initiative and scope 節，2026-11-23 讀）：
     ```
     When the work the user asked for is done and its checks pass, stop and report. Don't start extra rounds of review or hardening on your own, and don't launch reviewer subagents unless the user asked for a review. If you think a deeper review is worth doing, say so at the end.
     ```
