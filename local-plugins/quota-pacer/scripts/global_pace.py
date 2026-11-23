@@ -186,6 +186,15 @@ def main():
     if why:
         print("沒設定：%s%s" % (why, ONLY_STAN))
         sys.exit(3)
+    old = pc.load_global()
+    sid = pc.env_sid()
+    if old is not None and sid and not pc.bypassed(sid):
+        # session 把規則改嚴時沿用原本的起點：停手線是從起點算的，
+        # 用量漲了之後重設一次同樣的上限，停手線會往後挪一點，看過的最高用量也會歸零
+        keep = ("set",) if old.get("time_only") else ("set", "u0", "peak", "resets")
+        for k in keep:
+            if k in old:
+                g[k] = old[k]
     pc.save_json(pc.GLOBAL_FILE, g)
     print("已設定全機規則：%s" % pc.describe_global(g))
     lines = pc.hard_lines(g)
