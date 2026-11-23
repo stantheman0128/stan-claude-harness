@@ -18,6 +18,7 @@
 | 狀態列 | `statusline.sh` | 自製 statusline（context%、effort 顯示） |
 | Hooks | `hooks\` | 12 支：skill 觸發系統 3 支＋規則檔、守門 2 支、session 中文名、claude-mem 5 支、harness 自動同步 1 支（harness-autosync.py） |
 | Agents | `agents\` | pilotfish 分工制：scout / mech-executor / executor / security-executor / verifier / quant-analyst |
+| Workflows | `workflows\` | 存檔的 dynamic workflow，用 `Workflow({name})` 叫：`cascade.js`（2026-11-23，批次工作便宜的先做、verifier 驗不過就升一格，Sonnet high → Opus high → Opus xhigh → Fable xhigh，到頂就停） |
 | Skills | `skills\` | 42 資料夾（24 現役＋18 冷藏），**全量進版控**；含 12-factor-agents 五支（agent 可靠性設計）；humanizer×2 例外見下 |
 | Overlays | `overlays\` | plugin overlay patch 檔（impeccable 5 條 harvest 等）——plugin 升版被蓋掉時的還原依據 |
 | 舊 slash commands | `commands\` | 17 支 legacy（reels、api:*、misc:*、supabase:*、ui:* 等），多數已冷藏、檔案留存 |

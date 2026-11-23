@@ -1,4 +1,4 @@
-# Claude Code 全域工作規則（Stan）— v2.11 2026-11-23
+# Claude Code 全域工作規則（Stan）— v2.12 2026-11-23
 
 <!-- 編輯方針：本檔只放三類——路由（何時載什麼）、鐵則（被實測燒過的教訓）、輸出偏好。新增條目前先問：哪一層（系統提示/hook/skill description/agent 定義/auto-memory）還沒涵蓋它？v2.0 精簡的辯證紀錄見 git log。 -->
 
@@ -19,7 +19,7 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 
 ## 2. Subagent 派工
 
-角色路由：查找/盤點事實 → `scout`；已規格化的機械活 → `mech-executor`；要判斷的實作 → `executor`；修既有 bug、邊界多、或 executor 漏過邊界 → `executor-high`；安全敏感（auth/秘鑰/驗證/加密）→ `security-executor`；完工複驗 → `verifier`；廣域搜索 → 內建 `Explore`。各角色的模型與適用時機已寫死在 agent 定義，不必覆寫；沒寫死模型的內建 agent（Explore／Plan／general-purpose）帶 `model: "opus"`；大規模批次 fan-out：coding／審查帶 `model: "sonnet"` + `effort: "xhigh"`（用意是分散到 Sonnet 週額度；Opus 額度寬鬆時改帶 `model: "opus"` + `effort: "high"`，AA 上更便宜也更高分），派工單附 `model-effort-router` 硬規則 15 的官方「做完就停」段，抽取／分類帶 `model: "haiku"` + `effort: "high"`，派 haiku 時派工單寫明只准碰哪些路徑。Agent 工具的 `effort` 只在這條 fan-out 規則或 Stan 指定時帶，角色 agent 不帶、吃定義檔。effort／模型何時升階查 `model-effort-router` 的「升階路徑」。量大的讀取、盤點派出去；幾個 tool call 做得完的自己做。
+角色路由：查找/盤點事實 → `scout`；已規格化的機械活 → `mech-executor`；要判斷的實作 → `executor`；修既有 bug、邊界多、或 executor 漏過邊界 → `executor-high`；安全敏感（auth/秘鑰/驗證/加密）→ `security-executor`；完工複驗 → `verifier`；廣域搜索 → 內建 `Explore`。各角色的模型與適用時機已寫死在 agent 定義，不必覆寫；沒寫死模型的內建 agent（Explore／Plan／general-purpose）帶 `model: "opus"`；大規模批次 fan-out：coding／審查帶 `model: "sonnet"` + `effort: "xhigh"`（用意是分散到 Sonnet 週額度；Opus 額度寬鬆時改帶 `model: "opus"` + `effort: "high"`，AA 上更便宜也更高分），派工單附 `model-effort-router` 硬規則 15 的官方「做完就停」段，抽取／分類帶 `model: "haiku"` + `effort: "high"`，派 haiku 時派工單寫明只准碰哪些路徑。Agent 工具的 `effort` 只在這條 fan-out 規則或 Stan 指定時帶，角色 agent 不帶、吃定義檔。沒帶 effort 的 subagent 與 workflow agent 一律跑 high（settings env `CLAUDE_CODE_SUBAGENT_EFFORT=high`，2026-11-23 實測生效）。effort／模型何時升階查 `model-effort-router` 的「升階路徑」；卡關時可以自己升到 Fable 5.2（high 起，長程 coding 用 xhigh；主 session 換不了模型，就把難的那塊派給 `model: "fable"` 的 subagent），max 仍要 Stan 同意，Mythos 不排進路由（Stan 2026-11-23）。派出去的批次要做到「沒過就升一格」，用 `cascade` workflow（`~/.claude/workflows/cascade.js`）。量大的讀取、盤點派出去；幾個 tool call 做得完的自己做。
 
 - 派工規格一次到位：goal、constraints、done-criteria、相關路徑、為什麼。
 - 【鐵則】verifier 派工單絕不含「發現問題順便修」類指令（實測會誘發用 Bash 繞過工具鎖直接改檔）。修復一律回主 session 路由。
