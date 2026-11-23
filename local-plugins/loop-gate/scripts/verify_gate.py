@@ -42,7 +42,7 @@ def load_manifest(root):
         return None
 
 
-def manifest_trusted(root):
+def manifest_trusted(root, session_id):
     path = root / ".claude" / "verify.json"
     trusted_file = hook_health.state_dir() / "trusted.json"
     try:
@@ -50,12 +50,20 @@ def manifest_trusted(root):
     except (ValueError, OSError):
         registry = {}
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    if registry.get(str(root.resolve())) == digest:
+    key = str(root.resolve())
+    if registry.get(key) == digest:
         return True
     hook_health.log_failure(
         "verify_gate",
         f"untrusted-manifest: {path} 未註冊或內容已變，gate 跳過。"
         f"確認 command 內容安全後執行 trust_manifest.py 重新信任。")
+    # B1：registry 有這個 root 但 digest 不同，代表信任過的 manifest 被改了，當下就讓使用者看到。
+    # 完全沒註冊（新 clone、git worktree）維持安靜，只留 log。
+    if key in registry and hook_health.once_per_session("b1-manifest-changed", session_id, key):
+        trust_script = Path(__file__).resolve().parent / "trust_manifest.py"
+        hook_health.emit_json({"systemMessage": (
+            f"[loop-gate] {path} 改過，gate 這次沒跑；確認內容後執行 "
+            f"py \"{trust_script}\" \"{key}\" 重新信任。")})
     return False
 
 
@@ -174,7 +182,8 @@ def main():
     manifest = load_manifest(root)
     if manifest is None:
         sys.exit(0)
-    if not manifest_trusted(root):
+    session_id = str(event.get("session_id", "unknown"))
+    if not manifest_trusted(root, session_id):
         sys.exit(0)
     fp = fingerprint(root)
     evidence = load_evidence(root)
@@ -187,7 +196,6 @@ def main():
         if status is not None and _strip_evidence_lines(status).strip() == "":
             save_evidence(root, fp, "assumed-baseline", manifest["command"])
             sys.exit(0)  # 純問答 session 不冷跑全套測試
-    session_id = str(event.get("session_id", "unknown"))
     run_verify(root, manifest, session_id)
 
 

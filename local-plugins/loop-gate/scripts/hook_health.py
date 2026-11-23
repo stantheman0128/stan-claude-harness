@@ -54,6 +54,37 @@ def log_failure(hook, error):
         pass  # health 機制本身失敗時保持沉默，不准反過來弄掛 hook
 
 
+NOTICE_TTL_SEC = 7 * 24 * 3600
+
+
+def once_per_session(kind, session_id, key):
+    """同一 session 對同一 key 只回 True 一次，用來讓使用者看得到的提醒不重複出現。
+
+    紀錄存在 state_dir()/notices.json，超過 7 天的自動清掉。
+    """
+    path = state_dir() / "notices.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    now = time.time()
+    data = {k: v for k, v in data.items()
+            if isinstance(v, (int, float)) and now - v <= NOTICE_TTL_SEC}
+    token = f"{kind}|{session_id}|{key}"
+    if token in data:
+        return False
+    data[token] = now
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return True
+
+
+def emit_json(obj):
+    """stdout 只印一個 JSON 物件；用 ASCII 跳脫，避開 Windows 主控台編碼把中文弄壞。"""
+    sys.stdout.write(json.dumps(obj, ensure_ascii=True) + "\n")
+
+
 def guard(hook_name, main):
     try:
         main()

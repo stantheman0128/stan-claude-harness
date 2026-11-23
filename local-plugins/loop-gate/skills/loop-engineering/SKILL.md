@@ -19,7 +19,8 @@ description: loop-gate 驗證 gate 的管理流程。主動使用本 skill 當�
 3. 把 `.claude/loop-gate-evidence.json` 加進該專案 `.gitignore`（沒加的話快路徑仍可運作，但 evidence 會出現在 git status 干擾使用者）。
 4. **人工確認 command 內容安全後**，執行信任註冊：
    `py "<plugin root>/scripts/trust_manifest.py" "<專案根絕對路徑>"`
-   （何時執行：manifest 初建與每次內容變更後。執行後：下一次 Stop 即生效。）
+   （何時執行：manifest 初建與每次內容變更後。執行後：下一次 Stop 即生效。
+   信任過的 manifest 被改了，Stop 會在畫面上警告一次「gate 這次沒跑」，照提示重新信任即可。）
 5. 驗收：故意讓一個測試紅燈、觸發 Stop，確認被擋且 stderr 有輸出尾段；修好再 Stop，確認放行。
 
 ## 流程二：Loop 4 檢討（被使用者糾正之後）
@@ -41,3 +42,15 @@ description: loop-gate 驗證 gate 的管理流程。主動使用本 skill 當�
 3. 壞了就 `git checkout` 還原（plugin repo 有完整版控），不要帶病上線。
 4. hook 行為改動要 bump plugin version + CHANGELOG（一功能一版號）。
 5. 改完 hooks 要重開 session 才生效（plugin hooks 在 session 啟動時載入）。
+
+## 流程四：e2e gate 的模式切換
+
+`scripts/e2e_gate.py` 檢查「改了一定量的程式碼，有沒有實際跑過改到的流程」，以及 commit 的
+`Verified:` 行、開 PR 前的 code-review。預設 observe，只寫 `~/.claude/loop-gate/e2e-gate.jsonl`。
+
+1. 切模式：寫 `~/.claude/loop-gate/e2e_gate.json`，例如
+   `{"mode": "enforce", "min_lines": 40, "min_files": 3}`。mode 可填 observe／enforce／off，
+   沒寫的欄位用程式內建值。下一次 hook 觸發就生效，不必重開 session。
+2. 改成 enforce 之前，先看 jsonl 裡 `would_block` 的筆數與誤判，確認不會一直擋錯再切。
+3. 算驗過的證據：Skill `run`／`verify`／`*:verify`、Agent `verifier`、Read
+   `.claude/skills/verify/SKILL.md`、使用者打 `/verify`、最後回覆有一行以 `Verified:` 開頭。
