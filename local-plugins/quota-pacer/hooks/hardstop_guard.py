@@ -7,7 +7,7 @@
   用量到線的，放行到上限前 1 個百分點左右（預設 99%）；時間到或重置的，放行 WRAP_CALLS 次。之後全擋。
 - 只有 Stan 本人能豁免：他在訊息裡親口說，bypass_prompt.py 才會替那個 session 寫記號。
   到線之後 session 自己跑 global_pace.py --clear 或重設規則，一律擋。
-- 用量超過 GLOBAL_STALE 沒更新就自己去 endpoint 拉（有冷卻）；拉不到就擋一次，
+- hook 自己叫不到 get_usage（那是模型才有的工具）。用量超過 GLOBAL_STALE 沒更新就擋一次，
   請 session 用 get_usage 把讀數寫進來（同一 session NAG_GAP 內只擋一次）。
 
 二、單一 session 的 pacer（sessions/<session>.json，start_pace.py 設的）

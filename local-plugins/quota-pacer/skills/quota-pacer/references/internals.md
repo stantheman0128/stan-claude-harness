@@ -12,8 +12,8 @@
     "ceiling": { "seven_day": 54, "scoped": { "fable": 57 } } }
   ```
   `u0` 是開工時的用量。`ceiling` 沒寫的那條上限就是 100。`session` 來自環境變數；環境變數沒有時，才用 hook 在看到 `start_pace.py` 時記在 `.starting-session` 的值。
-- `C:/Users/stans/.claude/usage-state.json`：最後一次讀到的用量。`source` 是 `app`（`write_usage.py` 寫的）或 `oauth`（腳本自己拉的）。
-- `C:/Users/stans/.claude/quota-pacer/refresh.log`：每次去 endpoint 拉用量的結果，一行一筆 JSON。
+- `C:/Users/stans/.claude/usage-state.json`：最後一次讀到的用量，`write_usage.py` 寫的（`source` 是 `app`）。
+- 腳本自己去官方 endpoint 拉用量的功能預設關閉（0.8.0，Stan 定案只用 `get_usage`）。它要用 `.credentials.json` 的 token，那個只有 CLI 會更新。沒有 `get_usage` 的純 CLI 環境要用，設環境變數 `QP_SELF_PULL=1`，這時拉的結果記在 `quota-pacer/refresh.log`，`source` 是 `oauth`。
 
 - `C:/Users/stans/.claude/quota-pacer/global.json`：全機規則，`global_pace.py` 寫。
   ```json
@@ -43,7 +43,7 @@
   - 因為用量到線：放行到 EMERGENCY 線，也就是上限前 `QP_EMERGENCY_PP`（1）個百分點，上限 100 時是 99%。讀數超過 `QP_GLOBAL_STALE_SEC` 沒更新就退回數次數，不憑舊數字一直放行。
   - 因為時間到或重置：放行 `QP_WRAP_CALLS`（10）次。subagent 的工具呼叫算在同一個 session 的額度裡。
 - 失效：到線後 `QP_GLOBAL_HOLD_HOURS`（3）小時，從截止時刻和到線時刻較晚的那個起算；一直沒到線的規則最多活 `QP_GLOBAL_MAX_HOURS`（48）小時。
-- 用量超過 `QP_GLOBAL_STALE_SEC`（300）沒更新，hook 會自己去 endpoint 拉（4 秒逾時，60 秒冷卻）。拉不到就擋一次請 session 補讀數，同一 session `QP_NAG_GAP_SEC`（600）內只擋一次。
+- 用量超過 `QP_GLOBAL_STALE_SEC`（300）沒更新，hook 擋一次請 session 用 `get_usage` 補讀數，同一 session `QP_NAG_GAP_SEC`（600）內只擋一次。hook 是獨立的程式，自己叫不到 `get_usage`。
 
 ## 豁免（`hooks/bypass_prompt.py`，UserPromptSubmit）
 

@@ -1,5 +1,16 @@
 # Quota Pacer CHANGELOG
 
+## 0.8.0 — 2026-11-23
+用量只從桌面 App 的 `get_usage` 讀。Stan 定案：不要再走 CLI 那條路。
+
+- 腳本自己去官方 endpoint 拉用量的功能預設關閉。它要用 `.credentials.json` 的 token，那個只有 CLI 會更新、常常過期，過期時的處置還得叫 Stan 去 PowerShell 跑一次 CLI。
+- 讀數太舊或沒有時，腳本印的處置改成「先呼叫 get_usage，再用 write_usage.py 寫進來」，不再出現 token、CLI 的字眼。
+- SKILL：讀不到用量時不再說「腳本會自己拉」，改成有時間上限就靠時間、沒有就停下回報。
+- 全機規則：五分鐘內沒有任何 session 更新過讀數時，hook 直接請 session 補，不再先自己試拉。
+- 程式沒刪。沒有 `get_usage` 的純 CLI 環境設 `QP_SELF_PULL=1` 可以開回來。
+- SKILL：`get_usage` 現在會回 `resetsAt`，原樣接在數字後面給 `write_usage.py`。
+- 隔離測試 124 項全過。真實環境用 `get_usage` 的讀數走完寫入、開工、檢查、收工：`usage-state.json` 的 `source` 是 `app`，重置時刻有記進設定檔。
+
 ## 0.7.2 — 2026-11-23
 狀態檔的保護改看整台機器。起因：0.7.1 提交後的自動安全檢查。
 

@@ -42,6 +42,12 @@ CRED_FILE = os.environ.get("QP_CRED_FILE") or os.path.join(
     os.path.expanduser("~"), ".claude", ".credentials.json")
 USAGE_URL = os.environ.get("QP_USAGE_URL") or "https://api.anthropic.com/api/oauth/usage"
 REFRESH_COOLDOWN = _f("QP_REFRESH_COOLDOWN_SEC", 60)
+# 腳本自己去官方 endpoint 拉用量：預設關。Stan 11-23 定案只用桌面 App 的 get_usage，
+# 自己拉要用 .credentials.json 的 token，那個只有 CLI 會更新、常常過期。
+# 沒有 get_usage 的環境（純 CLI）要用再設 QP_SELF_PULL=1。
+SELF_PULL = os.environ.get("QP_SELF_PULL") == "1"
+GET_USAGE_HINT = ("先呼叫 mcp__ccd_session_mgmt__get_usage，再用 write_usage.py 把每條限額的已用百分比寫進來"
+                  "（--weekly 數字 --scoped 模型英文小寫=數字）")
 REFRESH_MARK = os.path.join(os.path.dirname(ACTIVE_FILE), ".refresh-attempt")
 # hook 看到「要跑 start_pace.py」時把 session_id 寫在這，start_pace.py 再抄進 active.json
 START_MARK = os.path.join(os.path.dirname(ACTIVE_FILE), ".starting-session")
@@ -178,6 +184,9 @@ def _refresh_usage(force=False, timeout=10):
     失敗原因記在 LAST_REFRESH（status + detail），呼叫端用 refresh_advice() 轉成處置。
     """
     global LAST_REFRESH
+    if not SELF_PULL:
+        LAST_REFRESH = {"status": "off"}
+        return None
     if not force:
         try:
             mark = os.path.getmtime(REFRESH_MARK)
@@ -249,7 +258,8 @@ def _log_refresh(force):
 def refresh_usage(force=False, timeout=10):
     """_refresh_usage 加紀錄。成功回 dict、失敗/冷卻中回 None，原因在 LAST_REFRESH 與 refresh.log。"""
     data = _refresh_usage(force, timeout)
-    _log_refresh(force)
+    if SELF_PULL:
+        _log_refresh(force)
     return data
 
 def _fmt_dur(sec):
@@ -263,6 +273,8 @@ def refresh_advice(st=None):
     cli = '在一般 PowerShell（不是桌面 App）跑一次 claude -p "ok" --model claude-haiku-5-5 讓 CLI 換 token，再重跑'
     if s in ("ok", "none", None):
         return ""
+    if s == "off":
+        return "讀數太舊或還沒有 → " + GET_USAGE_HINT
     if s == "cooldown":
         return "冷卻中，上次嘗試不到 %ds 前 → 等 %ds 或加 --force 重試" % (
             int(REFRESH_COOLDOWN), st.get("wait", 0))
