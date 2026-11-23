@@ -27,22 +27,6 @@ sys.dont_write_bytecode = True  # keep __pycache__ out of evals/
 import grade  # noqa: E402
 from scenarios import SCENARIOS  # noqa: E402
 
-# Allowlist: only what claude, git, node and python need to start on Windows
-# or POSIX. Everything else (tokens, the parent session's ids and sockets) is
-# dropped so it cannot surface in a transcript. Auth comes from the user's
-# own login under the home directory, as in a fresh terminal.
-ENV_ALLOW = {
-    "PATH", "PATHEXT", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "USERPROFILE", "HOME",
-    "HOMEDRIVE", "HOMEPATH", "USERNAME", "USER", "APPDATA", "LOCALAPPDATA", "PROGRAMDATA",
-    "PROGRAMFILES", "PROGRAMFILES(X86)", "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "SHELL",
-}
-
-
-def child_env(extra: list) -> dict:
-    allow = ENV_ALLOW | {e.upper() for e in extra}
-    return {k: v for k, v in os.environ.items() if k.upper() in allow}
-
-
 def posix_abs(p: Path) -> str:
     """C:\\a\\b -> //c/a/b, the absolute form permission rules use on Windows."""
     s = p.resolve().as_posix()
@@ -59,12 +43,12 @@ def guard_out(out: Path, config_root: Path) -> None:
 
 
 def write_guard(sc, sdir: Path, repo: Path) -> Path:
-    """Write guard.json and a settings file that adds guard.py as a PreToolUse hook."""
+    """Write guard.json and a settings file that adds guard.py as a PreToolUse hook on every tool."""
     (sdir / "guard.json").write_text(json.dumps({"repo": str(repo.resolve()), "allow_prefixes": sc.shell_prefixes}),
                                      encoding="utf-8")
     hook = f'"{Path(sys.executable).as_posix()}" -I "{(HERE / "guard.py").as_posix()}" "{(sdir / "guard.json").as_posix()}"'
     settings = {"hooks": {"PreToolUse": [{
-        "matcher": "^(Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell|mcp__.*)$",
+        "matcher": "*",  # guard.py denies by default, so it has to see every tool
         "hooks": [{"type": "command", "command": hook}]}]}}
     path = sdir / "eval-settings.json"
     path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
@@ -110,7 +94,7 @@ def run_one(sc, out: Path, args) -> dict:
     with open(sdir / "stream.jsonl", "wb") as so, open(sdir / "stderr.txt", "wb") as se:
         flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
         proc = subprocess.Popen(cmd, cwd=repo, stdin=subprocess.PIPE, stdout=so, stderr=se,
-                                env=child_env(args.pass_env), creationflags=flags)
+                                env=grade.child_env(args.pass_env), creationflags=flags)
         try:
             proc.communicate(input=sc.prompt.encode("utf-8"), timeout=args.timeout)
         except subprocess.TimeoutExpired:

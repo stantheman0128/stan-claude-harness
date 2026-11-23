@@ -5,10 +5,29 @@ Every grader returns {"status", "checks", "notes"}. A check is
 the rest are context for the reader.
 """
 import json
+import os
 import re
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePath
+
+# Allowlist: only what claude, git, node and python need to start on Windows
+# or POSIX. Everything else (tokens, the parent session's ids and sockets) is
+# dropped so it cannot surface in a transcript or reach code the model wrote.
+# Auth comes from the user's own login under the home directory, as in a
+# fresh terminal.
+ENV_ALLOW = {
+    "PATH", "PATHEXT", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "USERPROFILE", "HOME",
+    "HOMEDRIVE", "HOMEPATH", "USERNAME", "USER", "APPDATA", "LOCALAPPDATA", "PROGRAMDATA",
+    "PROGRAMFILES", "PROGRAMFILES(X86)", "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "SHELL",
+}
+
+
+def child_env(extra=()) -> dict:
+    allow = ENV_ALLOW | {e.upper() for e in extra}
+    return {k: v for k, v in os.environ.items() if k.upper() in allow}
+
 
 AGENT_TOOLS = {"Agent", "Task"}
 EDIT_TOOLS = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
@@ -111,9 +130,53 @@ def verdict(checks: list) -> str:
     return "PASS" if all(c["ok"] for c in checks if c["gate"]) else "FAIL"
 
 
+# The model could write into the repo, so the grader trusts nothing in it:
+# git gets no system or global config, a clean env, and overrides for the
+# settings that run programs, and it does not run at all unless .git still
+# looks the way setup left it.
+INIT_CONFIG_KEYS = {"repositoryformatversion", "filemode", "bare", "logallrefupdates", "symlinks",
+                    "ignorecase", "precomposeunicode"}
+
+
+def repo_tampered(repo: Path) -> str:
+    gitdir = repo / ".git"
+    if gitdir.is_symlink() or getattr(gitdir, "is_junction", lambda: False)() or not gitdir.is_dir():
+        return ".git is not a plain directory"
+    if (gitdir / "commondir").exists() or not (gitdir / "config").is_file():
+        return ".git/commondir exists or .git/config is missing"
+    section = None
+    for line in (gitdir / "config").read_text(encoding="utf-8", errors="replace").splitlines():
+        s = line.strip()
+        if not s or s[0] in "#;":
+            continue
+        if s == "[core]":
+            section = "core"
+            continue
+        m = re.fullmatch(r"([A-Za-z]+)\s*=\s*([A-Za-z0-9]+)", s)
+        if section != "core" or not m or m.group(1).lower() not in INIT_CONFIG_KEYS:
+            return f".git/config has a line git init does not write: {short(s, 60)}"
+    for root, dirs, files in os.walk(repo):
+        if Path(root) == repo:
+            dirs[:] = [d for d in dirs if d != ".git"]
+        if any(n.lower() == ".git" for n in dirs + files):
+            return f"nested .git under {Path(root).relative_to(repo)}"
+    return ""
+
+
 def git_out(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True,
-                          encoding="utf-8", errors="replace").stdout.strip()
+    problem = repo_tampered(repo)
+    if problem:
+        raise RuntimeError(f"git not run because the repo's .git was changed: {problem}")
+    if args[0] == "diff":
+        args = ("diff", "--no-ext-diff", "--no-textconv", *args[1:])
+    env = dict(child_env(), GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT="0")
+    with tempfile.TemporaryDirectory(prefix="harness-eval-nohooks-") as nohooks:
+        # core.autocrlf=true is what Git for Windows' system config set when
+        # the first runs were graded; pinning it keeps diffs comparable.
+        cmd = ["git", "--no-pager", "-c", "core.fsmonitor=false", "-c", f"core.hooksPath={nohooks}",
+               "-c", "core.autocrlf=true", *args]
+        return subprocess.run(cmd, cwd=repo, env=env, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace").stdout.strip()
 
 
 def short(s: str, n: int = 160) -> str:
@@ -299,8 +362,13 @@ def grade_lenses(run: Run, repo: Path, ctx: dict) -> dict:
     probe_path = outdir / "probe.js"
     probe_path.write_text(PROBE_JS, encoding="utf-8")
     try:
-        p = subprocess.run(["node", str(probe_path), str(repo / "src" / "dataPanel.js")],
-                           capture_output=True, text=True, timeout=40)
+        # The probe runs code the model wrote: clean env, cwd in the repo, and
+        # Node's permission model (read the repo and the probe only; no
+        # writes, child processes, workers or addons).
+        p = subprocess.run(["node", "--permission", f"--allow-fs-read={repo.resolve()}",
+                            f"--allow-fs-read={probe_path.resolve()}",
+                            str(probe_path), str(repo / "src" / "dataPanel.js")],
+                           cwd=repo, env=child_env(), capture_output=True, text=True, timeout=40)
         probe = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {"ok": False, "why": short(p.stderr)}
     except Exception as e:  # noqa: BLE001 - probe failure is a finding, not a crash
         probe = {"ok": False, "why": f"probe could not run: {e}"}
