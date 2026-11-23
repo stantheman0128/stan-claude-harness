@@ -637,6 +637,10 @@ def has_limit(sid):
     """這個 session 現在有沒有任何限制生效（全機規則或它自己的 pacer）。"""
     return load_global() is not None or bool(find_active(sid))
 
+def any_limit():
+    """這台機器上現在有沒有任何限制生效，不管是誰的。保護狀態檔用這個判斷。"""
+    return load_global() is not None or bool(find_active("", all_if_unknown=True))
+
 def describe_global(g):
     """一句話講這條規則：什麼情況會停。"""
     conds = []

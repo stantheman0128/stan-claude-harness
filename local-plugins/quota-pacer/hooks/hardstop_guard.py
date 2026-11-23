@@ -197,7 +197,9 @@ def main():
     # 這只擋得住直接寫出路徑的做法，是減速丘不是保險箱：session 跟 Stan 是同一個帳號。
     if tool in ("Bash", "PowerShell", "Write", "Edit", "NotebookEdit") and not own and isinstance(ti, dict):
         blob = json.dumps(ti, ensure_ascii=False).replace("\\\\", "/").lower()
-        if any(x in blob for x in STATE_FILES) and pc.has_limit(sid):
+        # 看的是「機器上有沒有任何限制」，不是「這個 session 有沒有」：
+        # 不然沒開 pacer 的 session 可以去刪別的 session 的設定檔
+        if any(x in blob for x in STATE_FILES) and pc.any_limit():
             block("pacer 的狀態檔不能直接改或刪。收工用 end_pace.py；全機" + ONLY_STAN)
 
     # 解除或改寫全機規則：到線之後不行，還沒到線時 --clear 也不行。只有 --status 隨時可以看。
