@@ -1,15 +1,18 @@
 """PreToolUse guard for eval runs: keep the model inside the throwaway repo.
 
 run.py registers this hook for every tool through --settings. It denies by
-default and exits 2 (block) unless the call is one of:
+default and exits 2 (block), also when the event's cwd is not inside the
+repo and when the guard itself fails (Claude Code treats exit 1 as a
+non-blocking error and runs the tool). Otherwise the call must be one of:
   - a tool in READ_TOOLS (reading, searching, skills, subagents)
   - Edit/Write/NotebookEdit/MultiEdit on an absolute path inside the repo,
     not inside or named .git, .claude or .mcp.json
   - Bash whose command splits into simple commands joined only by |, ||,
     &&, ; or newlines, each starting with one of the scenario's
     allow_prefixes. Any other shell syntax is blocked: $ expansion,
-    backticks, ( ), { }, a lone &, <( ), >( ), here-docs, every < and every
-    > except N>&M and N>/dev/null. cd and every command not in
+    backticks, ( ), { }, a lone &, <( ), >( ), here-docs, an unquoted #
+    starting a word (a comment), every < and every > except N>&M and
+    N>/dev/null. cd and every command not in
     READ_ONLY_CMDS must keep path arguments inside the repo, and git may not
     get options that write a file or run a program.
 PowerShell is blocked because no scenario needs it.
@@ -44,8 +47,10 @@ class Blocked(Exception):
 
 
 def block(msg: str) -> None:
-    print(f"harness-eval guard: {msg}", file=sys.stderr)
-    sys.exit(2)
+    try:
+        print(f"harness-eval guard: {msg}", file=sys.stderr)
+    finally:
+        sys.exit(2)
 
 
 def inside(p: Path, repo: Path) -> bool:
@@ -146,6 +151,8 @@ def tokenize(cmd: str) -> list:
             end()
             toks.append(("op", op))
             i = j
+        elif c == "#" and not in_word:
+            raise Blocked("an unquoted # starting a word is a bash comment; not allowed")
         else:
             if c in "*?[":
                 flags.add("glob")
@@ -187,8 +194,10 @@ def split_commands(toks: list) -> list:
     return cmds
 
 
-def shell_path(word: str, base: Path):
-    """The path Git Bash would use for word, or None when it cannot be told."""
+def shell_path(word: str, base):
+    """The path Git Bash would use for word, or None when it cannot be told.
+
+    With base None, only an absolute word resolves."""
     w = word
     if os.name == "nt":
         m = re.match(r"/([A-Za-z])(?=/|$)", w)
@@ -198,7 +207,11 @@ def shell_path(word: str, base: Path):
             return None  # MSYS mount such as /tmp, or a UNC path
     try:
         p = Path(w)
-        return (p if p.is_absolute() else base / p).resolve()
+        if not p.is_absolute():
+            if base is None:
+                return None
+            p = base / p
+        return p.resolve()
     except (OSError, ValueError, RuntimeError):
         return None
 
@@ -257,10 +270,10 @@ def main() -> None:
     repo = Path(cfg["repo"]).resolve()
     ev = json.load(sys.stdin)
     tool, inp = ev.get("tool_name", ""), ev.get("tool_input") or {}
-    try:
-        cwd = Path(ev.get("cwd") or repo).resolve()
-    except (OSError, ValueError, RuntimeError):
-        cwd = repo
+    raw_cwd = ev.get("cwd")
+    cwd = shell_path(raw_cwd, None) if isinstance(raw_cwd, str) else None
+    if cwd is None or not inside(cwd, repo):
+        block(f"session cwd is not inside the eval repo: {raw_cwd!r}")
     if tool in ("Agent", "Task") and inp.get("isolation"):
         block("subagents with isolation are not available in this eval")
     if tool in READ_TOOLS:
@@ -280,4 +293,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException as e:  # noqa: BLE001 - fail closed: exit 1 would let the tool run
+        block(f"guard error, blocking: {type(e).__name__}: {e}")

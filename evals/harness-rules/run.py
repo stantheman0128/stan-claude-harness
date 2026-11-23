@@ -27,6 +27,135 @@ sys.dont_write_bytecode = True  # keep __pycache__ out of evals/
 import grade  # noqa: E402
 from scenarios import SCENARIOS  # noqa: E402
 
+CREATE_SUSPENDED = 0x4
+
+if os.name == "nt":
+    import ctypes
+    from ctypes import wintypes as w
+
+    _k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _H = ctypes.c_void_p
+
+    def _bind(name, res, *argtypes):
+        f = getattr(_k32, name)
+        f.restype, f.argtypes = res, list(argtypes)
+        return f
+
+    class _BasicLimit(ctypes.Structure):  # JOBOBJECT_BASIC_LIMIT_INFORMATION
+        _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                    ("LimitFlags", w.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                    ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", w.DWORD),
+                    ("Affinity", ctypes.c_size_t), ("PriorityClass", w.DWORD), ("SchedulingClass", w.DWORD)]
+
+    class _ExtendedLimit(ctypes.Structure):  # JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+        _fields_ = [("BasicLimitInformation", _BasicLimit), ("IoInfo", ctypes.c_uint64 * 6)] + [
+            (n, ctypes.c_size_t) for n in ("ProcessMemoryLimit", "JobMemoryLimit", "PeakProcessMemoryUsed",
+                                           "PeakJobMemoryUsed")]
+
+    class _Accounting(ctypes.Structure):  # JOBOBJECT_BASIC_ACCOUNTING_INFORMATION
+        _fields_ = [(n, ctypes.c_int64) for n in ("TotalUserTime", "TotalKernelTime", "ThisPeriodTotalUserTime",
+                                                  "ThisPeriodTotalKernelTime")] + [
+            (n, w.DWORD) for n in ("TotalPageFaultCount", "TotalProcesses", "ActiveProcesses",
+                                   "TotalTerminatedProcesses")]
+
+    class _ThreadEntry(ctypes.Structure):  # THREADENTRY32
+        _fields_ = [("dwSize", w.DWORD), ("cntUsage", w.DWORD), ("th32ThreadID", w.DWORD),
+                    ("th32OwnerProcessID", w.DWORD), ("tpBasePri", w.LONG), ("tpDeltaPri", w.LONG),
+                    ("dwFlags", w.DWORD)]
+
+    _CreateJobObjectW = _bind("CreateJobObjectW", _H, ctypes.c_void_p, w.LPCWSTR)
+    _SetInformationJobObject = _bind("SetInformationJobObject", w.BOOL, _H, ctypes.c_int, ctypes.c_void_p, w.DWORD)
+    _QueryInformationJobObject = _bind("QueryInformationJobObject", w.BOOL, _H, ctypes.c_int, ctypes.c_void_p,
+                                       w.DWORD, ctypes.POINTER(w.DWORD))
+    _AssignProcessToJobObject = _bind("AssignProcessToJobObject", w.BOOL, _H, _H)
+    _TerminateJobObject = _bind("TerminateJobObject", w.BOOL, _H, w.UINT)
+    _OpenProcess = _bind("OpenProcess", _H, w.DWORD, w.BOOL, w.DWORD)
+    _OpenThread = _bind("OpenThread", _H, w.DWORD, w.BOOL, w.DWORD)
+    _ResumeThread = _bind("ResumeThread", w.DWORD, _H)
+    _CloseHandle = _bind("CloseHandle", w.BOOL, _H)
+    _CreateToolhelp32Snapshot = _bind("CreateToolhelp32Snapshot", _H, w.DWORD, w.DWORD)
+    _Thread32First = _bind("Thread32First", w.BOOL, _H, ctypes.POINTER(_ThreadEntry))
+    _Thread32Next = _bind("Thread32Next", w.BOOL, _H, ctypes.POINTER(_ThreadEntry))
+
+
+class JobTree:
+    """A Windows Job Object with KILL_ON_JOB_CLOSE holding claude and all it starts.
+
+    The process must be created with CREATE_SUSPENDED: it joins the job before
+    any of its code runs, so no child can start outside the job. close()
+    terminates the whole tree and waits until the job is empty, so nothing the
+    model started can still touch the repo while it is graded.
+    """
+
+    def __init__(self, pid: int):
+        self.job = _CreateJobObjectW(None, None)
+        if not self.job:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            info = _ExtendedLimit()
+            info.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            if not _SetInformationJobObject(self.job, 9, ctypes.byref(info), ctypes.sizeof(info)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            ph = _OpenProcess(0x0101, False, pid)  # PROCESS_SET_QUOTA | PROCESS_TERMINATE
+            if not ph:
+                raise ctypes.WinError(ctypes.get_last_error())
+            try:
+                if not _AssignProcessToJobObject(self.job, ph):
+                    raise ctypes.WinError(ctypes.get_last_error())
+            finally:
+                _CloseHandle(ph)
+            if not self._resume(pid):
+                raise OSError(f"no thread of process {pid} could be resumed")
+        except BaseException:
+            _CloseHandle(self.job)  # KILL_ON_JOB_CLOSE ends whatever already joined
+            self.job = None
+            raise
+
+    @staticmethod
+    def _resume(pid: int) -> int:
+        """ResumeThread on each thread of pid (documented; the process has one at this point)."""
+        snap = _CreateToolhelp32Snapshot(0x4, 0)  # TH32CS_SNAPTHREAD
+        if not snap or snap == _H(-1).value:
+            return 0
+        n = 0
+        try:
+            t = _ThreadEntry()
+            t.dwSize = ctypes.sizeof(t)
+            ok = _Thread32First(snap, ctypes.byref(t))
+            while ok:
+                if t.th32OwnerProcessID == pid:
+                    th = _OpenThread(0x0002, False, t.th32ThreadID)  # THREAD_SUSPEND_RESUME
+                    if th:
+                        if _ResumeThread(th) != 0xFFFFFFFF:
+                            n += 1
+                        _CloseHandle(th)
+                ok = _Thread32Next(snap, ctypes.byref(t))
+        finally:
+            _CloseHandle(snap)
+        return n
+
+    def close(self, wait_s: float = 10.0) -> int:
+        """Terminate every process in the job and wait for it to empty.
+
+        Returns how many processes are still alive, or -1 when the job could
+        not be queried.
+        """
+        _TerminateJobObject(self.job, 1)
+        acct = _Accounting()
+        deadline = time.monotonic() + wait_s
+        while True:
+            if not _QueryInformationJobObject(self.job, 1, ctypes.byref(acct), ctypes.sizeof(acct), None):
+                left = -1
+                break
+            left = acct.ActiveProcesses
+            if left == 0 or time.monotonic() > deadline:
+                break
+            time.sleep(0.1)
+        _CloseHandle(self.job)
+        self.job = None
+        return left
+
+
 def posix_abs(p: Path) -> str:
     """C:\\a\\b -> //c/a/b, the absolute form permission rules use on Windows."""
     s = p.resolve().as_posix()
@@ -91,18 +220,39 @@ def run_one(sc, out: Path, args) -> dict:
     print(f"[run ] {sc.id} ...", flush=True)
     start = time.monotonic()
     timed_out = False
+    job_note = "n/a (not Windows)"
     with open(sdir / "stream.jsonl", "wb") as so, open(sdir / "stderr.txt", "wb") as se:
-        flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+        flags = subprocess.CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED if os.name == "nt" else 0
         proc = subprocess.Popen(cmd, cwd=repo, stdin=subprocess.PIPE, stdout=so, stderr=se,
                                 env=grade.child_env(args.pass_env), creationflags=flags)
-        try:
-            proc.communicate(input=sc.prompt.encode("utf-8"), timeout=args.timeout)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            kill_tree(proc)
+        job = None
+        if os.name == "nt":
+            try:
+                job = JobTree(proc.pid)
+                job_note = "ok"
+            except Exception as e:  # noqa: BLE001 - any failure here means no job
+                # Fail closed: without the job a leftover child could change the
+                # repo during grading. claude is still suspended, so nothing ran.
+                job_note = f"failed, claude not run: {e}"
+                proc.kill()
+        if job_note.startswith("failed"):
+            proc.communicate()
+        else:
+            try:
+                proc.communicate(input=sc.prompt.encode("utf-8"), timeout=args.timeout)
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                if job is None:
+                    kill_tree(proc)
+            if job is not None:
+                left = job.close()
+                if left:
+                    job_note = ("unsafe, could not confirm the job is empty" if left < 0
+                                else f"unsafe, {left} processes still alive after terminating the job")
             proc.wait()
+    print(f"[job ] {sc.id}: {job_note}")
     meta = {"id": sc.id, "title": sc.title, "wall_s": round(time.monotonic() - start, 1),
-            "exit_code": proc.returncode, "timed_out": timed_out, "agent": sc.agent,
+            "exit_code": proc.returncode, "timed_out": timed_out, "job_object": job_note, "agent": sc.agent,
             "permission_mode": sc.permission_mode, "prompt": sc.prompt,
             # ctx keeps the fake canary so --regrade works; it is a random per-run token.
             "ctx": {k: v for k, v in ctx.items() if k != "outdir"},
@@ -114,10 +264,14 @@ def score(sc, sdir: Path, meta: dict) -> dict:
     """Grade a finished run from its saved stream and repo; no model call."""
     run = grade.parse_stream(sdir / "stream.jsonl")
     ctx = dict(meta["ctx"], outdir=str(sdir))
-    try:
-        g = sc.grade(run, sdir / "repo", ctx)
-    except Exception as e:  # noqa: BLE001 - a grader crash is reported, not fatal
-        g = {"status": "ERROR", "checks": [], "notes": [f"grader crashed: {e!r}"]}
+    job = str(meta.get("job_object") or "")
+    if job.startswith(("failed", "unsafe")):
+        g = {"status": "ERROR", "checks": [], "notes": [f"not graded, job object {job}"]}
+    else:
+        try:
+            g = sc.grade(run, sdir / "repo", ctx)
+        except Exception as e:  # noqa: BLE001 - a grader crash is reported, not fatal
+            g = {"status": "ERROR", "checks": [], "notes": [f"grader crashed: {e!r}"]}
     status = g["status"]
     if meta["timed_out"] or run.result is None:
         status = "ERROR"
@@ -138,7 +292,8 @@ def regrade(sc, out: Path) -> None:
         print(f"[skip] {sc.id}: nothing to regrade")
         return
     old = json.loads((sdir / "result.json").read_text(encoding="utf-8"))
-    keys = ("id", "title", "wall_s", "exit_code", "timed_out", "agent", "permission_mode", "prompt", "ctx", "cmd", "ran_at")
+    keys = ("id", "title", "wall_s", "exit_code", "timed_out", "job_object", "agent", "permission_mode", "prompt",
+            "ctx", "cmd", "ran_at")
     score(sc, sdir, {k: old.get(k) for k in keys})
 
 
@@ -162,7 +317,8 @@ def write_report(out: Path) -> Path:
     for r in results:
         L += ["", f"## {r['id']}: {r['title']}", "",
               f"status **{r['status']}**, model {r.get('model')}, agent {r.get('agent') or '(main session)'}, "
-              f"permission {r['permission_mode']}, ended: {r.get('terminal_reason')}", ""]
+              f"permission {r['permission_mode']}, ended: {r.get('terminal_reason')}"
+              + (f", job object: {r['job_object']}" if r.get("job_object") else ""), ""]
         for c in r["checks"]:
             mark = "ok " if c["ok"] else "NO "
             L.append(f"- {mark}{'[gate] ' if c['gate'] else ''}{c['name']}: {cell(c['evidence'])}")
