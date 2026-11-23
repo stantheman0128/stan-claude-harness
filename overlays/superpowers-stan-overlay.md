@@ -2,7 +2,7 @@
 
 plugin 升級會建新版本目錄、不會帶走這個 overlay。每次 `claude plugin update superpowers` 後重貼。
 
-目前套用於：6.3.0（2026-09-19）。驗證：`grep -l "Stan overlay" ~/.claude/plugins/cache/superpowers-marketplace/superpowers/<版本>/hooks/hooks.json`。
+目前套用於：7.0.2（2026-11-14 重貼；第一次是 2026-09-19 套在 6.3.0）。驗證：`grep -l "Stan overlay" ~/.claude/plugins/cache/superpowers-marketplace/superpowers/<版本>/hooks/hooks.json`。
 
 ## 1. `hooks/hooks.json` — 拿掉 SessionStart 注入（2026-09-19，Fable 5.1 稽核）
 
