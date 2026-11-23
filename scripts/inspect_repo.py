@@ -303,23 +303,48 @@ def scan_folder(folder, out):
 
 
 def component_path(base, value, where, out):
-    """plugin 元件路徑換成實際位置。指到 plugin 外面或不存在的，Claude Code 也不會載入，只印一行。"""
+    """plugin 元件路徑換成實際位置。resolve 之前逐層檢查 symlink、junction，有就不跟；
+    跑出 plugin 根目錄的也記成掃描不完整。不存在的路徑 Claude Code 也不會載入，只印一行。"""
     if base is None:
         out.append(f"  [略過] {where}：{clean(value, 80)} 在外部 plugin 裡，這個 repo 沒有那些檔")
         return None
     try:
         base = base.resolve()
+        cur = base
+        for part in Path(value).parts:
+            cur = cur / part
+            if part not in (".", "..") and is_link(cur):
+                PROBLEMS.append(f"{rel(cur)} 是 symlink，沒跟進去掃（{where}：{clean(value, 80)}）")
+                return None
         path = (base / value).resolve()
     except (OSError, RuntimeError, ValueError):
         PROBLEMS.append(f"{where} 的路徑看不懂：{clean(value, 80)}")
         return None
     if not path.is_relative_to(base):
-        out.append(f"  [略過] {where} 指到 plugin 外面：{clean(value, 80)}（Claude Code 不會載入）")
+        PROBLEMS.append(f"{where} 指到 plugin 外面：{clean(value, 80)}")
+        out.append(f"  [略過] {where} 指到 plugin 外面：{clean(value, 80)}（沒掃，記成掃描不完整）")
         return None
     if not path.exists():
         out.append(f"  [略過] {where} 指到不存在的路徑：{clean(value, 80)}")
         return None
     return path
+
+
+def inline_hooks_report(hooks, where, out):
+    """plugin.json 或 marketplace 條目的 inline hooks。照 hooks.json 寫法包了外層 {"hooks": {...}} 就先拆掉；
+    事件的值不是陣列、或整個物件認不出任何 hook，都記成掃描不完整。"""
+    maps = [hooks]
+    if isinstance(hooks.get("hooks"), dict):
+        maps = [hooks["hooks"], {k: v for k, v in hooks.items() if k != "hooks"}]
+    found = 0
+    for m in maps:
+        for event, entries in m.items():
+            if not isinstance(entries, list):
+                PROBLEMS.append(f"{where} 的 hooks.{clean(event, 40)} 不是陣列，看不懂")
+        found += hooks_report(m, out)
+    if not found:
+        PROBLEMS.append(f"{where} 的 hooks 裡認不出任何 hook")
+    COUNTS[EXEC] += found
 
 
 def manifest_report(data, base, where, out):
@@ -328,7 +353,7 @@ def manifest_report(data, base, where, out):
         for item in as_list(data.get(key)):
             if isinstance(item, dict):
                 if kind == "hooks":
-                    COUNTS[EXEC] += hooks_report(item, out)
+                    inline_hooks_report(item, where, out)
                 elif kind == "mcp":
                     mcp_servers_report(item, out)
                 else:
