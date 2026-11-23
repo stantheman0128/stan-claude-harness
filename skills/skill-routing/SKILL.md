@@ -15,7 +15,7 @@ user-invocable: true
 | 寫測試 / TDD | `superpowers:test-driven-development`（test-first） | 要決定測試種類（金字塔、test double、單元 vs 整合 vs E2E）或瀏覽器驗證 → `agent-skills:test-driven-development`。通則：一次一個 vertical slice；預期值來自獨立真值，別用同一套算法反推 |
 | 除錯 | `agent-skills:debugging-and-error-recovery`（快速 web bug triage） | flaky、效能回歸、多元件、或第一次就猜錯 → `diagnosing-bugs`（先建紅燈可重現迴圈再查）；連 3 次修不好 → `superpowers:systematic-debugging` |
 | 規劃 / spec | `guided-dev`（產品決策給人、技術決策給 Claude） | 每個 slice 的實作紀律 → `agent-skills:incremental-implementation`；大型高風險要可執行 runbook → `superpowers:writing-plans` |
-| 逼問既有計畫 | `grilling`（一次一題，能查 codebase 就自己查） | 還沒計畫、先抓 who/why/success → `agent-skills:interview-me`；已寫好的 artifact 要反方審 → `agent-skills:doubt-driven-development` |
+| 逼問既有計畫 | `grilling`（一次一題，能查 codebase 就自己查） | 還沒計畫、先抓 who/why/success → `grilling` 的「還沒有計畫」段（interview-me 的規則已併入）；已寫好的 artifact 要反方審 → `agent-skills:doubt-driven-development` |
 | 發想 | `superpowers:brainstorming`（一次一題收斂需求） | 已知要做什麼、但有多組可行解要拉開（命名、API 表面、架構取捨）→ `adhd`（5 個框架平行發散，約 10 個 agent、成本 5-10x；題目有唯一標準答案時它會自行 abort） |
 | code review | 內建 `/code-review` | 合併前要流程總檢查表（change sizing、依賴紀律）→ `agent-skills:code-review-and-quality`；處理收到的回饋 → `superpowers:receiving-code-review` |
 | 程式簡化 | `agent-skills:code-simplification` | 無 |
@@ -26,7 +26,7 @@ user-invocable: true
 | 完工驗證 | `superpowers:verification-before-completion`（宣稱完成前跑指令拿證據） | 任務中途的高風險決策要反方檢查 → `agent-skills:doubt-driven-development` |
 | git | `agent-skills:git-workflow-and-versioning` | 隔離 worktree / 收尾分支 → `superpowers:using-git-worktrees` / `superpowers:finishing-a-development-branch`；卡在 merge/rebase 衝突 → `resolving-merge-conflicts`（找每個衝突的原始意圖、逐 hunk 解、跑專案自己的檢查、絕不 `--abort`） |
 | context 工程 | `agent-skills:context-engineering` | ❄️ `context-compression` / `context-optimization` |
-| 寫 / 改 skill | `writing-great-skills`（文筆與結構） | 驗證 skill 真的有效（pressure test、baseline）→ `superpowers:writing-skills`；eval / benchmark → ❄️ `skill-creator`（plugin 已停用） |
+| 寫 / 改 skill | `writing-great-skills`（文筆與結構） | 驗證 skill 真的有效（pressure test、baseline）→ `superpowers:writing-skills`；eval / benchmark → ❄️ `skill-creator`（plugin 已停用）。通則：改 skill 前先在沒有它的情況下跑一次同樣的情境，逐字記下模型怎麼繞過或找藉口，改完再跑一次對照；沒做這個對照就不算驗證過 |
 
 ## 各管各的（不重疊，直接用）
 

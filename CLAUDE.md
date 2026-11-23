@@ -1,4 +1,4 @@
-# Claude Code 全域工作規則（Stan）— v2.9 2026-11-23
+# Claude Code 全域工作規則（Stan）— v2.10 2026-11-23
 
 <!-- 編輯方針：本檔只放三類——路由（何時載什麼）、鐵則（被實測燒過的教訓）、輸出偏好。新增條目前先問：哪一層（系統提示/hook/skill description/agent 定義/auto-memory）還沒涵蓋它？v2.0 精簡的辯證紀錄見 git log。 -->
 
@@ -17,7 +17,7 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 - API/介面/seam 設計 → `agent-skills:api-and-interface-design`
 - 安全深度稽核 → `security-audit`（吃 token）；設計期威脅建模 → `agent-skills:security-and-hardening`
 - git 收尾分支 → `superpowers:finishing-a-development-branch`；卡在 merge/rebase 衝突 → `resolving-merge-conflicts`
-- 逼問既有計畫 → `grilling`；還沒計畫先挖意圖 → `agent-skills:interview-me`
+- 逼問既有計畫 → `grilling`；還沒計畫先挖意圖 → `grilling` 的「還沒有計畫」段
 - 領域 skill 內建規劃階段就不疊通用規劃 skill；出事就 STOP 重新規劃、別硬推。
 
 ## 2. Subagent 派工
@@ -26,6 +26,7 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 
 - 派工規格一次到位：goal、constraints、done-criteria、相關路徑、為什麼。
 - 【鐵則】verifier 派工單絕不含「發現問題順便修」類指令（實測會誘發用 Bash 繞過工具鎖直接改檔）。修復一律回主 session 路由。
+- 派 verifier 或任何審查：給成品（diff／路徑）和驗收標準就好，不附我認為它對的理由，免得審查者順著我的推理走。
 - 「查不到／驗不了」是合格回報不是失敗，派工單要明說這件事。
 - 看檔案、盤點、分類這類量大又單純的活交給 Haiku 或 Sonnet；Opus 只留給架構、釐清、功能規劃（Stan 2026-10-20：比較快也比較省 token）。
 

@@ -76,6 +76,13 @@ scout 一波後：在最好的 1–2 個 affinity repo（Windows／zh-TW／台�
 - 人類 @`stantheman0128`：**一律回覆**（ack + 立場）。**對方用什麼語言就用什麼語言回**（英文 thread 回英文；中文 thread 回繁體中文）。既有 factory PR 的 standing autonomy 涵蓋這類回覆。
 - 被 credit／fold-into／因超集關閉：當日追加 `handoff/CASE-STUDIES.md`（漏了什麼 + 下一題怎麼做滿）。見 `AGENTS.md` Merge completeness bar。
 
+## 收到 maintainer review（2026-11-23，取自 superpowers receiving-code-review）
+
+- 每條建議先對照程式碼和測試確認成立再改。不成立就附證據說明，不照改。
+- 不寫空泛的附和或恭維，直接寫改了什麼、或為什麼不改。
+- 有一條看不懂就先問清楚，問完再動手，不要先改看得懂的那幾條。
+- 對方要你把某個功能「做完整」之前，先 grep 確認真的有地方用到。沒人用就回報，不加功能。
+
 ## CI triage
 
 - Vercel「Authorization required」= maintainer 端，不是我們的程式債。
