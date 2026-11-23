@@ -616,6 +616,95 @@ def e2e_commit_without_verified(tmp):
     assert "Verified:" in hso["permissionDecisionReason"]
 
 
+def pre_bash(cwd, cmd, tr, session="c1"):
+    return {"session_id": session, "cwd": str(cwd), "transcript_path": str(tr),
+            "hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": cmd}}
+
+
+def msys(path):
+    """C:\\a\\b → /c/a/b（Git Bash 的寫法）。"""
+    s = str(path).replace("\\", "/")
+    return "/" + s[0].lower() + s[2:]
+
+
+@test
+def e2e_commit_skip_follows_target_repo(tmp):
+    """OSS 跳過看指令實際 commit 到哪個 repo，不看 session 的 cwd。"""
+    app = make_code_repo(tmp)
+    oss = Path(tmp) / "oss" / "lib"
+    oss.mkdir(parents=True)
+    git(oss, "init", "-q")
+    e2e_config(tmp, mode="enforce", skip_commit_roots=[str(Path(tmp) / "oss")])
+    tr = write_transcript(tmp, [])
+    to_oss = [
+        f'git -C "{oss}" commit -m "fix: x"',
+        f'cd "{oss}" && git commit -m "fix: x"',
+        f"cd {msys(oss)} && git commit -m x",
+        f"git -C {msys(oss)} commit -m x",
+        "git -C .. -C oss/lib commit -m x",
+        "cd ../oss/lib; git commit -m x",
+        f'cd /d "{oss}" && git commit -m x',
+        f"pushd '{oss}' >/dev/null && git -c user.name=x commit -m x",
+        f'cd "{Path(tmp) / "nope"}" && git commit -m x',  # 找不到 repo：不知道
+    ]
+    for cmd in to_oss:
+        proc = run_e2e("pre-bash", pre_bash(app, cmd, tr), tmp)
+        assert proc.returncode == 0 and proc.stdout.strip() == "", f"{cmd!r} 不該擋, got {proc.stdout!r}"
+    assert e2e_log(tmp) == [], f"commit 到 oss 或找不到 repo 都不記, got {e2e_log(tmp)}"
+    proc = run_e2e("pre-bash", pre_bash(oss, f'git -C "{app}" commit -m "feat"', tr), tmp)
+    assert stdout_json(proc)["hookSpecificOutput"]["permissionDecision"] == "deny", \
+        "cwd 在 oss、commit 到 app 要擋"
+    log = e2e_log(tmp)
+    assert len(log) == 1 and Path(log[0]["repo"]).resolve() == app.resolve(), log
+
+
+@test
+def e2e_commit_message_from_file_or_commit(tmp):
+    """-F 讀檔、--amend／-C／-c 讀被重用的 commit；讀不到就不記。"""
+    root = make_code_repo(tmp)
+    (root / "sub").mkdir()
+    (root / "ok.txt").write_text("feat: x\n\nVerified: ran app\n", encoding="utf-8")
+    (root / "bad.txt").write_text("feat: x\n", encoding="utf-8")
+    (root / "m.txt").write_text("feat: x\n\nVerified: root copy\n", encoding="utf-8")
+    (root / "sub" / "m.txt").write_text("feat: x\n", encoding="utf-8")
+    e2e_config(tmp, mode="observe")
+    tr = write_transcript(tmp, [])
+
+    def records(cmd):
+        before = len(e2e_log(tmp))
+        proc = run_e2e("pre-bash", pre_bash(root, cmd, tr), tmp)
+        assert proc.returncode == 0 and proc.stdout.strip() == "", proc.stdout
+        return len(e2e_log(tmp)) > before
+
+    cases = [
+        ("git commit -F ok.txt", False),
+        ("git commit --file=ok.txt", False),
+        ("git commit -aF ok.txt", False),
+        (f"git commit --file {msys(root / 'ok.txt')}", False),
+        ("git commit -F bad.txt", True),
+        ("git -C sub commit -F m.txt", True),  # 相對路徑跟 git 一樣以 -C 後的資料夾為準
+        ("git commit -F nope.txt", False),
+        ("git commit -F sub", False),  # 資料夾讀不到
+        ("git commit --amend --no-edit", True),  # HEAD 是 "init"
+        ("git commit -C HEAD", True),
+        ("git -c user.name=x commit -m x", True),
+        ("git commit -m \"$(cat <<'EOF'\nfeat: x\nEOF\n)\"", True),
+        ("git commit -F - <<'EOF'\nfeat: it's x\nEOF", True),
+        ('git commit -m "$(cat ok.txt)"', False),  # 訊息從檔案來，指令字串看不出
+        ("git commit", False),  # 會開編輯器，內容不知道
+    ]
+    for cmd, want in cases:
+        assert records(cmd) is want, f"{cmd!r} 應{'記' if want else '不記'}"
+    git(root, "commit", "-q", "--allow-empty", "-m", "feat: y\n\nVerified: ran app")
+    for cmd, want in [("git commit --amend --no-edit", False),
+                      ("git -c user.name=x commit --amend --no-edit", False),
+                      ("git commit --reuse-message=HEAD", False),
+                      ("git commit -c HEAD~1", True),
+                      ("git commit --reedit-message HEAD~1", True),
+                      ("git commit -C no-such-rev", False)]:
+        assert records(cmd) is want, f"{cmd!r} 應{'記' if want else '不記'}"
+
+
 @test
 def e2e_pr_create_without_code_review(tmp):
     root = make_code_repo(tmp)

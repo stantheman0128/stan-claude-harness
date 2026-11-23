@@ -1,7 +1,7 @@
 {
   "name": "loop-gate",
   "description": "Machine-enforced verification gate (Stop hook) + fail-loud hook health + tool-failure logging for loop engineering",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "Stan Shih"
   }

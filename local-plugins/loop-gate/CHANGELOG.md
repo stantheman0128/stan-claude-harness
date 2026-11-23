@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1 - 2026-11-24
+
+- e2e gate 檢查 `git commit` 時，改看指令實際 commit 到哪個 repo：認得 `git -C <path>`（可以重複）和前面的 `cd`、`cd /d`、`pushd`，也認得 Git Bash 的 `/c/...` 寫法、引號和相對路徑。cwd 不在 OSS、指令卻 commit 進 `Projects\oss\` 的情況，現在一樣跳過。
+- commit 訊息照 git 實際的來源判斷：`-F`／`--file` 讀那個檔（相對路徑和 git 一樣，以 cd 與 `-C` 之後的資料夾為準）；`--amend`、`-C`／`--reuse-message`、`-c`／`--reedit-message` 讀被重用的 commit。
+- 判斷不出來就不記也不擋，例如找不到 repo、檔案讀不到、git 指令失敗、訊息來自 `$(...)` 或變數、會開編輯器的 `git commit`、`--fixup`／`--squash`、沒加引號的反斜線路徑。jsonl 的 `repo` 欄改記 commit 的目標 repo。
+- selftest 從 34 個加到 36 個。
+
 ## 1.1.0 - 2026-11-24
 
 - B1：信任過的 `.claude/verify.json` 被改過時，Stop 當下用 `systemMessage` 讓使用者看到「gate 這次沒跑」的警告，同一 session 只顯示一次。完全沒註冊的 root（新 clone、git worktree）維持安靜，只寫 hook-health log。

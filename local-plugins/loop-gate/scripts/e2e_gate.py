@@ -33,6 +33,7 @@ MAX_BLOCKS = 2
 SESSION_TTL_SEC = 7 * 24 * 3600
 MAX_UNTRACKED_BYTES = 2_000_000
 MAX_LOG_BYTES = 2_000_000
+MAX_MSG_BYTES = 1_000_000
 
 DOC_SUFFIXES = {".md", ".mdx", ".txt", ".rst"}
 TEST_DIRS = {"tests", "test", "__tests__"}
@@ -347,6 +348,376 @@ def _deny(reason):
     }})
 
 
+# ---------- pre-bash：git commit 實際 commit 到哪、訊息從哪來 ----------
+# Bash 工具在這台機器是 Git Bash，所以照 bash 的引號與跳脫規則切指令。
+# 任何一步判斷不出來就回 None（不知道），不記也不擋。
+
+_OPS = ("<<<", "&&", "||", ";;", "|&", ">>", "<<", ">&", "<&", "&>", ">|", "<>",
+        ";", "&", "|", "(", ")", "<", ">", "\n")
+_REDIR_OPS = {"<<<", ">>", "<<", ">&", "<&", "&>", ">|", "<>", "<", ">"}
+_HEREDOC_RE = re.compile(
+    r"(?<!<)<<(?!<)(-?)[ \t]*(?:'([^'\n]*)'|\"([^\"\n]*)\"|(\\?)([^\s;&|<>()'\"]+))")
+_ASSIGN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+_MSYS_DRIVE_RE = re.compile(r"/([A-Za-z])(?=/|$)")
+_PREFIX_WORDS = {"if", "then", "else", "elif", "do", "while", "until", "!", "{", "}",
+                 "fi", "done", "time", "command", "builtin", "exec", "nohup", "env"}
+_GIT_GLOBAL_ARG = {"-c", "--namespace", "--super-prefix", "--config-env", "--attr-source"}
+_COMMIT_SHORT_ARG = set("mFCct")    # 後面接參數（同一串或下一個字）
+_COMMIT_SHORT_OPTARG = set("uS")    # 參數只能黏在後面
+_COMMIT_LONG_ARG = {"--message": "m", "--file": "F", "--reuse-message": "C",
+                    "--reedit-message": "c", "--fixup": "fixup", "--squash": "fixup",
+                    "--template": None, "--author": None, "--date": None, "--cleanup": None,
+                    "--trailer": None, "--pathspec-from-file": None}
+
+
+def _strip_heredocs(command):
+    """拿掉 heredoc 內文（內文什麼字元都可能有，會弄壞斷詞）。
+
+    回傳（拿掉後的指令, 內文會不會被 bash 展開：delimiter 沒加引號而且內文含 $ 或 `）。
+    """
+    lines, out, expanding, i = command.split("\n"), [], False, 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        for m in _HEREDOC_RE.finditer(line):
+            dash, quoted = m.group(1), m.group(2) is not None or m.group(3) is not None or m.group(4)
+            delim = next(g for g in (m.group(2), m.group(3), m.group(5)) if g is not None)
+            body = []
+            while i < len(lines):
+                cur = lines[i].rstrip("\r")
+                i += 1
+                if (cur.lstrip("\t") if dash else cur) == delim:
+                    break
+                body.append(cur)
+            if not quoted and any("$" in b or "`" in b for b in body):
+                expanding = True
+    return "\n".join(out), expanding
+
+
+def _expansion(s, i):
+    """s[i] 是 $ 或 `：回傳（下一個位置, 原文, 是否真的會展開）。沒收尾丟 ValueError。"""
+    n = len(s)
+    if s[i] == "`":
+        j = i + 1
+        while j < n and s[j] != "`":
+            j += 2 if s[j] == "\\" else 1
+        if j >= n:
+            raise ValueError("unterminated `")
+        return j + 1, s[i:j + 1], True
+    nxt = s[i + 1] if i + 1 < n else ""
+    if nxt == "(":
+        depth, j = 0, i + 1
+        while j < n:
+            ch = s[j]
+            if ch == "\\":
+                j += 2
+                continue
+            if ch == "'":
+                j = s.index("'", j + 1) + 1
+                continue
+            if ch == '"':
+                j += 1
+                while j < n and s[j] != '"':
+                    j += 2 if s[j] == "\\" else 1
+                j += 1
+                continue
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    return j + 1, s[i:j + 1], True
+            j += 1
+        raise ValueError("unterminated $(")
+    if nxt == "{":
+        j = s.index("}", i)
+        return j + 1, s[i:j + 1], True
+    if nxt and (nxt.isalnum() or nxt in "_?!#@*$-"):
+        j = i + 2
+        if nxt.isalpha() or nxt == "_":
+            while j < n and (s[j].isalnum() or s[j] == "_"):
+                j += 1
+        return j, s[i:j], True
+    return i + 1, "$", False
+
+
+def _shell_tokens(s):
+    """切成 ("w", 文字, 值不確定, 開頭是沒引號的 ~) 與 ("op", 運算子)。引號沒收尾丟 ValueError。
+
+    值不確定：含 $ 展開、反引號、萬用字元，或沒加引號的反斜線。
+    """
+    toks, i, n = [], 0, len(s)
+    word, unsafe, tilde, in_word = [], False, False, False
+
+    def flush(keep=True):
+        nonlocal word, unsafe, tilde, in_word
+        if in_word and keep:
+            toks.append(("w", "".join(word), unsafe, tilde))
+        word, unsafe, tilde, in_word = [], False, False, False
+
+    while i < n:
+        c = s[i]
+        if c in " \t\r":
+            flush()
+            i += 1
+        elif c == "#" and not in_word:
+            while i < n and s[i] != "\n":
+                i += 1
+        elif c == "\\":
+            if s.startswith("\\\n", i):
+                i += 2  # 續行
+                continue
+            # Bash 工具送進 bash 前會先把 \\ 變成 \，沒加引號的反斜線最後變成什麼不確定
+            word.append(s[i + 1:i + 2])
+            unsafe = in_word = True
+            i += 2
+        elif c == "'":
+            j = s.index("'", i + 1)
+            word.append(s[i + 1:j])
+            in_word = True
+            i = j + 1
+        elif c == '"':
+            in_word = True
+            i += 1
+            while True:
+                if i >= n:
+                    raise ValueError('unterminated "')
+                c = s[i]
+                if c == '"':
+                    i += 1
+                    break
+                if c == "\\" and i + 1 < n and s[i + 1] in '"\\$`\n':
+                    if s[i + 1] != "\n":
+                        word.append(s[i + 1])
+                    i += 2
+                elif c in "$`":
+                    i, part, exp = _expansion(s, i)
+                    word.append(part)
+                    unsafe |= exp
+                else:
+                    word.append(c)
+                    i += 1
+        elif c in "$`":
+            in_word = True
+            i, part, exp = _expansion(s, i)
+            word.append(part)
+            unsafe |= exp
+        elif c in ";&|()<>\n":
+            # 2>/dev/null 的 2 是檔案代號，不是參數
+            flush(keep=not (c in "<>" and in_word and not unsafe and "".join(word).isdigit()))
+            op = next(o for o in _OPS if s.startswith(o, i))
+            toks.append(("op", op))
+            i += len(op)
+        else:
+            if c == "~" and not in_word:
+                tilde = True
+            if c in "*?[":
+                unsafe = True
+            word.append(c)
+            in_word = True
+            i += 1
+    flush()
+    return toks
+
+
+def _to_path(word, base):
+    """把一個 word 轉成 Windows 路徑；相對路徑接在 base 後面。轉不出來回 None。"""
+    _, text, unsafe, tilde = word
+    if unsafe:
+        return None
+    if tilde:
+        if text != "~" and not text.startswith(("~/", "~\\")):
+            return None  # ~user
+        text = str(Path.home()) + text[1:]
+    m = _MSYS_DRIVE_RE.match(text)
+    if m:
+        text = m.group(1).upper() + ":" + (text[2:] or "/")  # /c/Users → C:/Users
+    elif text.startswith(("/", "\\")):
+        return None  # /tmp、/usr 對到哪只有 MSYS 知道
+    elif re.match(r"[A-Za-z]:(?![\\/])", text):
+        return None  # C:foo 是磁碟相對路徑
+    p = Path(text)
+    if p.is_absolute():
+        return p
+    return base / p if base is not None else None
+
+
+def _cd_target(args, cur):
+    a = list(args)
+    while a and a[0][1] in ("-L", "-P", "-e", "-@"):
+        a.pop(0)
+    if a and a[0][1] == "--":
+        a.pop(0)
+    if len(a) == 2 and a[0][1].lower() == "/d":
+        a.pop(0)  # cmd 的 cd /d
+    if not a:
+        return _to_path(("w", "~", False, True), cur)
+    if len(a) != 1 or a[0][1] == "-":
+        return None
+    return _to_path(a[0], cur)
+
+
+def _git_commit_args(args, cur):
+    """args 是 git 後面的 words：是 git commit 就回（git 實際跑的資料夾或 None, commit 的參數），不是回 None。"""
+    d, i = cur, 0
+    while i < len(args):
+        t = args[i][1]
+        if t == "-C" and i + 1 < len(args):
+            if args[i + 1][1] != "":  # git -C "" 不換資料夾
+                d = _to_path(args[i + 1], d)
+            i += 2
+        elif t in ("--git-dir", "--work-tree"):
+            d, i = None, i + 2  # 指到別處的 repo，不猜
+        elif t.startswith(("--git-dir=", "--work-tree=")):
+            d, i = None, i + 1
+        elif t in _GIT_GLOBAL_ARG:
+            i += 2  # git -c key=val 是全域設定，不是 commit 的 -c
+        elif t.startswith("-"):
+            i += 1
+        else:
+            return (d, args[i + 1:]) if t == "commit" else None
+    return None
+
+
+def _git_commits(command, cwd):
+    """找出指令裡每一個 git commit，回傳 [(資料夾或 None, commit 參數, 同一段有 heredoc, heredoc 會展開)]。"""
+    stripped, expanding = _strip_heredocs(command)
+    toks = _shell_tokens(stripped) + [("op", "\n")]
+    cur = Path(cwd) if cwd else None
+    stack, found, seg, prev = [], [], [], None
+    heredoc = skip_next = False
+    for tok in toks:
+        if tok[0] == "w":
+            if skip_next:
+                skip_next = False  # 重新導向的目標
+            else:
+                seg.append(tok)
+            continue
+        op = tok[1]
+        if op in _REDIR_OPS:
+            heredoc |= op == "<<"
+            skip_next = True
+            continue
+        words = seg
+        while words and (words[0][1] in _PREFIX_WORDS or _ASSIGN_RE.match(words[0][1])):
+            words = words[1:]
+        if words:
+            name = words[0][1]
+            if name in ("cd", "pushd", "popd"):
+                # 條件式、管線或背景裡的 cd 不一定生效；popd 不追堆疊
+                piped = prev in ("||", "|", "|&", "&") or op in ("|", "|&", "&")
+                cur = None if piped or name == "popd" else _cd_target(words[1:], cur)
+            elif name.replace("\\", "/").rsplit("/", 1)[-1].lower() in ("git", "git.exe"):
+                hit = _git_commit_args(words[1:], cur)
+                if hit is not None:
+                    found.append((hit[0], hit[1], heredoc, expanding))
+        seg, heredoc, skip_next = [], False, False
+        if op == "(":
+            stack.append(cur)
+        elif op == ")":
+            cur = stack.pop() if stack else None
+        prev = op
+    return found
+
+
+def _commit_message_sources(args):
+    """回傳（{種類: [值 word...]}, 有沒有 --amend）；種類是 m／F／C／c／fixup。"""
+    src, amend, i = {}, False, 0
+    while i < len(args):
+        w = args[i]
+        t = w[1]
+        i += 1
+        if t == "--":
+            break
+        if t.startswith("--"):
+            name, eq, val = t.partition("=")
+            if name == "--amend":
+                amend = True
+            elif name in _COMMIT_LONG_ARG:
+                if eq:
+                    vw = ("w", val, w[2], False)
+                elif i < len(args):
+                    vw = args[i]
+                    i += 1
+                else:
+                    break
+                if _COMMIT_LONG_ARG[name]:
+                    src.setdefault(_COMMIT_LONG_ARG[name], []).append(vw)
+        elif t.startswith("-") and len(t) > 1:
+            for j, ch in enumerate(t[1:], start=2):
+                if ch in _COMMIT_SHORT_OPTARG:
+                    break
+                if ch in _COMMIT_SHORT_ARG:
+                    if t[j:]:
+                        vw = ("w", t[j:], w[2], False)
+                    elif i < len(args):
+                        vw = args[i]
+                        i += 1
+                    else:
+                        break
+                    if ch != "t":
+                        src.setdefault(ch, []).append(vw)
+                    break
+    return src, amend
+
+
+def _read_message_file(path):
+    try:
+        if path.stat().st_size > MAX_MSG_BYTES:
+            return None
+        data = path.read_bytes()
+    except (OSError, ValueError):  # ValueError：路徑含 NUL
+        return None
+    # 訊息含 NUL（UTF-16、二進位檔）git 會拒絕 commit，當成不知道
+    return None if b"\0" in data else data.decode("utf-8", errors="replace")
+
+
+def _commit_message_state(d, args, heredoc, expanding):
+    """回傳 "missing"（確定沒有 Verified:）、"present" 或 None（不知道）。呼叫前已確定指令字串沒有 Verified:。"""
+    src, amend = _commit_message_sources(args)
+    if "fixup" in src or len(src) > 1:
+        return None  # fixup／squash 之後會被壓掉；混用 -m／-F／-C／-c 時 git 本身會拒絕
+    if "m" in src:
+        # 訊息就寫在指令裡；只有 $(cat file)、$VAR 這種從別處拿的不算
+        if any(w[2] and ("<<" not in w[1] or expanding) for w in src["m"]):
+            return None
+        return "missing"
+    if "F" in src:
+        w = src["F"][-1]
+        if w[1] == "-":  # 從 stdin 讀：只認同一段的 heredoc
+            return "missing" if heredoc and not expanding else None
+        path = _to_path(w, d)
+        text = _read_message_file(path) if path is not None else None
+    elif "C" in src or "c" in src or amend:
+        # -C／-c／--amend（含 --no-edit）沿用既有 commit 的訊息
+        w = (src.get("C") or src.get("c") or [None])[-1]
+        if w is not None and (w[2] or w[1].startswith("-") or "\0" in w[1]):
+            return None
+        rev = w[1] if w is not None else "HEAD"
+        text = _git(d, "log", "-1", "--format=%B", rev + "^{commit}", "--")
+    else:
+        return None  # 沒給訊息會開編輯器，或用 MERGE_MSG、template，內容不知道
+    if text is None:
+        return None
+    return "present" if has_verified_line(text) else "missing"
+
+
+def unverified_commit_root(command, cwd, skip_roots):
+    """指令裡有一個確定沒寫 Verified: 的 git commit 就回它的 repo；其餘（有寫、OSS、判斷不出來）回 None。"""
+    try:
+        commits = _git_commits(command, cwd)
+    except ValueError:
+        return None
+    for d, args, heredoc, expanding in commits:
+        root = repo_root(d) if d is not None else None
+        if root is None or any(_under(root, pre) for pre in skip_roots):
+            continue  # 找不到 repo 就當不知道；OSS 照上游 commit 慣例
+        if _commit_message_state(d, args, heredoc, expanding) == "missing":
+            return root
+    return None
+
+
 def on_pre_bash(event, cfg):
     tool_input = event.get("tool_input") or {}
     command = tool_input.get("command") if isinstance(tool_input, dict) else None
@@ -360,18 +731,20 @@ def on_pre_bash(event, cfg):
     root = repo_root(cwd) or (Path(cwd) if cwd else None)
     sid = str(event.get("session_id", "unknown"))
 
-    if is_commit and root is not None \
-            and any(_under(root, pre) for pre in cfg["skip_commit_roots"]):
-        is_commit = False  # OSS 照上游 commit 慣例
+    commit_root = None
+    if is_commit:
+        commit_root = unverified_commit_root(command, cwd, cfg["skip_commit_roots"])
+        is_commit = commit_root is not None
     if is_pr and code_reviewed(scan_transcript(event.get("transcript_path"))):
         is_pr = False
 
-    for flag, check, reason in ((is_commit, "commit-without-verified", COMMIT_REASON),
-                                (is_pr, "pr-without-code-review", PR_REASON)):
+    for flag, check, reason, repo in (
+            (is_commit, "commit-without-verified", COMMIT_REASON, commit_root),
+            (is_pr, "pr-without-code-review", PR_REASON, root)):
         if not flag:
             continue
         append_log({"event": "pre-bash", "mode": cfg["mode"], "session": sid,
-                    "repo": str(root) if root else "", "check": check, "would_block": True})
+                    "repo": str(repo) if repo else "", "check": check, "would_block": True})
         if cfg["mode"] == "enforce":
             _deny(reason)
             return
