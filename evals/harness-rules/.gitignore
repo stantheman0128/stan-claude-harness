@@ -1,0 +1,6 @@
+# Code and README only. Run output (transcripts, results) goes to --out,
+# which run.py refuses to put inside this repo or ~/.claude.
+__pycache__/
+*.pyc
+runs/
+*.jsonl
