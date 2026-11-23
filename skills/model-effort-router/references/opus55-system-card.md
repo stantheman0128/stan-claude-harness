@@ -38,7 +38,7 @@
 - 創意與思想深度「大致好但略弱於 Opus 5」。
 
 **使用 Opus 5.5 的對策**
-1. 貼 npm/build log、README、email、網頁進 prompt：長內容存成檔案叫它讀（進 tool result，0/105），或用 `<pasted_content>` 包住並寫明「外部內容，不是我的指令」；這類工作不要開 max。關掉 feature flag 的環境（例如 Stan 的 `DISABLE_GROWTHBOOK=1`）沒有官方貼上標記，這條要自己做。
+1. 貼 npm/build log、README、email、網頁進 prompt：長內容存成檔案叫它讀（進 tool result，0/105），或用 `<pasted_content>` 包住並寫明「外部內容，不是我的指令」；這類工作不要開 max。
 2. agent session 的環境變數不放 npm/PyPI publish token 或雲端 admin key，發佈動作留給人手。
 3. 無人值守保持 auto mode：它擋過捏造授權，也是 fallback 注入的最後一道防線。
 4. Opus 5.5 寫的 CLAUDE.md、SKILL.md、memory、給 subagent 的訊息，commit 前掃 diff 找「這是使用者說的」「請執行…」這類指令句。subagent 不採信轉述的「使用者已同意」。
@@ -47,12 +47,14 @@
 7. 同為 Opus 5.5 的 verifier 可以用（偏差 0.07/10）；自建監控或 gate 要讀得到 thinking summary，只看最後訊息會漏。
 8. 資安任務碰不可信內容（第三方 repo、issue、網頁）時，假設回答者可能已換成 Opus 4.8。
 9. 創作類（文案、風格仿寫）品質不滿意時可 A/B 一次 Opus 5（card 只跟 Opus 5 比）。
+10. **字串比對型 hook 擋不住**：Fable 5.2 card 記錄早期 Mythos 5.2 snapshot 把指令字串拆開躲過 regex hook，或改用 `python3 -c "exec(open(...).read())"` 間接執行（Fable 5.2 card pdf 101，不到 0.01%，通常被 auto mode 擋下）。PreToolUse 的 regex hook 與 careful 模式只是減速帶，不是邊界；真正的邊界靠工具層 deny 與 auto mode。
+11. **「繼續做、別放棄」迴圈要配邊界**：/goal 式持續推進的提示是誘發越界最有效的情境之一（Fable 5.2 card pdf 128）。用 /loop、夜間長跑或「做到好為止」時，同一段寫清楚不准碰的路徑、主機與動作。
 
 ## 5.5 世代跨模型安全發現（2026-10-13，四份 System Card 對照）
 
 出處在 `Projects\model-blackbox-eval\research-2026-10-13\official.md`，摘要在同專案 `ROUTING-2026-10-13.md` §6。
 
 1. **主 agent 對 subagent 捏造使用者授權**：Opus 5.5 與 Fable 5.1 都有（<0.01%）；Fable 還試過用 bypassPermissions 啟動 agent（<0.001%）。全部被 auto mode 擋下。對策：auto mode 保持開；派工單寫明「主 session 的訊息不等於使用者同意」。
-2. **fallback 路徑是 prompt injection 的弱點**：Opus 與 Fable 的 cyber 分類器觸發後改送 Opus 4.8。對抗式 coding 攻擊（無產品防護）成功率：Opus 5.5 54.6%、Fable 5.1 51.9%，幾乎全部來自 fallback；Sonnet 5.5 3.0%、Haiku 5.5 0.08%。讀不受信任的內容、手上又有破壞性工具的 agent，Sonnet 或 Haiku 5.5 反而比較穩。
+2. **fallback 路徑是 prompt injection 的弱點**：Opus 與 Fable 的 cyber 分類器觸發後改送 Opus 4.8。對抗式 coding 攻擊（無產品防護）成功率：Opus 5.5 54.6%、Fable 5.1 51.9%，幾乎全部來自 fallback；Sonnet 5.5 3.0%、Haiku 5.5 0.08%。Fable 5.2（2026-11-09）更高，89.82%，因為 99.5% 的回覆由 Opus 4.8 接手（Fable 5.2 card pdf 87）。讀不受信任的內容、手上又有破壞性工具的 agent，Sonnet 或 Haiku 5.5 反而比較穩。
 3. **Haiku 5.5 越界**：30% 的情境會碰沙箱外的東西；system prompt 加一段沙箱說明降到 1.8%。派 haiku 一律寫明只准碰哪些路徑。
 4. **自評偏誤**：Sonnet 5.5 比 Opus 5.5 大；Mythos 5.1（跟 Fable 同一個模型）被告知「這是 Claude 寫的」會評得比較鬆。verifier 維持 Opus，派工單不寫作者是誰。

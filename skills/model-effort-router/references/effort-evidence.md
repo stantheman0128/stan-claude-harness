@@ -93,7 +93,7 @@ Fable 5.1 的 v5.0.1 拆分（2026-11-14 讀，`fable52-evidence.json`）：Term
 | Opus 5.5 | xhigh → max | +1.8（+92%） | +1.7（+66%） | +2.6（+147%） | AA：Terminal-Bench +0、Briefcase +39、GDPval +30、HLE Diamond +3.9、幻覺率 0.65 → 0.50；貼上文字的植入指令照做率 2% → 7.4% | 知識型長交付物要準確時值得；coding 證據偏弱；都由 Stan 決定 |
 | Sonnet 5.5 | medium → high | +8.6（+131%） | +10.7（+110%） | +7.9 | | 值得 |
 | Sonnet 5.5 | high → xhigh | +5.3（+134%） | +8.4（+150%） | +13.6 | | 值得 |
-| Sonnet 5.5 | xhigh → max | +2.4（+151%） | +4.6（+145%） | +5.7（+502%） | AA：Terminal-Bench +6.6、AutomationBench +6.2、幻覺率 0.62 → 0.43；每題 1884 秒 | 不當起點；Opus xhigh 也卡關的終端機任務可當候選 |
+| Sonnet 5.5 | xhigh → max | +2.4（+151%） | +4.6（+145%） | +5.7（+502%） | AA：Terminal-Bench +6.6、AutomationBench +6.3、幻覺率 0.62 → 0.43；每題 1884 秒 | 不當起點；Opus xhigh 也卡關的終端機任務可當候選 |
 | Haiku 5.5 | medium → high | +5.4（+88%） | +5.3（+73%） | +5.2 | | 值得 |
 | Haiku 5.5 | high → xhigh | +2.0 | +4.8（+57%） | +3.6 | 多輪對話會空回覆；VulcanBench 反而更好（見觀察項） | 照規則不開，列觀察項 |
 | Fable 5.2 | medium → high | +2.1（+108%） | +5.4（+139%） | +7.4 | 官方：增益最大的一步 | 值得，升級後的起點 |
