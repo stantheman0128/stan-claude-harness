@@ -63,6 +63,14 @@ def own_calls(cmd):
         out.append((name, part))
     return out
 
+def _status_only(part):
+    """這一段 global_pace.py 呼叫是不是只有 --status 一個參數。
+
+    只看字串裡有沒有 --status 的話，`--cap --status --clear` 會被當成查看而放行。
+    """
+    m = _OWN_RE.fullmatch(part)
+    return bool(m) and m.group(2).split() == ["--status"]
+
 def block(msg):
     print("[quota-pacer] " + msg, file=sys.stderr)
     sys.exit(2)
@@ -165,22 +173,23 @@ LOCKED = ("這個 session 的用量上限已經到了（%s），工具鎖住了�
           "只有 Stan 本人能解鎖：他要在對話裡親口說「豁免」「bypass」「繞過用量限制」這類的話。"
           "他只說「繼續」不算，這時請直接告訴他要講豁免才會放行。")
 
-def arm_lock(sid):
+def arm_lock(sid, restarting):
     """放行 pacer 自己的腳本之前先看一眼：已經到 EMERGENCY 就先把鎖寫下去。
 
     不然到線後下一個呼叫剛好是 start_pace.py（重新開工把上限蓋掉）的話，鎖永遠不會寫。
+    正要重新開工的（restarting）到 HARDSTOP 就鎖：該停手時重新開工等於自己再給一份預算。
+    讀數多舊都拿來看，跟 end_pace.py 一樣：用量只會往上。
     """
     if not sid or pc.locked(sid) is not None:
         return
     try:
         usage = pc.load_usage()
-        if usage.get("_age", 0) > pc.STALE:
-            usage = None
     except (OSError, ValueError):
         usage = None
+    need = pc.RANK["HARDSTOP" if restarting else "EMERGENCY"]
     for _path, active in pc.find_active(sid):
         verdict, trigger = pc.evaluate(usage, active)
-        if verdict == "EMERGENCY":
+        if pc.RANK[verdict] >= need:
             pc.lock(sid, trigger)
             return
 
@@ -243,14 +252,19 @@ def main():
         # 看的是「機器上有沒有任何限制」，不是「這個 session 有沒有」：
         # 不然沒開 pacer 的 session 可以去刪別的 session 的設定檔
         # 完整路徑之外，也認「提到 quota-pacer 又提到狀態檔名」的寫法（cd 進去再刪、多打一個斜線）
-        touches = any(x in blob for x in STATE_FILES) or ("quota-pacer" in blob and any(
-            x in blob for x in ("wrap", "lock-", "bypass-", "sessions", "global.json", "active.json")))
+        rest = blob.replace("local-plugins/quota-pacer", "")  # plugin 原始碼不是狀態檔
+        touches = any(x in blob for x in STATE_FILES) or ("quota-pacer" in rest and any(
+            x in rest for x in ("wrap/", "/wrap", "lock-", "bypass-", "sessions/", "/sessions",
+                                "global.json", "active.json")))
         if touches and pc.any_limit():
             block("pacer 的狀態檔不能直接改或刪。收工用 end_pace.py；" + ONLY_STAN)
 
     # 解除或改寫全機規則：到線之後不行，還沒到線時 --clear 也不行。只有 --status 隨時可以看。
-    if any(n == "global_pace.py" and "--status" not in part for n, part in own):
+    if any(n == "global_pace.py" and not _status_only(part) for n, part in own):
         g = pc.load_global()
+        if g is not None and not isinstance(g.get("stopped"), dict):
+            pc.global_trip(g, read_usage_file())  # 截止時間剛過、還沒人記下到線的空檔
+            g = pc.load_global()
         if g is not None and (isinstance(g.get("stopped"), dict) or any(
                 n == "global_pace.py" and "--clear" in part for n, part in own)):
             block("全機" + ONLY_STAN)
@@ -258,7 +272,7 @@ def main():
     # pacer 自己的腳本與讀用量的工具永遠放行，不然到線之後連收工、補讀數都做不了
     if own or tool.endswith("get_usage") or tool == "ToolSearch":
         if own:
-            arm_lock(sid)
+            arm_lock(sid, any(n == "start_pace.py" for n, _part in own))
         sys.exit(0)
 
     g = pc.load_global()

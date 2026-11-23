@@ -17,8 +17,15 @@ import pace_core as pc  # noqa: E402
 # 不是 Stan 親手打的訊息
 NOT_HUMAN = ("<task-notification>", "<command-name>", "<command-message>", "[Subagent hand-back]",
              "<agent-message>", "<side-sessions-event>", "<ci-monitor-event>", "<system-reminder>")
-VERB = "bypass|豁免|繞過|解除|取消|無視|忽略|不用管|不必管|不管"
+# 強的說法：出現在用量這類詞附近就算。
+VERB = "bypass|豁免|繞過|無視"
 OBJ = "用量|額度|pacer|quota|weekly|usage|全機規則|停手規則|停手|限額"
+# 弱的說法（解除、取消、忽略、不管）平常講話太常用，「額度快沒了，取消剩下的工作」不是豁免。
+# 只有緊接著講到限制、上限、規則本身才算：「不用管用量限制」「解除全機規則」「取消用量上限」。
+WEAK = re.compile("(?:解除|取消|忽略|不用管|不必管|不管)(?:這個|那個|我的|這條|那條)?.{0,6}?"
+                  "(?:限制|上限|停手規則|全機規則|限額)", re.I | re.S)
+# 說法後面緊接著否定或問句（「…？不行，停」「可以繞過用量限制嗎」）也不算
+AFTER_NEG = re.compile("不行|不可以|不准|不要|不能|嗎|？|\\?")
 NEG = "不要|別|不准|不可以|不能|不得|勿|禁止|不可|不許|不會|沒有|沒說|不是"
 NEAR = re.compile("(?:(%s).{0,12}(%s))|(?:(%s).{0,12}(%s))" % (VERB, OBJ, OBJ, VERB), re.I | re.S)
 # 「限制」「上限」單獨出現太常見，只跟這幾個動詞緊鄰時才算
@@ -33,11 +40,14 @@ def negated(text, start):
     """說法前面幾個字有否定詞（「不要繞過用量限制」）就不算。"""
     return bool(NEG_RE.search(text[max(0, start - 8):start]))
 
+def taken_back(text, end):
+    return bool(AFTER_NEG.search(text[end:end + 10]))
+
 def wants_bypass(prompt):
     text = re.sub("<pasted_content.*?</pasted_content[^>]*>", " ", prompt, flags=re.S).strip() or prompt
-    for rx in (NEAR, NEAR2):
+    for rx in (NEAR, NEAR2, WEAK):
         for m in rx.finditer(text):
-            if not negated(text, m.start()):
+            if not negated(text, m.start()) and not taken_back(text, m.end()):
                 return True
     if len(text) <= SHORT_MAX:
         for m in SHORT.finditer(text):
