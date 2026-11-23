@@ -14,7 +14,7 @@ session 有沒有載入 skill 都會被擋，所以適合「睡前交代一句�
 
 --until 接受 05:00、5（下一個這個時刻），或 2026-11-24T05:00。
 
-exit code：0 = 完成；2 = 參數不對；4 = 用量讀不到，沒設規則
+exit code：0 = 完成；2 = 參數不對；3 = 已經有規則，session 不能解除或改鬆；4 = 用量讀不到，沒設規則
 """
 import os
 import sys
@@ -24,6 +24,39 @@ import pace_core as pc
 
 VALUED = ("--until", "--cap", "--budget")
 BARE = ("--time-only", "--status", "--clear")
+
+ONLY_STAN = ("全機規則只有 Stan 本人能解除或放寬：他要在這個 session 親口說「豁免」「bypass」"
+             "「繞過用量限制」「解除全機規則」這類的話，或自己在 PowerShell 跑這支腳本。"
+             "你不能替他決定。要把規則改得更嚴（更早的時間、更低的上限）可以直接設。")
+
+def guard(new=None):
+    """已經有規則時，session 不能解除它、不能把它改鬆。回 None 表示可以做，否則回擋下的原因。
+
+    這個檢查放在腳本裡而不是 hook 裡：hook 靠比對指令文字認人，路徑多一個 ./ 就認不出來。
+    new 是要寫進去的新規則；None 代表要解除。
+    """
+    sid = pc.env_sid()
+    if not sid or pc.bypassed(sid):
+        return None  # Stan 自己在終端機跑，或他在這個 session 豁免過
+    old = pc.load_global()
+    if old is None:
+        return None
+    if new is None:
+        return "現在有全機規則（%s）。" % pc.describe_global(old)
+    if isinstance(old.get("stopped"), dict) or pc.global_trip(old, None):
+        return "全機規則已經到線，不能重設。"
+    ou, nu = pc._num(old.get("until")), pc._num(new.get("until"))
+    if ou and (not nu or nu > ou + 60):
+        return "原本的規則到 %s 就停，新的比較晚或沒有時間。" % pc.fmt_clock(ou)
+    if not old.get("time_only"):
+        if new.get("time_only"):
+            return "原本的規則有看用量，新的只看時間。"
+        for label, path in pc._tracked(old):
+            o = pc._top(pc._dig(old.get("ceiling") or {}, path))
+            n = pc._top(pc._dig(new.get("ceiling") or {}, path))
+            if n > o + 0.01:
+                return "原本 %s 的上限是 %g%%，新的是 %g%%。" % (label, o, n)
+    return None
 
 def fail(msg, code=2):
     print("沒設定：%s" % msg)
@@ -51,6 +84,10 @@ def status():
         print("  還沒到線")
 
 def clear():
+    why = guard()
+    if why:
+        print("沒解除：%s%s" % (why, ONLY_STAN))
+        sys.exit(3)
     gone = False
     try:
         os.remove(pc.GLOBAL_FILE)
@@ -145,6 +182,10 @@ def main():
         if ceiling:
             g["ceiling"] = ceiling
 
+    why = guard(g)
+    if why:
+        print("沒設定：%s%s" % (why, ONLY_STAN))
+        sys.exit(3)
     pc.save_json(pc.GLOBAL_FILE, g)
     print("已設定全機規則：%s" % pc.describe_global(g))
     lines = pc.hard_lines(g)

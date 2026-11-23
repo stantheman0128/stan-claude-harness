@@ -85,5 +85,7 @@
 - 單一 session 的 pacer，每段之間的檢查靠 agent 自律，hook 只是最後一層。全機規則不靠自律。
 - hook 是 session 開啟時載入的。plugin 裝上之前就開著的 session 不受全機規則管，要重開。
 - 被全機規則擋下的 session 如果掛著會自動叫它繼續的機制（Stop hook 之類），會一直被叫起來又被擋，白燒用量。
-- session 跟 Stan 是同一個 Windows 帳號，規則檔它寫得到。hook 擋掉直接的做法（`--clear`、寫出路徑去刪），擋不住刻意繞路的（先 cd 再用相對路徑、寫一支腳本去刪）。
+- session 跟 Stan 是同一個 Windows 帳號，規則檔、鎖檔、這個 plugin 的程式它都碰得到。這套東西擋的是「不知道有上限」和「順手就想繼續」的 session，擋不住故意變花樣的：換個寫法叫腳本讓 hook 認不出來、寫程式去刪檔、拿掉環境變數假裝是終端機、自己跑 `bypass_prompt.py`、寫假讀數。三輪獨立複驗（11-23）每輪都找得到新寫法，Stan 定案不再往這個方向補。
+- 解除或放寬全機規則的檢查在 `global_pace.py` 自己裡面（`guard`）：腳本知道自己是哪個 session 叫的，那個 session 沒被豁免就拒絕。hook 那一層還留著，但 hook 只認得標準寫法。
+- 豁免的說法靠關鍵字比對，會有誤判。偏向寧可不放行：沒被認出來時 session 會請 Stan 講「豁免」兩個字。
 - 有規則生效時，session 想看 `refresh.log` 以外的狀態檔會被擋，改用 `global_pace.py --status`。

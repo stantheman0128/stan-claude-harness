@@ -248,14 +248,18 @@ def main():
     # 有限制生效時，不准直接動 pacer 的狀態檔（刪規則、自己寫豁免記號）。
     # 這只擋得住直接寫出路徑的做法，是減速丘不是保險箱：session 跟 Stan 是同一個帳號。
     if tool in ("Bash", "PowerShell", "Write", "Edit", "NotebookEdit") and not own and isinstance(ti, dict):
-        blob = json.dumps(ti, ensure_ascii=False).replace("\\\\", "/").lower()
+        # Write、Edit 只看檔案路徑：改 plugin 原始碼時，內容裡提到狀態檔路徑不算動到狀態檔
+        seen = ti if tool in ("Bash", "PowerShell") else {
+            k: ti.get(k) for k in ("file_path", "notebook_path", "path")}
+        blob = json.dumps(seen, ensure_ascii=False).replace("\\\\", "/").lower()
         # 看的是「機器上有沒有任何限制」，不是「這個 session 有沒有」：
         # 不然沒開 pacer 的 session 可以去刪別的 session 的設定檔
         # 完整路徑之外，也認「提到 quota-pacer 又提到狀態檔名」的寫法（cd 進去再刪、多打一個斜線）
         rest = blob.replace("local-plugins/quota-pacer", "")  # plugin 原始碼不是狀態檔
-        touches = any(x in blob for x in STATE_FILES) or ("quota-pacer" in rest and any(
-            x in rest for x in ("wrap/", "/wrap", "lock-", "bypass-", "sessions/", "/sessions",
-                                "global.json", "active.json")))
+        touches = (any(x in blob for x in STATE_FILES) and tool != "Bash" and tool != "PowerShell") or (
+            "quota-pacer" in rest and re.search(
+                r"(?<![a-z0-9_])(?:wrap|sessions)(?![a-z0-9_])|lock-|bypass-|global\.json|active\.json", rest)) or (
+            "bypass_prompt" in blob and tool in ("Bash", "PowerShell"))  # session 自己跑豁免那支程式
         if touches and pc.any_limit():
             block("pacer 的狀態檔不能直接改或刪。收工用 end_pace.py；" + ONLY_STAN)
 

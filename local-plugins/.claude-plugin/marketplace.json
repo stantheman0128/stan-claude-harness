@@ -21,7 +21,7 @@
     },
     {
       "name": "quota-pacer",
-      "version": "0.8.3",
+      "version": "0.8.4",
       "source": "./quota-pacer",
       "description": "Quota-aware task pacer: watch plan usage while working, wind down and hand off before a limit"
     }
