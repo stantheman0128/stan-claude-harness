@@ -38,9 +38,21 @@
 ## 全機規則的生命週期
 
 - 到線：截止時刻到、任一條週限額的裁決到 HARDSTOP、或重置。
-- 到線後每個 session 第一次工具呼叫被擋（附說明），接著放行 `QP_WRAP_CALLS`（10）次，之後全擋。subagent 的工具呼叫算在同一個 session 的額度裡。
+- 到線後每個 session 第一次工具呼叫被擋（附說明），接著可以收尾，之後全擋：
+  - 因為用量到線：放行到 EMERGENCY 線，也就是上限前 `QP_EMERGENCY_PP`（1）個百分點，上限 100 時是 99%。讀數超過 `QP_GLOBAL_STALE_SEC` 沒更新就退回數次數，不憑舊數字一直放行。
+  - 因為時間到或重置：放行 `QP_WRAP_CALLS`（10）次。subagent 的工具呼叫算在同一個 session 的額度裡。
 - 失效：到線後 `QP_GLOBAL_HOLD_HOURS`（3）小時，從截止時刻和到線時刻較晚的那個起算；一直沒到線的規則最多活 `QP_GLOBAL_MAX_HOURS`（48）小時。
 - 用量超過 `QP_GLOBAL_STALE_SEC`（300）沒更新，hook 會自己去 endpoint 拉（4 秒逾時，60 秒冷卻）。拉不到就擋一次請 session 補讀數，同一 session `QP_NAG_GAP_SEC`（600）內只擋一次。
+
+## 豁免（`hooks/bypass_prompt.py`，UserPromptSubmit）
+
+只有使用者送出的訊息會觸發它，所以拿它當「Stan 本人說的」的憑據。訊息裡有豁免的說法、而且現在有規則或 pacer 生效，就寫 `wrap/bypass-<session>`，`QP_BYPASS_HOURS`（12）內工具 hook 對那個 session 兩層都不擋。
+
+- 算數的說法：動詞（bypass、豁免、繞過、解除、取消、無視、忽略、不用管、不管）跟對象（用量、額度、weekly、quota、pacer、全機規則、停手）相隔 12 個字以內；或 bypass、豁免、繞過、無視、不管緊接「限制」「上限」；或整則訊息不到 14 個字、裡面有 bypass 或豁免。
+- 不算的：說法前 8 個字內有否定詞（不要、別、不准…）；訊息是背景任務通知、subagent 交回、斜線指令展開；`<pasted_content>` 區塊裡的字（整則都是貼上的內容時例外）。
+- 排程任務送出的訊息跟 Stan 親手打的分不出來。排程的 prompt 裡不要寫豁免的說法。
+
+工具 hook 另外擋三件事（被豁免的 session 不擋）：有規則時 `global_pace.py --clear`；到線後 `global_pace.py` 的任何設定；有規則或 pacer 生效時，Bash、PowerShell、Write、Edit 的輸入裡出現 `quota-pacer/global.json`、`quota-pacer/active.json`、`quota-pacer/wrap`。最後這項只擋得住直接寫出路徑的做法。
 
 ## 三條線怎麼算
 
@@ -72,4 +84,5 @@
 - 單一 session 的 pacer，每段之間的檢查靠 agent 自律，hook 只是最後一層。全機規則不靠自律。
 - hook 是 session 開啟時載入的。plugin 裝上之前就開著的 session 不受全機規則管，要重開。
 - 被全機規則擋下的 session 如果掛著會自動叫它繼續的機制（Stop hook 之類），會一直被叫起來又被擋，白燒用量。
-- 全機規則擋不住 session 自己跑 `global_pace.py --clear`，只靠訊息裡的交代。
+- session 跟 Stan 是同一個 Windows 帳號，規則檔它寫得到。hook 擋掉直接的做法（`--clear`、寫出路徑去刪），擋不住刻意繞路的（先 cd 再用相對路徑、寫一支腳本去刪）。
+- 有規則生效時，session 想看 `refresh.log` 以外的狀態檔會被擋，改用 `global_pace.py --status`。

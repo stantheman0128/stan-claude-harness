@@ -1,5 +1,14 @@
 # Quota Pacer CHANGELOG
 
+## 0.7.0 — 2026-11-23
+Stan 定案：只有他本人親口說才豁免，其餘一律不放行；用量到線的收尾放行到 99%。
+
+- **本人豁免**（新 `hooks/bypass_prompt.py`，UserPromptSubmit）：Stan 在訊息裡說「豁免」「bypass」「繞過用量限制」「解除全機規則」這類的話，那個 session 12 小時內不受全機規則和 pacer 擋。只放行講話的那個 session。背景任務通知、subagent 交回、否定句、講別的事（WAF bypass、豁免條款）都不算。
+- **session 不能自己解除**：有規則時 `global_pace.py --clear` 被擋；到線後重設規則被擋；有規則或 pacer 生效時，直接改或刪 `global.json`、`active.json`、`wrap/` 被擋。`--status` 隨時可看。Stan 自己在 PowerShell 跑 `--clear` 不受限。
+- **收尾放行到 99%**：因為用量到線的，不再數十次工具呼叫，改成放行到上限前 1 個百分點；讀數太舊就退回數次數。時間到或重置的維持十次。
+- 隔離測試 101 項全過。
+- 沒實測的：UserPromptSubmit 在真的 session 裡有沒有把說明那行送到模型面前（記號檔照寫，不靠那行）。
+
 ## 0.6.1 — 2026-11-23
 hook 的放行條件改嚴。起因：提交後的自動安全檢查指出放行只比對檔名。
 

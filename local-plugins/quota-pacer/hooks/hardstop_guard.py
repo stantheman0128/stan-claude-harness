@@ -28,6 +28,7 @@ import pace_core as pc  # noqa: E402
 OWN = ("start_pace.py", "eval_pace.py", "write_usage.py", "read_usage.py", "end_pace.py",
        "global_pace.py")
 SCRIPTS = "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts"
+STATE_FILES = ("quota-pacer/global.json", "quota-pacer/active.json", "quota-pacer/wrap")
 
 # 放行只給「整行就是一次 pacer 腳本呼叫」的指令：直譯器、這個資料夾裡的腳本、簡單參數。
 # 只比對檔名的話，在任何指令後面加一句 echo eval_pace.py 就能繞過整個 hook。
@@ -196,6 +197,14 @@ def main():
     # Stan 在這個 session 親口豁免過 → 兩層都不擋
     if pc.bypassed(sid):
         sys.exit(0)
+
+    # 有限制生效時，不准直接動 pacer 的狀態檔（刪規則、自己寫豁免記號）。
+    # 這只擋得住直接寫出路徑的做法，是減速丘不是保險箱：session 跟 Stan 是同一個帳號。
+    if tool in ("Bash", "PowerShell", "Write", "Edit", "NotebookEdit") and not own and isinstance(ti, dict):
+        blob = json.dumps(ti, ensure_ascii=False).replace("\\\\", "/").lower()
+        if any(x in blob for x in STATE_FILES) and (
+                pc.load_global() is not None or os.path.exists(pc.ACTIVE_FILE)):
+            block("pacer 的狀態檔不能直接改或刪。收工用 end_pace.py；全機" + ONLY_STAN)
 
     # 解除或改寫全機規則：到線之後不行，還沒到線時 --clear 也不行。只有 --status 隨時可以看。
     if own == "global_pace.py" and "--status" not in cmd:
