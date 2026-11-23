@@ -13,6 +13,7 @@ import json
 import os
 import re
 import sys
+from collections import deque
 from pathlib import Path
 
 MAX_BYTES = 300_000
@@ -44,6 +45,17 @@ CLAUDE_DIRS = ("commands", "agents", "skills", "hooks", "rules", "output-styles"
 # plugin 根目錄的預設元件資料夾；bin/ 會放進 Bash 的 PATH，scripts/ 是 hook 常呼叫的腳本位置
 PLUGIN_DIRS = ("skills", "commands", "agents", "hooks", "scripts", "output-styles", "workflows", "monitors", "bin")
 INSTRUCTION_FILES = ("CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md", "AGENTS.md", ".claude/AGENTS.md")
+# 子資料夾裡用到時才載入的指令檔，走訪整個 repo 找；走訪的檔案和資料夾數有上限
+NESTED_NAMES = frozenset(("claude.md", "claude.local.md", "agents.md"))
+MAX_WALK = 50_000
+# @import：docs 說最多跟四層，相對路徑以引用它的檔為準，code span 和 fenced code block 裡的不算。
+# 判斷寧可多抓：@ 前面只排除英數和 email 常見字元，只跟真的存在的檔，所以多抓只會多掃
+MAX_IMPORT_HOPS = 4
+IMPORT_RE = re.compile(r"(?<![A-Za-z0-9_.+\-@])@((?:\\ |\S)+)")
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+INLINE_CODE_RE = re.compile(r"(?<![`\\])(`+)(?!`).+?(?<!`)\1(?!`)")
+TRAIL = ".,;:!?)]}>'\"`*_ "
+IMPORTS_SEEN = {}     # 檔案 -> 最少經過幾層 import 讀到
 EXEC, MCP, RISK = "hook 與會執行的設定", "MCP server", "可疑指令行"
 COUNTS = {EXEC: 0, MCP: 0, RISK: 0}
 # 讀不到、解析失敗、超過大小或檔數上限、二進位檔、symlink：掃描不完整，結論不能說安全
@@ -302,6 +314,129 @@ def scan_folder(folder, out):
     return files
 
 
+def is_fence(line, mark):
+    """收尾的 fence：同一種字元、長度不短於開頭。後面多帶字也算收尾，這樣只會讓 code block 變短、多抓 import。"""
+    m = FENCE_RE.match(line)
+    return bool(m) and m.group(1)[0] == mark[0] and len(m.group(1)) >= len(mark)
+
+
+def import_targets(text):
+    """抽出 @路徑。跳過 fenced code block 和行內 code；反斜線加空白代表路徑裡的空白。
+    沒收尾的 fence 不當 code block，免得一行假 fence 把後面的 import 全藏起來。"""
+    lines, targets, i = text.splitlines(), [], 0
+    while i < len(lines):
+        m = FENCE_RE.match(lines[i])
+        if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            end = next((j for j in range(i + 1, len(lines)) if is_fence(lines[j], m.group(1))), None)
+            if end is not None:
+                i = end + 1
+                continue
+        for raw in IMPORT_RE.findall(INLINE_CODE_RE.sub(" ", lines[i])):
+            targets.append(raw.replace("\\ ", " "))
+        i += 1
+    return targets
+
+
+def resolve_import(src, target, where):
+    """@路徑換成 repo 內的檔。CLAUDE.md 常有 @/components 這種別名或 @人名，所以只跟真的存在的檔；
+    存在但在 repo 外（~、絕對路徑、.. 跑出去）或經過 symlink 的記進 PROBLEMS。
+    引號包住的路徑 docs 說不算 import，去掉引號再找一次只會多掃，不會漏。"""
+    for text in dict.fromkeys((target, target.rstrip(TRAIL), target.strip(TRAIL + "\"'(<[").rstrip(TRAIL))):
+        if not text:
+            continue
+        if os.name == "nt" and text.replace("/", "\\").startswith("\\\\"):
+            # UNC 或裝置路徑：連 stat 都不做，否則 Windows 會連到對方主機送出 NTLM 認證
+            PROBLEMS.append(f"{where} 指到網路或裝置路徑，沒碰也沒掃")
+            return None
+        if text.startswith("~"):
+            try:
+                home = Path(text).expanduser()
+                found = home != Path(text) and home.exists()
+            except (OSError, RuntimeError, ValueError):
+                found = False
+            if found:
+                PROBLEMS.append(f"{where} 指到家目錄（repo 外），沒掃；Claude Code 會先跳核准視窗，別核准")
+                return None
+            continue
+        cur = src.parent
+        try:
+            for part in Path(text).parts:
+                cur = cur / part
+                if part not in (".", "..") and is_link(cur):
+                    PROBLEMS.append(f"{rel(cur)} 是 symlink，沒跟進去掃（{where}）")
+                    return None
+            path = src.parent / text
+            if not path.is_file():
+                continue
+            resolved = path.resolve()
+        except (OSError, ValueError, RuntimeError):
+            continue
+        if not resolved.is_relative_to(ROOT):
+            PROBLEMS.append(f"{where} 指到 repo 外，沒掃")
+            return None
+        return resolved
+    return None
+
+
+def follow_imports(src, out, hop=0):
+    """跟 src 裡的 @import，被 import 的檔照可疑行規則掃。docs 說超過四層不載入；
+    第五層以後真的有檔就記成掃描不完整，萬一實際行為和 docs 差一層也不會漏報。"""
+    key = file_key(src)
+    if IMPORTS_SEEN.get(key, MAX_IMPORT_HOPS + 1) <= hop:
+        return
+    IMPORTS_SEEN[key] = hop
+    text = read_text(src)
+    if not text or "\x00" in text:
+        return
+    for target in import_targets(text):
+        where = f"{rel(src)} 的 @{clean(target, 80)}"
+        dest = resolve_import(src, target, where)
+        if dest is None:
+            continue
+        if hop >= MAX_IMPORT_HOPS:
+            out.append(f"  [略過] {where} -> {rel(dest)}：超過 {MAX_IMPORT_HOPS} 層 import")
+            PROBLEMS.append(f"{where} 超過 {MAX_IMPORT_HOPS} 層 import 沒掃（docs 說不載入）")
+            continue
+        out.append(f"  [import] {where} -> {rel(dest)}")
+        scan_file(dest, out)
+        follow_imports(dest, out, hop + 1)
+
+
+def find_nested_instructions(root):
+    """走訪 repo 找每個資料夾的 CLAUDE.md、CLAUDE.local.md、AGENTS.md，以及 .claude/rules 底下的 .md。
+    不用 git（repo 的 .git/config 可能讓 git 執行東西）、跳過 .git、不跟 symlink，走訪數量超過上限就記下來。
+    symlink 連 stat 都不跟（指到 UNC 的話 Windows 會連過去），分不出指到檔還是資料夾，所以一律記下來。"""
+    found, links, count = [], 0, 0
+    queue = deque([(root, False)])
+    while queue:
+        folder, in_rules = queue.popleft()
+        try:
+            with os.scandir(folder) as it:
+                for entry in it:
+                    count += 1
+                    if count > MAX_WALK:
+                        PROBLEMS.append(f"repo 超過 {MAX_WALK} 個檔案和資料夾，子資料夾的指令檔沒找完")
+                        return sorted(found)
+                    path = Path(entry.path)
+                    name = entry.name.lower()
+                    wanted = name in NESTED_NAMES or (in_rules and name.endswith(".md"))
+                    if is_link(path):
+                        if wanted:
+                            PROBLEMS.append(f"{rel(path)} 是 symlink，沒跟進去掃")
+                        else:
+                            links += 1
+                    elif entry.is_dir(follow_symlinks=False):
+                        if name != ".git":
+                            queue.append((path, in_rules or (name == "rules" and folder.name.lower() == ".claude")))
+                    elif wanted and entry.is_file(follow_symlinks=False):
+                        found.append(path)
+        except OSError:
+            PROBLEMS.append(f"讀不到資料夾 {rel(folder)}")
+    if links:
+        PROBLEMS.append(f"走訪 repo 時有 {links} 個 symlink 或 junction 沒跟進去，指到資料夾的話裡面的指令檔沒找")
+    return sorted(found)
+
+
 def component_path(base, value, where, out):
     """plugin 元件路徑換成實際位置。resolve 之前逐層檢查 symlink、junction，有就不跟；
     跑出 plugin 根目錄的也記成掃描不完整。不存在的路徑 Claude Code 也不會載入，只印一行。"""
@@ -525,11 +660,22 @@ def main():
             text = read_text(path) or ""
             out.append(f"  {name}：{len(text.splitlines())} 行")
             risky_text(text, name, out)
+            follow_imports(path, out)
 
     for sub in CLAUDE_DIRS:
         folder = claude_dir / sub
         if folder.is_dir() or is_link(folder):
             scan_folder(folder, out)
+
+    nested = find_nested_instructions(root)
+    fresh = [p for p in nested if file_key(p) not in SEEN]
+    if fresh:
+        out.append("子資料夾的指令檔（Claude 在那個資料夾工作時才載入）")
+    for path in fresh:
+        out.append(f"  {rel(path)}")
+        scan_file(path, out)
+    for path in nested:
+        follow_imports(path, out)
 
     plugin_dir = root / ".claude-plugin"
     if plugin_dir.is_dir():
@@ -541,6 +687,7 @@ def main():
 
     if STATS["over"]:
         PROBLEMS.append(f"有 {STATS['over']} 個檔超過 {MAX_FILES} 個上限沒掃")
+    PROBLEMS[:] = dict.fromkeys(PROBLEMS)  # 同一個檔可能被讀兩次（掃描和跟 import），重複的只留一條
 
     total = sum(COUNTS.values())
     print(f"inspect_repo：{root}")
