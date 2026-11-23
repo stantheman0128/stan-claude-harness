@@ -36,3 +36,6 @@
   - Fable 5.2 在 CursorBench 的分數，Cursor 說有一部分來自 harness 改進，跟 Opus、Sonnet 的分數不完全可比。
   - AA 各檔位獨立網址 2026-11-23 起都轉回家族頁；Sonnet low 到 high、Haiku low 到 xhigh 只在一頁出現，沒有交叉核對。
   - VulcanBench 上 Mythos 5.2 沒有資料。
+
+2026-11-23 晚：Stan 核可兩件事。(1) coding fan-out 從 Sonnet xhigh 改 Opus high，審查 fan-out 改派 verifier 角色，Sonnet xhigh 只留給工具自動化批次；理由是 Ultra 只有「全部模型」與「Fable」兩條週額度，分散到 Sonnet 額度的前提不在了（CLAUDE.md v2.14）。(2) CursorBench 表換成 4.1（https://cursor.com/evals ，2026-11-23 讀；2026-11-18 改版），SKILL.md 與 `model-picks.md` 引用的 CursorBench 數字跟著換，System Card 頁碼引的舊版數字照原樣保留並標版本。研究在 `C:\Users\stans\Projects\model-blackbox-eval\research-2026-11-23-ladder-tooling\`（`results/thirdparty.json` 有 4.1 各列原始讀數與複核）。
+- 未驗證項：Haiku 5.5 的 4.1 讀數只有複核者讀過一次，研究者那輪沒列。

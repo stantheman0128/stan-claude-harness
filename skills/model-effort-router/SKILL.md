@@ -204,6 +204,6 @@ Effort：<檔位>
 
 ## 資料時效
 
-來源、每次更新的紀錄與未驗證項在 `references/sources.md`。逐檔分數靠 CursorBench、Artificial Analysis 與 Cognition FrontierCode 2.0（Anthropic 沒用文字公布 Sonnet 5.5、Haiku 5.5 的逐檔分數）；AA 是 2026-11-23 抓的 Intelligence Index v5.0.1，跟 10-18 的 v4.3.2 尺度不同；新模型發佈或 CC 大改版時，先查 platform.claude.com/docs 的 models overview 與 effort 頁、code.claude.com 的 model-config，數字過期就別引用。
+來源、每次更新的紀錄與未驗證項在 `references/sources.md`。逐檔分數靠 CursorBench、Artificial Analysis 與 Cognition FrontierCode 2.0（Anthropic 沒用文字公布 Sonnet 5.5、Haiku 5.5 的逐檔分數）；AA 是 2026-11-23 抓的 Intelligence Index v5.0.1，跟 10-18 的 v4.3.2 尺度不同；CursorBench 是 2026-11-23 讀的 4.1，跟 4.0 不能混著比；新模型發佈或 CC 大改版時，先查 platform.claude.com/docs 的 models overview 與 effort 頁、code.claude.com 的 model-config，數字過期就別引用。
 
 維護注意：本檔內文不寫「錢號緊接數字」。帶參數呼叫 skill 時，Claude Code 會把錢號接 0、1、2 這類寫法換成你帶的第幾個參數，價格會被吃掉；`references/` 不受影響。
