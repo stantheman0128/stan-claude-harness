@@ -42,7 +42,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 | 安全（auth、秘鑰、驗證、加密、漏洞） | Opus 5.5 @ xhigh（security-executor）；**不用 Fable 起手** | 資安是最吃 effort 的領域（Thariq：Security 64 → 87%）；Mythos 5.2 的分工見硬規則 1 |
 | 30 分鐘以上無人值守、長交付物（稽核、遷移、完整分析文件） | Opus 5.5 @ xhigh + 反早停 prompt | AA-Briefcase high 1682 → xhigh 1758；早停接法見硬規則 8 |
 | 完工複驗（verifier） | Opus 5.5 @ high | Thariq：「Verify and test on high effort」；不升 xhigh，完工檢查不要更慢；Opus 自評偏誤最小；複驗 Fable 5.2 的產出也用 Opus 5.5 |
-| 查找盤點（scout、內建 Explore）、規格寫死的機械活（mech-executor） | Sonnet 5.5 @ high | Sonnet medium → high：CursorBench +8.6、AA +10.7，是它最大的一跳；成本仍只有 Opus medium 的 41% 到 67% |
+| 查找盤點（scout）、規格寫死的機械活（mech-executor） | Sonnet 5.5 @ high | Sonnet medium → high：CursorBench +8.6、AA +10.7，是它最大的一跳；成本仍只有 Opus medium 的 41% 到 67% |
 | 大量平行 fan-out：coding、審查 | `model: "sonnet"` + `effort: "xhigh"`，派工單附硬規則 15 的官方段落 | 選 Sonnet 是為了吃它自己的週上限、分散 Opus 額度，不是比較便宜：AA 上 Opus high 更高分、更便宜、更快（51.8 分、3.46 美元、558 秒對 49.9 分、4.09 美元、839 秒）；FrontierCode 2.0 同分。Opus 額度寬鬆時改派 Opus high |
 | 大量平行 fan-out：抽取、分類、摘要 | `model: "haiku"` + `effort: "high"`，派工單寫明只准碰哪些路徑 | Haiku medium → high：CursorBench +5.4、AA +5.3；high 是官方建議的嚴格照指令檔；寫明邊界後越界率 30% → 1.8% |
 | 電腦操作、vision、圖表/簡報/試算表知識工作 | Opus 5.5 @ high；長交付物 xhigh | GDPval-AA 與 AA-Briefcase 都是 Opus 贏 Fable 5.2；AA 自己的表上 GDPval 仍是 Opus max 最高，Briefcase 則是 Sonnet max 1813 略高於 Opus max 1797 |
@@ -111,9 +111,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
 - 只想這一題想深一點：prompt 裡寫 `ultrathink`。v2.1.311 起在互動終端機，Opus 5.5、Sonnet 5.5、Haiku 5.5、Fable 5.1 走 Anthropic API 時這一回合跑 xhigh（changelog 摘要，Fable 5.2 沒點名）；其他情況照文件只加一段「想深一點」的指示，effort 不變。
 - max 在主 session 只能 `/effort max` 或 `--effort max`，當次 session 有效；`modelSettings` 與 `effortLevel` 不收。環境變數、subagent 定義檔、Agent 工具的 `effort` 收 max，但照硬規則 3 不拿來當任何預設。
 - 主 session 換模型：整段 context 重讀。盡量在任務交界換；中途需要時，把難的那塊切出去派 subagent。已知保留推理：Opus 5.5 → Fable 5.1、API 上 Opus 5.5 → Fable 5.2（CC 未驗證）；其他方向當作會丟。
-- 主 session 中途接上或斷開 MCP server（connector 也算）：跟換模型一樣，整段快取重寫（官方〈What a task costs on Opus 5.5〉2026-09-25，Session shape 段）。connector 開場就設好，要用沒開的就開新 session。
 - subagent：角色的 effort 寫死在定義檔。scout、mech-executor 是 Sonnet 5.5 @ high；executor、verifier 是 Opus 5.5 @ high；executor-high、security-executor 是 Opus 5.5 @ xhigh。要更高就換角色（executor 漏邊界或修既有 bug 換 executor-high，安全題用 security-executor）。
-- 內建 Explore／Plan／general-purpose 沒有定義檔，沒帶 model 就跑主 session 的模型（官方〈Which Claude model should you build with?〉2026-11-09；成本文也寫沒設模型的 subagent 跑主模型）。照 CLAUDE.md §2：Explore 算決策表的查找那一列，帶 `model: "sonnet"`，effort 吃 `CLAUDE_CODE_SUBAGENT_EFFORT=high`（硬規則 15）；Plan／general-purpose 帶 `model: "opus"`。環境變數 `CLAUDE_CODE_SUBAGENT_MODEL` 一次設全部 subagent 的模型，定義檔寫的 model 優先（成本文）；Stan 沒設（2026-11-23 查）。
 - Agent 工具從 v2.1.292 起能帶 `effort`，蓋過定義檔、resume 也保留。只在 CLAUDE.md §2 的 fan-out 規則或 Stan 指定時帶；角色 agent 不帶。
 - 環境變數 `CLAUDE_CODE_EFFORT_LEVEL` 優先權最高，會蓋掉所有定義檔與派工時帶的 effort，整套分層失效。不要設。`CLAUDE_CODE_SUBAGENT_EFFORT` 2026-11-23 起設成 high，只補沒帶 effort 的 subagent（硬規則 15）。
 - `/tasks` 列出每個 subagent 實際跑的模型與 effort。
