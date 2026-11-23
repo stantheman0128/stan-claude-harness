@@ -18,10 +18,6 @@
 
     Reference: https://github.com/anthropics/claude-code/issues/42776
 
-.PARAMETER AsSystem
-    Internal flag. Do not use directly. The script re-invokes itself with this flag
-    via a SYSTEM-level scheduled task to perform the privileged unload.
-
 .PARAMETER Unattended
     Skip all interactive prompts. Running Claude Desktop processes are terminated
     without asking. Never touches Claude Code CLI (claude.exe) processes.
@@ -29,10 +25,11 @@
 .NOTES
     Requires: Windows 10/11, Administrator elevation.
     The script is safe to run even if no stale hives exist.
+    This file never runs as SYSTEM. The SYSTEM step runs a generated payload from
+    a temporary admin-only folder under ProgramData, after a SHA-256 check.
 #>
 
 param(
-    [switch]$AsSystem,
     [switch]$Unattended
 )
 
@@ -40,6 +37,12 @@ $ErrorActionPreference = 'Stop'
 
 # -- Hardcoded fallback; auto-detection attempted below --
 $PackageFamilyDefault = 'Claude_pzs8sxrjxfjjc'
+
+# Strict shapes for the values handed to the SYSTEM task, checked on both sides.
+# Package family = Name (3-50 of A-Z a-z 0-9 . -) + '_' + 13-char publisher ID.
+# \z, not $: in .NET regex $ also matches before a trailing newline.
+$PackageFamilyRegex = '^[A-Za-z0-9.\-]{3,50}_[0-9a-hjkmnp-tv-z]{13}\z'
+$WorkDirRegex       = '^[A-Za-z]:\\ProgramData\\ClaudeHiveFix_[0-9a-f]{32}\z'
 
 # Hive file paths reference the package in two different forms:
 #   ...\Packages\Claude_pzs8sxrjxfjjc\...                    (family name)
@@ -52,6 +55,113 @@ function Get-HiveMatchPattern {
         return "*$($parts[0])_*$($parts[-1])*"
     }
     return "*$PackageFamilyName*"
+}
+
+# ==============================================================
+#  HELPERS for the SYSTEM hand-off (step 4)
+# ==============================================================
+
+# True only for a real folder (no reparse point) owned by SYSTEM or
+# Administrators, with inheritance off and ACEs for those two only.
+# Self-contained: step 4 copies this function into the SYSTEM payload.
+function Test-AdminOnlyDirectory {
+    param([string]$Path)
+    $admins = @('S-1-5-18', 'S-1-5-32-544')
+    try {
+        $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+        $acl  = $item.GetAccessControl()
+    } catch { return $false }
+    if (-not $item.PSIsContainer) { return $false }
+    if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { return $false }
+    if ($admins -notcontains $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value) { return $false }
+    if (-not $acl.AreAccessRulesProtected) { return $false }
+    foreach ($rule in $acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])) {
+        if ($admins -notcontains $rule.IdentityReference.Value) { return $false }
+    }
+    return $true
+}
+
+# The work folder's parent must stop non-admins from deleting or renaming
+# entries in it (which would let them swap our folder) and from changing
+# its own ACL or owner. Creating new entries there is fine.
+function Assert-SafeParentDirectory {
+    param([string]$Path)
+    $trusted = @('S-1-5-18', 'S-1-5-32-544',
+                 'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')  # TrustedInstaller
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if (-not $item.PSIsContainer -or ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+        throw "Not a plain folder: $Path"
+    }
+    $acl = $item.GetAccessControl()
+    if ($trusted -notcontains $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value) {
+        throw "Unexpected owner on $Path"
+    }
+    # DELETE | FILE_DELETE_CHILD | WRITE_DAC | WRITE_OWNER | GENERIC_ALL
+    $dangerous = 0x00010000 -bor 0x00000040 -bor 0x00040000 -bor 0x00080000 -bor 0x10000000
+    foreach ($rule in $acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])) {
+        if ($rule.AccessControlType -ne [System.Security.AccessControl.AccessControlType]::Allow) { continue }
+        if ($rule.PropagationFlags -band [System.Security.AccessControl.PropagationFlags]::InheritOnly) { continue }
+        if ($trusted -contains $rule.IdentityReference.Value) { continue }
+        if ([int]$rule.FileSystemRights -band $dangerous) {
+            throw "$Path lets $($rule.IdentityReference.Value) delete or re-permission its entries"
+        }
+    }
+}
+
+# Owner Administrators, inheritance off, SYSTEM and Administrators full control.
+function Set-AdminOnlyRules {
+    param($Security, [System.Security.AccessControl.InheritanceFlags]$Inherit)
+    $Security.SetOwner([System.Security.Principal.SecurityIdentifier]'S-1-5-32-544')
+    $Security.SetAccessRuleProtection($true, $false)
+    foreach ($sid in 'S-1-5-18', 'S-1-5-32-544') {
+        $Security.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new(
+            [System.Security.Principal.SecurityIdentifier]$sid,
+            [System.Security.AccessControl.FileSystemRights]::FullControl, $Inherit,
+            [System.Security.AccessControl.PropagationFlags]::None,
+            [System.Security.AccessControl.AccessControlType]::Allow))
+    }
+}
+
+function New-AdminOnlyDirectory {
+    param([string]$Path)
+    if (Test-Path -LiteralPath $Path) { throw "Work folder already exists: $Path" }
+    $sec = New-Object System.Security.AccessControl.DirectorySecurity
+    Set-AdminOnlyRules $sec ([System.Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit')
+    # The ACL is applied at creation, so there is no window with the inherited
+    # ProgramData ACL (which lets Users create files in new subfolders).
+    [void][System.IO.Directory]::CreateDirectory($Path, $sec)
+    if (-not (Test-AdminOnlyDirectory $Path) -or @(Get-ChildItem -LiteralPath $Path -Force).Count -ne 0) {
+        throw "Work folder failed its security check: $Path"
+    }
+}
+
+function Write-AdminOnlyFile {
+    param([string]$Path, [byte[]]$Bytes)
+    $sec = New-Object System.Security.AccessControl.FileSecurity
+    Set-AdminOnlyRules $sec ([System.Security.AccessControl.InheritanceFlags]::None)
+    # CreateNew: never write through a file or link that is already there.
+    $fs = [System.IO.FileStream]::new($Path, [System.IO.FileMode]::CreateNew,
+        [System.Security.AccessControl.FileSystemRights]::Write, [System.IO.FileShare]::None,
+        4096, [System.IO.FileOptions]::None, $sec)
+    try { $fs.Write($Bytes, 0, $Bytes.Length) } finally { $fs.Dispose() }
+}
+
+# Single-quotes a value for the generated SYSTEM code. Rejects rather than
+# escapes: a quote or anything outside printable ASCII fails, which also
+# covers the Unicode quotes (U+2018..U+201B) PowerShell treats as quotes.
+function ConvertTo-PSLiteral {
+    param([string]$Value)
+    if ($Value -cnotmatch '^[\x20-\x26\x28-\x7E]*\z') {
+        throw 'Refusing to embed a value with quotes or non-ASCII characters.'
+    }
+    return "'" + $Value + "'"
+}
+
+function Get-Sha256Hex {
+    param([byte[]]$Bytes)
+    $sha = New-Object System.Security.Cryptography.SHA256CryptoServiceProvider
+    try { return -join ($sha.ComputeHash($Bytes) | ForEach-Object { $_.ToString('x2') }) }
+    finally { $sha.Dispose() }
 }
 
 # ==============================================================
@@ -193,13 +303,37 @@ public static class HiveUnloader
 
 
 # ==============================================================
-#  SYSTEM PATH - executed inside the scheduled task as SYSTEM
+#  SYSTEM SIDE - code run by the one-shot SYSTEM scheduled task
 # ==============================================================
-if ($AsSystem) {
-    $resultDir  = if ($env:CLAUDE_FIX_RESULTDIR) { $env:CLAUDE_FIX_RESULTDIR } else { $env:TEMP }
-    $resultFile = Join-Path $resultDir 'claude_hive_fix_result.json'
-    $packageFamilyPattern = if ($env:CLAUDE_FIX_PKGFAMILY) { $env:CLAUDE_FIX_PKGFAMILY } else { $PackageFamilyDefault }
-    $hivePattern = Get-HiveMatchPattern $packageFamilyPattern
+# The admin process never runs this block. Step 4 writes its text, with
+# validated values baked in, to a fresh admin-only folder under ProgramData,
+# and the task checks that file's SHA-256 before running it. It reads no
+# environment variables and writes only inside that folder.
+$SystemSideScript = {
+    $ErrorActionPreference = 'Stop'
+
+    # Fail closed: re-check the baked-in values and the folder before writing.
+    if ($PackageFamilyName -cnotmatch $PackageFamilyRegex -or
+        $WorkDir -cnotmatch $WorkDirRegex -or
+        -not (Test-AdminOnlyDirectory $WorkDir)) {
+        exit 2
+    }
+
+    # CreateNew refuses anything already at the path. While this handle is
+    # open the folder cannot be deleted, and the final write goes through the
+    # handle, so the path is not resolved again. The second check catches a
+    # folder swapped between the first check and the open.
+    $resultStream = [System.IO.FileStream]::new(
+        (Join-Path $WorkDir 'result.json'), [System.IO.FileMode]::CreateNew,
+        [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+    if (-not (Test-AdminOnlyDirectory $WorkDir)) { $resultStream.Dispose(); exit 2 }
+
+    # Add-Type runs csc.exe, which writes temp files under %TMP%. For SYSTEM
+    # that is C:\Windows\Temp, where non-admin users can create files.
+    $env:TMP  = $WorkDir
+    $env:TEMP = $WorkDir
+
+    $hivePattern = Get-HiveMatchPattern $PackageFamilyName
 
     $results = @()
 
@@ -258,7 +392,9 @@ if ($AsSystem) {
     # Always emit a JSON array, even when empty, so the parent can parse it.
     $json = if ($results.Count -eq 0) { '[]' }
             else { ConvertTo-Json -InputObject @($results) -Depth 3 }
-    Set-Content -Path $resultFile -Value $json -Encoding UTF8
+    # UTF-8 with BOM plus a trailing newline, as Set-Content -Encoding UTF8 wrote.
+    $writer = [System.IO.StreamWriter]::new($resultStream, [System.Text.UTF8Encoding]::new($true))
+    try { $writer.WriteLine($json) } finally { $writer.Dispose() }
     exit 0
 }
 
@@ -405,41 +541,97 @@ foreach ($h in $staleHives) {
 Write-Host ''
 Write-Host '[4/5] Force-unloading stale hives (escalating to SYSTEM)...' -ForegroundColor Yellow
 
-$scriptPath = $MyInvocation.MyCommand.Path
-if (-not $scriptPath) {
-    Write-Host '       ERROR: Cannot determine script path.' -ForegroundColor Red
-    Write-Host '       Please save and run this as a .ps1 file (not pasted into a console).' -ForegroundColor Yellow
-    Pause-IfInteractive
-    exit 1
-}
-
-$taskName   = "ClaudeHiveFix_$(Get-Random -Minimum 10000 -Maximum 99999)"
-$resultFile = Join-Path $env:TEMP 'claude_hive_fix_result.json'
-if (Test-Path $resultFile) { Remove-Item $resultFile -Force }
-
-$wrapperPath = Join-Path $env:TEMP 'claude_hive_fix_wrapper.ps1'
-@"
-`$env:CLAUDE_FIX_RESULTDIR  = '$($env:TEMP -replace "'","''")'
-`$env:CLAUDE_FIX_PKGFAMILY  = '$($PackageFamily -replace "'","''")'
-& '$($scriptPath -replace "'","''")' -AsSystem
-"@ | Set-Content -Path $wrapperPath -Encoding UTF8
+# Everything the SYSTEM task runs or writes lives in a fresh admin-only folder
+# under ProgramData. The task itself carries only a short stub that checks the
+# payload's SHA-256 before running it. Paths come from GetSystemDirectory, not
+# from environment variables: an elevated process inherits HKCU\Environment,
+# which the non-elevated user can edit.
+$taskName       = 'ClaudeHiveFix_' + [guid]::NewGuid().ToString('N')
+$taskAttempted  = $false
+$step4Failed    = $false
+$workDir        = $null
+$workDirCreated = $false
+$resultFound    = $false
+$raw            = $null
 
 try {
-    $action    = New-ScheduledTaskAction -Execute 'powershell.exe' `
-                    -Argument "-ExecutionPolicy Bypass -NoProfile -NonInteractive -File `"$wrapperPath`""
+    if ($PackageFamily -cnotmatch $PackageFamilyRegex) {
+        throw "Unexpected package family name format; refusing to pass it to SYSTEM: $PackageFamily"
+    }
+
+    $systemDir   = [System.Environment]::SystemDirectory
+    $programData = Join-Path ([System.IO.Path]::GetPathRoot($systemDir)) 'ProgramData'
+    Assert-SafeParentDirectory $programData
+
+    $workDir = Join-Path $programData ('ClaudeHiveFix_' + [guid]::NewGuid().ToString('N'))
+    if ($workDir -cnotmatch $WorkDirRegex) { throw "Unexpected work folder path: $workDir" }
+    New-AdminOnlyDirectory $workDir
+    $workDirCreated = $true
+    $payloadFile = Join-Path $workDir 'payload.ps1'
+    $resultFile  = Join-Path $workDir 'result.json'
+
+    # Per-run secret inside the payload: nobody who cannot read this folder can
+    # rebuild a file with the same hash, so a planted copy fails the stub check.
+    $nonceBytes = New-Object byte[] 16
+    $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
+    try { $rng.GetBytes($nonceBytes) } finally { $rng.Dispose() }
+    $nonce = -join ($nonceBytes | ForEach-Object { $_.ToString('x2') })
+
+    $cSharpB64   = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($CSharpCode))
+    $payloadText = @(
+        '# Generated by Fix-ClaudeDesktopHives.ps1. Runs once as SYSTEM, then deleted.'
+        '$RunNonce = ' + (ConvertTo-PSLiteral $nonce)
+        '$PackageFamilyRegex = ' + (ConvertTo-PSLiteral $PackageFamilyRegex)
+        '$WorkDirRegex = ' + (ConvertTo-PSLiteral $WorkDirRegex)
+        '$PackageFamilyName = ' + (ConvertTo-PSLiteral $PackageFamily)
+        '$WorkDir = ' + (ConvertTo-PSLiteral $workDir)
+        '$CSharpCode = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(' +
+            (ConvertTo-PSLiteral $cSharpB64) + '))'
+        'function Get-HiveMatchPattern {' + ${function:Get-HiveMatchPattern}.ToString() + '}'
+        'function Test-AdminOnlyDirectory {' + ${function:Test-AdminOnlyDirectory}.ToString() + '}'
+        $SystemSideScript.ToString()
+    ) -join "`n"
+    $payloadBytes = [System.Text.Encoding]::UTF8.GetBytes($payloadText)
+    $payloadHash  = Get-Sha256Hex $payloadBytes
+    Write-AdminOnlyFile $payloadFile $payloadBytes
+
+    # The stub runs the exact bytes it hashed, so there is no gap between
+    # check and use. -EncodedCommand also keeps execution policy out of it.
+    $stub = @(
+        '$ErrorActionPreference = ''Stop'''
+        '$b = [System.IO.File]::ReadAllBytes(' + (ConvertTo-PSLiteral $payloadFile) + ')'
+        '$s = New-Object System.Security.Cryptography.SHA256CryptoServiceProvider'
+        '$h = -join ($s.ComputeHash($b) | ForEach-Object { $_.ToString(''x2'') })'
+        'if ($h -cne ' + (ConvertTo-PSLiteral $payloadHash) + ') { exit 3 }'
+        '& ([scriptblock]::Create([System.Text.Encoding]::UTF8.GetString($b)))'
+    ) -join "`n"
+    $encoded = [System.Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($stub))
+    $psExe   = Join-Path $systemDir 'WindowsPowerShell\v1.0\powershell.exe'
+
+    $action    = New-ScheduledTaskAction -Execute $psExe `
+                    -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encoded"
     $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
     $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 
-    Register-ScheduledTask -TaskName $taskName -Action $action `
-        -Principal $principal -Settings $settings -Force | Out-Null
+    # No -Force: never take over an existing task with this name. The flag is
+    # set first so a registration that fails halfway is still cleaned up.
+    $taskAttempted = $true
+    Register-ScheduledTask -TaskName $taskName -TaskPath '\' -Action $action `
+        -Principal $principal -Settings $settings | Out-Null
 
-    Start-ScheduledTask -TaskName $taskName
+    # Last check right before SYSTEM starts: folder still admin-only, payload unchanged.
+    if (-not (Test-AdminOnlyDirectory $workDir)) { throw "Work folder is no longer admin-only: $workDir" }
+    if ((Get-Sha256Hex ([System.IO.File]::ReadAllBytes($payloadFile))) -cne $payloadHash) {
+        throw 'Payload changed before the SYSTEM task started; aborting.'
+    }
+
+    Start-ScheduledTask -TaskName $taskName -TaskPath '\'
 
     $elapsed = 0
     while ($elapsed -lt 30) {
         Start-Sleep -Seconds 1
         $elapsed++
-        $state = (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue).State
+        $state = (Get-ScheduledTask -TaskName $taskName -TaskPath '\' -ErrorAction SilentlyContinue).State
         if ($state -ne 'Running') { break }
     }
 
@@ -448,36 +640,88 @@ try {
     } else {
         Write-Host "       Task completed in ${elapsed}s." -ForegroundColor DarkGray
     }
+
+    # Read the result here; the finally block deletes the folder.
+    if (Test-Path -LiteralPath $resultFile) {
+        try {
+            $raw = Get-Content -LiteralPath $resultFile -Raw
+            $resultFound = $true
+        } catch { $resultFound = $false }
+    }
 }
 catch {
     Write-Host "       ERROR: $($_.Exception.Message)" -ForegroundColor Red
+    $step4Failed = $true
+}
+finally {
+    # Disable first so no new instance can start, stop any running one and
+    # wait for it, then delete the task. Only then is the folder safe to
+    # delete: a SYSTEM process still running could otherwise follow the path
+    # to a folder a user re-created after the delete. Any doubt keeps the folder.
+    $taskStopped = $true
+    $taskGone    = $true
+    if ($taskAttempted) {
+        $taskStopped = $false
+        $taskGone    = $false
+        try { Disable-ScheduledTask -TaskName $taskName -TaskPath '\' -ErrorAction SilentlyContinue | Out-Null } catch {}
+        try { Stop-ScheduledTask -TaskName $taskName -TaskPath '\' -ErrorAction SilentlyContinue } catch {}
+        try {
+            for ($i = 0; $i -lt 10; $i++) {
+                $t = Get-ScheduledTask -TaskName $taskName -TaskPath '\' -ErrorAction SilentlyContinue
+                if (-not $t -or $t.State -ne 'Running') { $taskStopped = $true; break }
+                Start-Sleep -Seconds 1
+            }
+        } catch {}
+        try { Unregister-ScheduledTask -TaskName $taskName -TaskPath '\' -Confirm:$false -ErrorAction SilentlyContinue } catch {}
+        try { $taskGone = -not (Get-ScheduledTask -TaskName $taskName -TaskPath '\' -ErrorAction SilentlyContinue) } catch {}
+    }
+    if ($workDirCreated) {
+        if ($taskStopped -and $taskGone) {
+            # .NET's recursive delete removes reparse points without following them.
+            try { [System.IO.Directory]::Delete($workDir, $true) }
+            catch { Write-Host "       WARNING: Could not delete $workDir : $($_.Exception.Message)" -ForegroundColor DarkYellow }
+        } else {
+            Write-Host "       WARNING: SYSTEM task not confirmed stopped; leaving admin-only folder $workDir" -ForegroundColor DarkYellow
+        }
+    } elseif ($workDir -and (Test-Path -LiteralPath $workDir)) {
+        # It failed its security check, so it may not be ours: keep it, but say where it is.
+        Write-Host "       WARNING: Left $workDir in place (failed its security check). Inspect it and delete it by hand." -ForegroundColor DarkYellow
+    }
+}
+# Pause only after cleanup, so the task and folder never wait on the prompt.
+if ($step4Failed) {
     Pause-IfInteractive
     exit 1
 }
-finally {
-    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
-    Remove-Item $wrapperPath -Force -ErrorAction SilentlyContinue
-}
 
 # -- Parse results --
-if (-not (Test-Path $resultFile)) {
+if (-not $resultFound) {
     Write-Host '       ERROR: Result file not found. The SYSTEM task may have failed.' -ForegroundColor Red
     Write-Host '       Fallback: reboot your PC to clear the stale hives.' -ForegroundColor Yellow
     Pause-IfInteractive
     exit 1
 }
 
-$raw = Get-Content $resultFile -Raw
-Remove-Item $resultFile -Force -ErrorAction SilentlyContinue
-
-$results = @()
+$results  = @()
+$parsedOk = $false
 if ($raw -and $raw.Trim()) {
     # PS 5.1: ConvertFrom-Json emits a JSON array as ONE pipeline item.
     # Assign first, then wrap - piping into @() would nest it.
     try {
         $parsed  = ConvertFrom-Json -InputObject $raw
         $results = @($parsed)
+        $parsedOk = ($null -ne $parsed)
     } catch { $results = @() }
+}
+
+# A clean run always writes a JSON array ("[]" when there is nothing to
+# unload). An empty or unparsable file means the SYSTEM side stopped after
+# creating it, so treat it like a missing file.
+if (-not $parsedOk) {
+    Write-Host '       ERROR: Result file is empty or unreadable. The SYSTEM task may have failed.' -ForegroundColor Red
+    Write-Host '       Fallback: reboot your PC to clear the stale hives.' -ForegroundColor Yellow
+    Pause-IfInteractive
+    exit 1
 }
 
 if ($results.Count -eq 0) {
