@@ -26,6 +26,23 @@ OWN = ("start_pace.py", "eval_pace.py", "write_usage.py", "read_usage.py", "end_
        "global_pace.py")
 SCRIPTS = "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts"
 
+# 放行只給「整行就是一次 pacer 腳本呼叫」的指令：直譯器、這個資料夾裡的腳本、簡單參數。
+# 只比對檔名的話，在任何指令後面加一句 echo eval_pace.py 就能繞過整個 hook。
+_OWN_RE = re.compile(
+    r'(?:py|python|python3)(?:\.exe)?[ \t]+"?([A-Za-z0-9_:./~-]+)"?'
+    r'((?:[ \t]+[A-Za-z0-9_@+=:.%,/-]+)*)')
+
+def own_script(cmd):
+    """整行是單一 pacer 腳本呼叫就回腳本檔名，否則回空字串。"""
+    m = _OWN_RE.fullmatch((cmd or "").strip(" " + chr(9)))  # 換行也不准，整行只能有這一個呼叫
+    if not m:
+        return ""
+    path = m.group(1).replace("\\", "/")
+    head, _, name = path.rpartition("/")
+    if name not in OWN or head.lower() != SCRIPTS.lower():
+        return ""
+    return name
+
 def block(msg):
     print("[quota-pacer] " + msg, file=sys.stderr)
     sys.exit(2)
@@ -149,10 +166,11 @@ def main():
     tool = data.get("tool_name") or ""
     ti = data.get("tool_input")
     cmd = (ti.get("command") or "") if isinstance(ti, dict) else ""
-    own = tool in ("Bash", "PowerShell") and any(n in cmd for n in OWN)
+    own = own_script(cmd) if tool in ("Bash", "PowerShell") else ""
 
-    # 這個 session 正要開工：先記下是誰，start_pace.py 會抄進 active.json
-    if own and "start_pace.py" in cmd and sid:
+    # 這個 session 正要開工：先記下是誰，start_pace.py 會抄進 active.json。
+    # 這裡只是記名字，寬鬆比對就好；放行與否看上面的 own。
+    if tool in ("Bash", "PowerShell") and "start_pace.py" in cmd and sid:
         try:
             os.makedirs(os.path.dirname(pc.START_MARK), exist_ok=True)
             with open(pc.START_MARK, "w", encoding="utf-8") as fh:

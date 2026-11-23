@@ -56,7 +56,7 @@
 
 ## hook（`hooks/hardstop_guard.py`）
 
-每次工具呼叫前跑，先看全機規則，再看單一 session 的 pacer。下面講的是後者：只在 EMERGENCY 擋，停手那層刻意不擋，留給寫交接。這一層只讀檔、不去拉用量，所以用的是最後一次寫進檔的數字；檔案超過 90 秒沒更新就只看時間盒。放行的情況：`active.json` 的 `session` 不是這個 session、開工超過 24 小時、指令是 pacer 自己的腳本、工具是 `get_usage` 或 `ToolSearch`。
+每次工具呼叫前跑，先看全機規則，再看單一 session 的 pacer。下面講的是後者：只在 EMERGENCY 擋，停手那層刻意不擋，留給寫交接。這一層只讀檔、不去拉用量，所以用的是最後一次寫進檔的數字；檔案超過 90 秒沒更新就只看時間盒。放行的情況：`active.json` 的 `session` 不是這個 session、開工超過 24 小時、指令是 pacer 自己的腳本、工具是 `get_usage` 或 `ToolSearch`。「pacer 自己的腳本」指整行剛好是一次呼叫（`py "<scripts 資料夾>/<腳本>.py" 參數`），後面接別的指令、換行、或別的資料夾的同名檔都不算，所以 SKILL 裡的指令要一行一個、照完整路徑寫。
 
 ## 環境變數
 
