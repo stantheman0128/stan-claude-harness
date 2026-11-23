@@ -23,6 +23,13 @@ RISKY = re.compile(
 EXEC_KEYS = ("apiKeyHelper", "statusLine", "awsAuthRefresh", "awsCredentialExport", "otelHeadersHelper")
 PLUGIN_KEYS = ("enabledPlugins", "extraKnownMarketplaces", "enableAllProjectMcpServers", "enabledMcpjsonServers")
 BROAD_RULES = ("Bash", "Bash(*)", "WebFetch", "Write", "Edit")
+# 可改走代理、換 API 端點或注入程式的環境變數名稱
+DANGER_ENV = re.compile(
+    r"BASE_URL|PROXY|NODE_OPTIONS|^PATH$|LD_PRELOAD|DYLD_|PYTHONPATH|PYTHONSTARTUP|_URL$|ENDPOINT",
+    re.IGNORECASE,
+)
+# 讀不到、解析失敗、超過大小或超過檔數上限：掃描不完整，結論不能說安全
+PROBLEMS = []
 
 
 def clean(text, cut=CUT):
@@ -32,9 +39,14 @@ def clean(text, cut=CUT):
 
 def read_text(path):
     try:
-        return path.read_bytes()[:MAX_BYTES].decode("utf-8", errors="replace")
-    except OSError:
+        data = path.read_bytes()
+    except OSError as e:
+        PROBLEMS.append(f"讀不到 {path.name}（{clean(e, 60)}）")
         return None
+    if len(data) > MAX_BYTES:
+        PROBLEMS.append(f"{path.name} 超過 {MAX_BYTES} bytes，只看了前段")
+        data = data[:MAX_BYTES]
+    return data.decode("utf-8", errors="replace")
 
 
 def load_json(path):
@@ -42,10 +54,14 @@ def load_json(path):
     if text is None:
         return None, "讀不到"
     try:
-        data = json.loads(text)
+        data = json.loads(text.lstrip("﻿"))
     except ValueError as e:
+        PROBLEMS.append(f"{path.name} 解析失敗")
         return None, f"JSON 解析失敗：{clean(e, 80)}"
-    return (data, None) if isinstance(data, dict) else (None, "不是 JSON 物件")
+    if not isinstance(data, dict):
+        PROBLEMS.append(f"{path.name} 不是 JSON 物件")
+        return None, "不是 JSON 物件"
+    return data, None
 
 
 def settings_report(path, out):
@@ -78,7 +94,12 @@ def settings_report(path, out):
         risk += 1
     env = data.get("env")
     if isinstance(env, dict) and env:
-        out.append(f"  [env] 設了 {len(env)} 個變數：{clean(', '.join(map(str, env.keys())), 120)}")
+        names = [str(k) for k in env]
+        danger = [n for n in names if DANGER_ENV.search(n)]
+        out.append(f"  [env] 設了 {len(env)} 個變數：{clean(', '.join(names), 120)}")
+        if danger:
+            out.append(f"  [危險 env] {clean(', '.join(danger), 120)}（可改走代理、換 API 端點或注入程式）")
+        risk += 1 + len(danger)
     for key in EXEC_KEYS:
         value = data.get(key)
         if value:
@@ -159,7 +180,7 @@ def main():
             out.append(f"  {rel}：{len(text.splitlines())} 行")
             counts["可疑指令行"] += risky_lines(path, rel, out)
 
-    scanned = 0
+    scanned = skipped = 0
     for sub in ("commands", "agents", "skills", "hooks"):
         folder = claude_dir / sub
         if not folder.is_dir():
@@ -167,11 +188,15 @@ def main():
         files = sorted(p for p in folder.rglob("*") if p.is_file())
         out.append(f"  .claude/{sub}/：{len(files)} 個檔：{clean(', '.join(p.name for p in files[:20]), 200)}")
         for path in files:
+            if path.suffix.lower() not in (".md", ".sh", ".ps1", ".py", ".js", ".json"):
+                continue
             if scanned >= MAX_FILES:
-                break
-            if path.suffix.lower() in (".md", ".sh", ".ps1", ".py", ".js", ".json"):
-                scanned += 1
-                counts["可疑指令行"] += risky_lines(path, path.relative_to(root).as_posix(), out)
+                skipped += 1
+                continue
+            scanned += 1
+            counts["可疑指令行"] += risky_lines(path, path.relative_to(root).as_posix(), out)
+    if skipped:
+        PROBLEMS.append(f"有 {skipped} 個指令或腳本檔超過 {MAX_FILES} 個上限沒掃")
 
     plugin_dir = root / ".claude-plugin"
     if plugin_dir.is_dir():
@@ -181,7 +206,10 @@ def main():
     total = sum(counts.values())
     print(f"inspect_repo：{root}")
     print("重點：" + "、".join(f"{k} {v}" for k, v in counts.items()))
-    if total:
+    if PROBLEMS:
+        print("掃描不完整：" + "；".join(PROBLEMS[:5]))
+        print("建議：當成有風險，先把結果貼給 Stan 看過，再在這個 repo 開 session。")
+    elif total:
         print("建議：先把 hook、MCP、可疑行貼給 Stan 看過，再在這個 repo 開 session。")
     else:
         print("建議：沒看到會自動執行的設定，可以開 session。")
