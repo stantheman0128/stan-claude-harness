@@ -1,11 +1,11 @@
 export const meta = {
   name: 'cascade',
-  description: 'Run each task cheap-first; an independent verifier runs its check; on failure re-dispatch one rung higher with a handoff, up to Fable xhigh, then stop and report',
+  description: 'Run each task cheap-first; an independent verifier runs its check; on failure re-dispatch one rung higher with a handoff (Sonnet high, Opus high, Fable high, Fable xhigh), then stop and report',
   whenToUse: 'Bulk, independent tasks that each come with a runnable check (tests, build, a command, a concrete acceptance test). Not for open-ended design work, and not for tasks that edit the same files unless sequential is true.',
   phases: [
     { title: 'sonnet-high', detail: 'mech-executor, Sonnet 5.5 @ high' },
     { title: 'opus-high', detail: 'executor, Opus 5.5 @ high' },
-    { title: 'opus-xhigh', detail: 'executor-high, Opus 5.5 @ xhigh' },
+    { title: 'fable-high', detail: 'executor-high prompt on Fable 5.2 @ high', model: 'fable' },
     { title: 'fable-xhigh', detail: 'executor-high prompt on Fable 5.2 @ xhigh', model: 'fable' },
     { title: 'check', detail: 'verifier, Opus 5.5 @ high, read and run only' },
   ],
@@ -21,11 +21,14 @@ export const meta = {
 // 每一格做完都由 verifier 獨立跑 check；沒過才升一格，前一格改過的檔案留在原地，交接寫進下一格的派工單。
 // worker 回報 blocked（缺輸入、規格不清）就停在那一格，不升級：換大模型解決不了規格問題。
 // 到頂還沒過就停，max 不在梯子上，要不要開由 Stan 決定。
+// Opus high 之後直接換 Fable high、不走 Opus xhigh：官方「If you're past high, test the next model up at a lower effort instead.」
+// （claude.dev which-claude-model-should-you-build-with，2026-11-09），而且 Fable 5.2 high 在 AA v5.0.1 已高過 Opus max。
+// 修既有 bug、資安這類一開始就該 xhigh 的工作，不要丟進這個梯子，直接派 executor-high 或 security-executor。
 
 const LADDER = [
   { name: 'sonnet-high', agentType: 'mech-executor' },
   { name: 'opus-high', agentType: 'executor' },
-  { name: 'opus-xhigh', agentType: 'executor-high' },
+  { name: 'fable-high', agentType: 'executor-high', model: 'fable', effort: 'high' },
   { name: 'fable-xhigh', agentType: 'executor-high', model: 'fable', effort: 'xhigh' },
 ]
 
@@ -79,7 +82,7 @@ function workerPrompt(t, rungIndex, handoff, context) {
   }
   parts.push('## Scope\nChange only what this task needs. If the task cannot be done without missing input or a decision from Stan, stop and report status "blocked" with what is missing.')
   if (rung.name === 'sonnet-high') parts.push(SONNET_STOP)
-  if (rung.name === 'fable-xhigh') parts.push(`${FABLE_FINISH}\n\nBack every technical claim in your report with a file:line or tool output. If an input you need is missing, stop and report it instead of handing in placeholder work.`)
+  if (rung.model === 'fable') parts.push(`${FABLE_FINISH}\n\nBack every technical claim in your report with a file:line or tool output. If an input you need is missing, stop and report it instead of handing in placeholder work.`)
   return parts.join('\n\n')
 }
 
