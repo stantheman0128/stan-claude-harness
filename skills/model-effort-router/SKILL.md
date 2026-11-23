@@ -56,7 +56,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 
 細節、benchmark 與頁碼在 `references/model-picks.md`。
 
-- **Fable 5.2**（`claude-fable-5-2`，2026-11-09）：Opus 5.5 @ high 與 xhigh 各試 2 次仍失敗才上，回報 Stan 由他決定（Fable 有自己的週額度）。贏 Opus 的項目見決策表；Opus 仍贏或打平的：GDPval-AA 與 AA-Briefcase（專業交付物留 Opus）、ProgramBench 單一長 context（harness 沒給剩餘 context 時）、Terminal-Bench 4.0、讀不受信任內容（它被改送 Opus 4.8 的比例最高）。effort：high 是升級後的預設；長程 agentic coding 用 xhigh；max 不開（FrontierCode 與 ARC-AGI-3（沒給規則、要自己摸出目標的回合制遊戲）在 max 退步，CursorBench 與 AA 比 high 小漲但 token 或成本約 3 倍）；不開 low。單 agent 跑（小隊只換到速度、token 更多）。主 session 配 Fable advisor（主模型在關鍵決策點去請教的第二個模型）未採用。
+- **Fable 5.2**（`claude-fable-5-2`，2026-11-09）：Opus 5.5 @ high 與 xhigh 各試 2 次仍失敗才上，不用先問 Stan（2026-11-23；Fable 有自己的週額度），派之前照硬規則 16。贏 Opus 的項目見決策表；Opus 仍贏或打平的：GDPval-AA 與 AA-Briefcase（專業交付物留 Opus）、ProgramBench 單一長 context（harness 沒給剩餘 context 時）、Terminal-Bench 4.0、讀不受信任內容（它被改送 Opus 4.8 的比例最高）。effort：high 是升級後的預設；長程 agentic coding 用 xhigh；max 不開（FrontierCode 與 ARC-AGI-3（沒給規則、要自己摸出目標的回合制遊戲）在 max 退步，CursorBench 與 AA 比 high 小漲但 token 或成本約 3 倍）；不開 low。單 agent 跑（小隊只換到速度、token 更多）。主 session 配 Fable advisor（主模型在關鍵決策點去請教的第二個模型）未採用。
 - **Mythos 5.2**（`claude-mythos-5-2`）：跟 Fable 5.2 同一個模型、同價，放寬資安與生科 safeguards（分類器減量但仍在），只開給通過 Anthropic 資安或生科驗證計畫的組織（資安的叫 CVP）。Stan 帳號能用（2026-11-23 實測），額度桶未知。資安分工見硬規則 1；其他用法與防護同 Fable 5.2。
 - **Sonnet 5.5**：範圍清楚、有驗收方法的 coding、修 bug、文件簡報試算表、量大的派工。一律從 high 起，fan-out coding 用 xhigh；不開 low（會沒驗證就回報完成）；max 不當起點（會自開 review 輪與 subagent，分數有漲但成本 2.4 到 6 倍），終端機為主的 agent 任務在 Opus xhigh 卡關後可以並列建議，由 Stan 決定。Opus 週額度緊時，規格清楚的活移到 Sonnet high。開放式長程判斷、長 context 精準檢索、多階段資安流程用 Opus 5.5。
 - **Haiku 5.5**：大量抽取、分類、摘要，輸出可以逐條檢查。effort 用 high；不開 low（長 prompt 會跳過搜尋、提早停）、不開 xhigh/max（xhigh 多輪對話會空回覆，max 跟 Sonnet high 同價又慢；xhigh 的反向數據列觀察項）。prompt 維持 100K 以內。不給要判斷的實作、安全、複驗：輸入幻覺、重要遺漏、謊報完成三項都輸 Opus 5.5 與 Sonnet 5.5。scout 不換 Haiku，因為輸入幻覺正是 scout 最怕的錯。
@@ -76,7 +76,7 @@ Opus 5.5 @ high（預設起點）
   ↓
 Opus 5.5 @ xhigh
   ↓ 各試 2 次仍同一失敗：
-  ├ 模糊根因、架構、多小時自主工程、Opus 修不好的弱點、研究級深推理 → 自己升 Fable 5.2 @ high（長程 agentic coding 用 xhigh）；主 session 換不了模型，就把難的那塊派給 `model: "fable"` 的 subagent
+  ├ 模糊根因、架構、多小時自主工程、Opus 修不好的弱點、研究級深推理 → 自己升 Fable 5.2 @ high（長程 agentic coding 用 xhigh）；主 session 換不了模型，就把難的那塊派給 `model: "fable"` 的 subagent；派工單照硬規則 16
   └ 要開 max 才停下回報 Stan：知識型長交付物要準確 → Opus 5.5 @ max；coding 卡關 → Opus 5.5 @ max，終端機、CLI 為主的任務並列 Sonnet 5.5 @ max（都只開當次 session）
 Mythos 5.2 不排進路由，只在 Stan 指定時用（硬規則 1）。
 ```
@@ -113,7 +113,7 @@ max 不當任何角色或設定的預設（硬規則 3）。
 - 主 session 換模型：整段 context 重讀。盡量在任務交界換；中途需要時，把難的那塊切出去派 subagent。已知保留推理：Opus 5.5 → Fable 5.1、API 上 Opus 5.5 → Fable 5.2（CC 未驗證）；其他方向當作會丟。
 - subagent：角色的 effort 寫死在定義檔。scout、mech-executor 是 Sonnet 5.5 @ high；executor、verifier 是 Opus 5.5 @ high；executor-high、security-executor 是 Opus 5.5 @ xhigh。要更高就換角色（executor 漏邊界或修既有 bug 換 executor-high，安全題用 security-executor）。
 - Agent 工具從 v2.1.292 起能帶 `effort`，蓋過定義檔、resume 也保留。只在 CLAUDE.md §2 的 fan-out 規則或 Stan 指定時帶；角色 agent 不帶。
-- 環境變數 `CLAUDE_CODE_EFFORT_LEVEL` 優先權最高，會蓋掉所有定義檔與派工時帶的 effort，整套分層失效。不要設。v2.1.316 新增的 `CLAUDE_CODE_SUBAGENT_EFFORT` 作用與優先順序沒讀到，查清楚前也不設。
+- 環境變數 `CLAUDE_CODE_EFFORT_LEVEL` 優先權最高，會蓋掉所有定義檔與派工時帶的 effort，整套分層失效。不要設。`CLAUDE_CODE_SUBAGENT_EFFORT` 2026-11-23 起設成 high，只補沒帶 effort 的 subagent（硬規則 15）。
 - `/tasks` 列出每個 subagent 實際跑的模型與 effort。
 - 照階段排檔（Thariq 推薦迴圈）：先叫它訪談你補 spec，再實作，最後交 verifier（Opus 5.5 @ high）驗。這是事先排好的升階，不用等失敗。
 
@@ -178,7 +178,7 @@ Effort：<檔位>
 
 | 錯誤 | 正解 |
 |---|---|
-| 「最強任務→Fable」反射 | Fable 5.2 在 coding 與多小時自主工程確實領先，但專業交付物仍是 Opus 5.5 贏、Terminal-Bench 4.0 沒拉開、讀攻擊性內容時 fallback 比例最高，又有獨立週額度；只在 Opus 高檔卡關後、經 Stan 同意 |
+| 「最強任務→Fable」反射 | Fable 5.2 在 coding 與多小時自主工程確實領先，但專業交付物仍是 Opus 5.5 贏、Terminal-Bench 4.0 沒拉開、讀攻擊性內容時 fallback 比例最高，又有獨立週額度；只在 Opus 高檔卡關後上（不用先問 Stan，2026-11-23），派之前照硬規則 16 |
 | 主 session 留在 Opus 5.5 預設 medium | Stan 品質優先，主 session 與 executor 開 high；medium 留給你逐次看結果的快速來回 |
 | 沿用舊 `effortLevel: high` 以為 Opus 5.5 或 Fable 5.2 也在 high | Opus 5.5 不吃頂層 effortLevel，Fable 5.2 文件沒寫；要 `/effort high` 或 `modelSettings` 明寫 |
 | 以為打 `/effort high` 只套這個 session | 直接打會存成預設；只套這個 session 要開滑桿按 `s` |
@@ -193,7 +193,7 @@ Effort：<檔位>
 | Fable 5.2 開 max 求穩 | FrontierCode 2.0 與 ARC-AGI-3 在 max 退步；升級後用 high，長程 agentic coding 用 xhigh |
 | Sonnet 或 Haiku 回報「完成」就收 | 低檔可能沒跑測試；看 transcript 有沒有測試或 build 輸出，沒有就套硬規則 13 的官方段落 |
 | 要判斷的活派 Haiku 5.5、Haiku 開 low 或 xhigh、還在用 Haiku 4.5 | Haiku 5.5 只接抽取、分類、摘要，開 high（硬規則 14） |
-| 失敗就一路往上加到 max 或 Fable | 照升階路徑一次一格、每格最多兩次；到 Opus 5.5 @ xhigh 還失敗就停下回報 Stan，附建議下一格 |
+| 失敗就一路往上加到 max 或 Fable | 照升階路徑一次一格、每格最多兩次；到 Opus 5.5 @ xhigh 還失敗，適合 Fable 的題型自己升 Fable 5.2，下一格是 max 才停下回報 Stan |
 | 派角色 agent 時另外帶 effort | 角色的 effort 寫死在定義檔；Agent 工具的 effort 只在 CLAUDE.md §2 fan-out 規則或 Stan 指定時帶 |
 | 開 `/fast` 想省額度 | 反向：fast 走 usage credits 真金白銀，且中途開要付整段 context |
 | 從 Fable 5.2 降回 Opus 5.5 想省錢 | 切換後推理全丟；要降就在新任務起點降 |
