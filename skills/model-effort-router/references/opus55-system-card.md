@@ -6,7 +6,7 @@
 
 **能力（§8，p174–221）**
 - Table 8.1.A（p174，Opus 5.5 多以 max effort 跑）：SWE-bench Pro 89.9 vs Fable 5.1 81.2；Terminal-Bench 4.0 66.4 vs 55.8；FrontierCode 54.4 vs 50.3；HLE with tools 67.7 vs 65.6；OSWorld 2.0 81.8/48.7 vs 80.7/42.8；GDPval-AA 1846 vs 1735；AutomationBench 40.0 vs 31.4。GPT-6 Astra 在 Terminal-Bench-Science 64.6 與 AutomationBench 41.4 領先 Opus 5.5。
-- Mythos 5.1 不在主表，只出現在生科與多 agent 章節；`model-picks.md`「Fable 還值得選」節列出全部落後項。
+- Mythos 5.1 不在主表，只出現在生科與多 agent 章節。這些都是跟 Fable 5.1 比；Fable 5.2 對 Opus 5.5 的比較在 `model-picks.md`「Fable 5.2 什麼時候選」與 `fable52-system-card.md`。
 - 長 context：ProgramBench 1M 視窗 91.2 vs Fable 87.6（p183）。
 - 多 agent（p189–199）：固定 5 人小隊比單 agent 快 2.7x 達同分；短任務不給時間壓力時多 agent 反而更慢（協調成本）；緊時限下 async subagent 會退化成單 agent，預先開好的固定小隊撐得住平行；100 agent 小隊在 Lean 任務自組出 12 個 sub-lead。實務：要快就固定小隊 + 時間訊號，不趕就單 agent。
 - 分類器會吃掉分數：Toolathlon 有 1.9% 被 harness 的 sandbox-escape 監控中止、0.3% 被生產分類器擋，全算失敗（p210）；HealthBench 是開著分類器 + fallback Opus 5 跑的（p213）。
