@@ -61,11 +61,12 @@ Opus 5 降為 legacy（$5/$25、預設 high、thinking 可關到 high、fast mod
 - Haiku 5.5（model ID `claude-haiku-5-5`，2026-10-07 發佈）v2.1.293 起是 Anthropic API 上的預設 Haiku，`haiku` 別名指向它；1M context、$0.10/$0.50（prompt 超過 100K 變 $0.50/$2.50）、五檔 effort、預設 medium。Haiku 4.5（$1/$5、200K、不支援 effort）退役日不早於 2026-10-15，不再使用。Stan 2026-10-13 解禁 Haiku 5.5（硬規則 14）。
 - `/checkup prompt-audit [路徑]`（v2.1.283 起，`/doctor` 的別名）：掃 CLAUDE.md、rules、skills、commands、subagents、output styles，找過時路徑、互相矛盾、「CRITICAL/MUST」施壓語氣、「think harder」這類對永遠開 thinking 的模型無效的句子、寫死的模型名。只提案不改檔；不讀 settings/hooks/MCP 設定。兩份官方文件對預設是否掃 `~/.claude/` 說法不一，路徑要自己給。
 
-## API breaking change 與換檔 cache 例外（2026-11-23 從 SKILL.md 硬規則 2、7 移來）
+## API breaking change 與換檔 cache 例外（2026-11-23 從 SKILL.md 硬規則 2、7、9 移來）
 
 - **API breaking change**：Opus 5.5 四條：thinking 關不掉、`tool_choice: any/tool` 回 400（改 `auto` + `strict: true`）、`computer_20251124` 在 API/GCP 回 400（改 `computer_toolset_20260801`）、thinking block 綁模型與對話（2026-08-31 後建立的帳號改動 prefix 直接 400；對話要 append-only，改指令用 mid-conversation system message）。前三條 Fable 5.1 也一樣。**Fable 5.2 / Mythos 5.2**：prefix 檢查失敗 400；它的 thinking block 只有 5.2 家族讀得懂；`computer_20251124` 除 Bedrock 外 400；executor 的 advisor 只能是 Fable 5.2 或 Mythos 5.2；強制 tool use 400；`temperature`/`top_p`/`top_k` 在 API 版本 2026-10-21 移除，送了 400；要 30 天資料保留、沒有 ZDR。Sonnet 5.5 四條全中，另有：關 thinking 改送 `between_tools`（xhigh/max 下 400、開了就不能中途換 effort）、`temperature`/`top_p`/`top_k` 非預設值 400、advisor 工具不收 Opus 4.8/4.7、Sonnet 5 與 Haiku 5.5。Haiku 5.5 同樣不要送 `temperature`/`top_p`/`top_k`。
-- **換 effort 保 cache 的例外**（CC 裡 Opus 5.5、Sonnet 5.5、Haiku 5.5、Fable 5.1 平常保 cache）：例外照樣重讀：Bedrock、Google Cloud Agent Platform、Claude apps gateway、設了 `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS`、HIPAA 組織。
+- **換 effort 保 cache 的例外**：CC 裡 Opus 5.5、Sonnet 5.5、Haiku 5.5、Fable 5.1 平常保 cache，以下情況照樣重讀：Bedrock、Google Cloud Agent Platform、Claude apps gateway、設了 `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS`、HIPAA 組織。
 - API 端 per-message effort（beta `mid-conversation-output-config-2026-07-01`）支援 Fable 5.2 與 Mythos 5.2，會保 cache；改頂層 effort 會讓 cache 部分或全部失效。
+- **progress-update thinking block 顯示**：Opus 5.5 / Fable 5.1 把 tool call 之間的進度說明放進 thinking block，預設 `display: "omitted"` 看起來像卡住；自寫 API 整合設 `display: "updates"`，beta header `thinking-display-updates-2026-08-18`（從 SKILL.md 硬規則 9 移來）。
 
 ## Advisor 搭配（含未採用的提案）
 
