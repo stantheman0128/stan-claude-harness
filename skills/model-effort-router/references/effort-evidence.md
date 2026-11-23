@@ -16,15 +16,17 @@ SKILL.md「Effort 速查」與「升階路徑」的佐證。
 
 Anthropic 沒用文字公布 Sonnet 5.5、Haiku 5.5 的逐檔分數，跨模型比較靠第三方。CursorBench 是 Cursor 的 harness（Cursor 也是 Anthropic 合作夥伴）；AA 的 Terminal-Bench 分數比 Anthropic 自報低。
 
-**CursorBench 4.0**（真實 Cursor session 的模糊多檔任務；分數 / 每題成本＝API 單價 × 用量。Haiku 到 Fable 5.1 是 2026-10-13 收集；Fable 5.2 是 2026-11-14 讀 Cursor 排行榜，分數與 Fable 5.2 card SC pdf 213 一致，Cursor 說有一部分來自 harness 改進，跟舊欄不完全可比）
+**CursorBench 4.1**（真實 Cursor session 的模糊多檔任務；分數 / 每題成本＝官方 API 單價 × 實際用量，含 cache 讀寫；沒有每題秒數。https://cursor.com/evals ，2026-11-23 讀。4.1 是 2026-11-18 的改版：改了照指令類題目、拉長 agent 時限，跟 4.0 的數字不能混著比。Fable 5.2 的分數 Cursor 說有一部分來自 harness 改進）
 
-| effort | Haiku 5.5 | Sonnet 5.5 | Opus 5.5 | Fable 5.2 | Fable 5.1（legacy） |
-|---|---|---|---|---|---|
-| low | 30.9% / $0.08 | 35.8% / $0.37 | 43.7% / $1.17 | 53.2% / $3.94 | 45.1% / $5.44 |
-| medium | 36.9% / $0.17 | 39.2% / $0.52 | 52.5% / $2.91 | 54.8% / $4.66 | 46.8% / $7.05 |
-| high | 42.3% / $0.32 | 47.8% / $1.20 | 56.0% / $3.97 | 56.9% / $9.70 | 49.2% / $9.08 |
-| xhigh | 44.3% / $0.56 | 53.1% / $2.81 | 56.0% / $6.98 | 56.3% / $15.48 | 51.6% / $13.01 |
-| max | 48.4% / $1.12 | 55.5% / $7.05 | 57.8% / $13.43 | 60.0% / $32.79 | 51.8% / $17.28 |
+| effort | Haiku 5.5 | Sonnet 5.5 | Opus 5.5 | Fable 5.2 |
+|---|---|---|---|---|
+| low | 27.8% / $0.08 | 31.8% / $0.44 | 42.7% / $1.43 | 53.4% / $4.26 |
+| medium | 34.2% / $0.17 | 34.3% / $0.63 | 50.0% / $2.85 | 54.2% / $5.01 |
+| high | 37.5% / $0.31 | 43.8% / $1.41 | 54.5% / $3.87 | 56.5% / $10.51 |
+| xhigh | 45.2% / $0.56 | 49.9% / $3.13 | 56.7% / $6.54 | 58.8% / $17.84 |
+| max | 48.4% / $1.14 | 54.4% / $8.63 | 58.1% / $11.88 | 61.3% / $48.11 |
+
+跟 4.0（10-13 與 11-14 讀）比：Sonnet 5.5 每檔掉 1.1 到 4.9 分，成本全部變高；Opus 5.5 low、medium、high 掉 1.0、2.5、1.5 分，xhigh、max 漲 0.7、0.3，所以 high → xhigh 從 +0 變成 +2.2；Fable 5.2 low 到 high 變動在 0.6 分內，xhigh、max 漲 2.5、1.3；Haiku 5.5 low 到 high 掉 2.7 到 4.8，xhigh 漲 0.9，max 持平。Fable 5.1 已不在榜上，4.0 的讀數是 low 45.1、medium 46.8、high 49.2、xhigh 51.6、max 51.8。
 
 **Artificial Analysis Intelligence Index v5.0.1**（9 項綜合評測；分數 / 每題美元 / 每題秒數，秒數是每題平均完成時間，含思考。Haiku、Sonnet、Opus、Fable 5.2 是 2026-11-23 讀 artificialanalysis.ai 各家族模型頁內嵌的 initialModels 數據；Fable 5.1 是 2026-11-14 同版本的讀數。跟 10-18 的 v4.3.2 表分數尺度不同，不能混著比）
 
@@ -66,7 +68,7 @@ Anthropic 沒用文字公布 Sonnet 5.5、Haiku 5.5 的逐檔分數，跨模型�
 Fable 5.1 的 v5.0.1 拆分（2026-11-14 讀，`fable52-evidence.json`）：Terminal-Bench 40.4 / 44.9 / 52.0 / 55.1 / 52.0，Briefcase 1478 / 1525 / 1577 / 1649 / 1670，low 到 max。
 
 從這兩張 AA 表讀出的五點（2026-11-23 寫進 SKILL.md）：
-1. Sonnet xhigh 每題仍比 Opus high 貴（4.09 對 3.46 美元）、分數略低（49.9 對 51.8）、慢 1.5 倍；fan-out 選 Sonnet 的理由仍只有分散週額度。
+1. Sonnet xhigh 每題仍比 Opus high 貴（4.09 對 3.46 美元）、分數略低（49.9 對 51.8）、慢 1.5 倍。fan-out 原本選 Sonnet 是為了分散週額度，但 Ultra 沒有 Sonnet 自己的額度，2026-11-23 起 coding fan-out 改 Opus high。
 2. Opus xhigh → max 的 Terminal-Bench 仍是 0 增益（59.6 對 59.6），漲分在 Briefcase +39、GDPval +30、HLE Diamond +3.9、AutomationBench +4.6，幻覺率 0.65 → 0.50；每題成本 1.66 倍。
 3. Sonnet max 的 Terminal-Bench 63.6 仍是 Anthropic 全系列最高（Fable 5.2 最高是 xhigh 61.6）；AutomationBench 71.8 已被 Fable 5.2 xhigh 以上超過（xhigh 74.2、max 76.4；high 71.4 還差一點）。代價從 10-18 的每題 5.46 美元、905 秒變成 10.02 美元、1884 秒。
 4. Fable 5.2 high（61.8、每題 9.08 美元）已高過 Opus max（59.1、10.04 美元）；同檔比，Briefcase 與 GDPval 要到 xhigh、max 才是 Opus 高；low 與 medium 是 Fable 5.2 持平或較高，high 互有輸贏（Briefcase 1677 對 1682、GDPval 1718 對 1709）。
@@ -84,21 +86,21 @@ Fable 5.1 的 v5.0.1 拆分（2026-11-14 讀，`fable52-evidence.json`）：Term
 
 粗體是各模型最高分。Opus 5.5、Sonnet 5.5、Haiku 5.5 一路漲到 max；Fable 5.1 與 Fable 5.2 在 xhigh 最高，max 反而退。Fable 5.2 xhigh 是全榜 35 個模型第一。Sonnet xhigh → max 多 5.7 分、成本 6 倍；Opus xhigh → max 多 2.6 分、成本 2.5 倍；Fable 5.2 xhigh → max 少 2.0 分、成本 3.2 倍。Fable 5.2 high（46.2、8.40 美元）對 Opus 最佳 max（47.3、12.82 美元）：少 1.1 分、成本約 2/3。Sonnet xhigh（36.5）跟 Opus high（36.3）同分。表只公布 output token，沒有 input 與總 token。
 
-**每升一檔多拿到什麼**（括號是每題成本增幅；AA 用 v5.0.1；SKILL.md 決策表的依據）
+**每升一檔多拿到什麼**（括號是每題成本增幅；CursorBench 用 4.1，AA 用 v5.0.1；SKILL.md 決策表的依據）
 
 | 模型 | 升檔 | CursorBench | AA | FrontierCode 2.0 | 其他 | 判斷 |
 |---|---|---|---|---|---|---|
-| Opus 5.5 | medium → high | +3.5（+36%） | +3.6（+41%） | +4.9 | SWE-bench Pro +2.5；livenerf +4.2 | 值得，各來源一致 |
-| Opus 5.5 | high → xhigh | +0（+76%） | +5.6（+75%） | +8.4 | SWE-bench Pro +1.4（+150%）；Briefcase +76 | 沒人等著的工作值得 |
-| Opus 5.5 | xhigh → max | +1.8（+92%） | +1.7（+66%） | +2.6（+147%） | AA：Terminal-Bench +0、Briefcase +39、GDPval +30、HLE Diamond +3.9、幻覺率 0.65 → 0.50；貼上文字的植入指令照做率 2% → 7.4% | 知識型長交付物要準確時值得；coding 證據偏弱；都由 Stan 決定 |
-| Sonnet 5.5 | medium → high | +8.6（+131%） | +10.7（+110%） | +7.9 | | 值得 |
-| Sonnet 5.5 | high → xhigh | +5.3（+134%） | +8.4（+150%） | +13.6 | | 值得 |
-| Sonnet 5.5 | xhigh → max | +2.4（+151%） | +4.6（+145%） | +5.7（+502%） | AA：Terminal-Bench +6.6、AutomationBench +6.3、幻覺率 0.62 → 0.43；每題 1884 秒 | 不當起點；Opus xhigh 也卡關的終端機任務可當候選 |
-| Haiku 5.5 | medium → high | +5.4（+88%） | +5.3（+73%） | +5.2 | | 值得 |
-| Haiku 5.5 | high → xhigh | +2.0 | +4.8（+57%） | +3.6 | 多輪對話會空回覆；VulcanBench 反而更好（見觀察項） | 照規則不開，列觀察項 |
-| Fable 5.2 | medium → high | +2.1（+108%） | +5.4（+139%） | +7.4 | 官方：增益最大的一步 | 值得，升級後的起點 |
-| Fable 5.2 | high → xhigh | -0.6（+60%） | +0.4（+63%） | +4.0（+111%） | FrontierCode 的最高點 | 長程 agentic coding 值得 |
-| Fable 5.2 | xhigh → max | +3.7（+112%） | +2.3（+79%） | -2.0（+215%） | ARC-AGI-3（沒給規則的回合制解謎遊戲）high 79.26 → max 65.66（SC pdf 243）；Terminal-Bench（AA）61.6 → 59.6 | 不當預設 |
+| Opus 5.5 | medium → high | +4.5（+36%） | +3.6（+41%） | +4.9 | SWE-bench Pro +2.5；livenerf +4.2 | 值得，各來源一致 |
+| Opus 5.5 | high → xhigh | +2.2（+69%） | +5.6（+75%） | +8.4 | SWE-bench Pro +1.4（+150%）；Briefcase +76 | 沒人等著的工作值得 |
+| Opus 5.5 | xhigh → max | +1.4（+82%） | +1.7（+66%） | +2.6（+147%） | AA：Terminal-Bench +0、Briefcase +39、GDPval +30、HLE Diamond +3.9、幻覺率 0.65 → 0.50；貼上文字的植入指令照做率 2% → 7.4% | 知識型長交付物要準確時值得；coding 證據偏弱；都由 Stan 決定 |
+| Sonnet 5.5 | medium → high | +9.5（+124%） | +10.7（+110%） | +7.9 | | 值得 |
+| Sonnet 5.5 | high → xhigh | +6.1（+122%） | +8.4（+150%） | +13.6 | | 值得；但 xhigh 每題跟 Opus high 差不多貴，只在工具自動化 fan-out 用 |
+| Sonnet 5.5 | xhigh → max | +4.5（+176%） | +4.6（+145%） | +5.7（+502%） | AA：Terminal-Bench +6.6、AutomationBench +6.3、幻覺率 0.62 → 0.43；每題 1884 秒 | 不當起點；Opus xhigh 也卡關的終端機任務可當候選 |
+| Haiku 5.5 | medium → high | +3.3（+82%） | +5.3（+73%） | +5.2 | | 值得 |
+| Haiku 5.5 | high → xhigh | +7.7（+81%） | +4.8（+57%） | +3.6 | 多輪對話會空回覆；VulcanBench 反而更好；CursorBench 4.1 的增益比 4.0（+2.0）大很多（見觀察項） | 照規則不開，列觀察項 |
+| Fable 5.2 | medium → high | +2.3（+110%） | +5.4（+139%） | +7.4 | 官方：增益最大的一步 | 值得，升級後的起點 |
+| Fable 5.2 | high → xhigh | +2.3（+70%） | +0.4（+63%） | +4.0（+111%） | FrontierCode 的最高點 | 長程 agentic coding 值得 |
+| Fable 5.2 | xhigh → max | +2.5（+170%） | +2.3（+79%） | -2.0（+215%） | ARC-AGI-3（沒給規則的回合制解謎遊戲）high 79.26 → max 65.66（SC pdf 243）；Terminal-Bench（AA）61.6 → 59.6 | 不當預設 |
 
 Fable 5.1 的升檔數字留在 10-18 版（high → xhigh CursorBench +2.4；xhigh → max +0.2），只當 legacy 參考。
 
