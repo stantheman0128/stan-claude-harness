@@ -2,6 +2,7 @@
 
 （2026-09-19 自 SKILL.md 拆出，SKILL.md 只留路由表。新紀錄往上加。）
 
+- 2026-11-23 humanizer 2.12.0、humanizer-zh-tw 2.14.0：harvest 其他人的去 AI 味規則，英文看 4 個 repo、中文看 6 個加上 lieflat。只取文字規則，沒有安裝或執行任何東西，所以這批沒跑 SkillSpector；各 repo 判定見 EVALUATIONS.md。同日 router 修正：skill-suggest.py 只比對 Stan 自己打的字，skill-rules.json 拿掉高誤觸關鍵字（c2a8a76）。
 - 2026-11-23 補跑 SkillSpector（`Projects/skillspector/.venv` 重建）：be-ambitious 22/100 MEDIUM，3 條 MEDIUM 全是誤報（RA2、EA2、AS3 都打在 README 的介紹文字），判定不變。
 - 2026-11-23 移除 `superpowers` 與 `agent-skills` 兩個 plugin（09-15 起各只被叫 1 次）。先把還有用的規則搬進常駐檔：CLAUDE.md v2.11（§1 路由改寫、§2 subagent 回報先看 diff、§5 壓縮後以 todo 與 git log 為準）、executor／executor-high（跑全套測試、重構要改測試＝行為變了）、verifier（revert-the-fix、降低品質門檻檢查）、security-executor（LLM 輸出當不可信輸入）、oss-factory（收到 review）、grilling（還沒有計畫段）。分流表的 TDD、效能、API、context 工程列改成「沒有專用 skill」，skill-rules.json 刪掉 TDD、完工驗證、API、效能 4 條、除錯改成只在硬 bug 觸發 diagnosing-bugs。
 - 2026-11-23 評估 `DannyMac180/skills` 的 be-ambitious：不收，只 harvest。內容是 Felix Rieseberg「更深，不是更大」的 5 句 prompt，四問有三個半已被派工規格、diagnosing-bugs、guided-dev、source-driven、verifier 蓋過；做成只能手打的 skill，照 Stan 的用法會變死檔（opus 反方複查，用量數據見 EVALUATIONS）。唯一 harvest「外部檢查要是使用者和模型以外的東西、寫明過與不過」寫成 CLAUDE.md §2 done-criteria 的提案，等 CLAUDE.md 上別的 session 的修改收完再套。
