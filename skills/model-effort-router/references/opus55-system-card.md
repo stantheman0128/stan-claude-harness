@@ -13,7 +13,7 @@
 
 **分類器與 fallback（§1.5 p12、§3.2 p48、§3.4 p55）**
 - 被擋時改送誰：cyber → Opus 4.8；bio → Opus 5；frontier LLM 開發（例如特定 ML 加速器的 kernel）→ Opus 5；常規武器/爆裂物、蒸餾（套取隱藏推理）→ 無 fallback，直接擋。first-party 產品（含 Claude Code）自動 fallback；API 要開發者 opt-in；Bedrock/Vertex 等平台行為可能不同。封鎖是明示的，不會暗改回答。
-- cyber 政策同 Opus 5（原始碼找漏洞允許、binary 不允許），但因 cyber 能力接近 Mythos 5.1，暫時加寬安全邊際，誤擋率較高，官方說會降。需要少擋的資安用途走 Cyber Verification Program，Opus 5.5「近期」才會開放。
+- cyber 政策同 Opus 5（原始碼找漏洞允許、binary 不允許），但因 cyber 能力接近 Mythos 5.1，暫時加寬安全邊際，誤擋率較高，官方說會降。Opus 5 政策相同但沒有這層加寬，誤擋可能較少（推論，未實測；2026-11-23 從 SKILL.md 硬規則 1 移來）。需要少擋的資安用途走 Cyber Verification Program，Opus 5.5「近期」才會開放。
 
 **Prompt injection（§5.2 p86–91、§6.5.1 p123–126）**
 - 弱點在 fallback：adaptive coding 攻擊中 64% 請求被改送 Opus 4.8，這批攻擊成功率 85.73%；Opus 5.5 自己回答的 2,872 個請求 0 成功（p88）。IPI benchmark 的 coding 情境 46% rollout 會 fallback（p86）。

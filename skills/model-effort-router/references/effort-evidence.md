@@ -69,7 +69,7 @@ Fable 5.1 的 v5.0.1 拆分（2026-11-14 讀，`fable52-evidence.json`）：Term
 1. Sonnet xhigh 每題仍比 Opus high 貴（4.09 對 3.46 美元）、分數略低（49.9 對 51.8）、慢 1.5 倍；fan-out 選 Sonnet 的理由仍只有分散週額度。
 2. Opus xhigh → max 的 Terminal-Bench 仍是 0 增益（59.6 對 59.6），漲分在 Briefcase +39、GDPval +30、HLE Diamond +3.9、AutomationBench +4.6，幻覺率 0.65 → 0.50；每題成本 1.66 倍。
 3. Sonnet max 的 Terminal-Bench 63.6 仍是 Anthropic 全系列最高（Fable 5.2 最高是 xhigh 61.6）；AutomationBench 71.8 已被 Fable 5.2 high 以上超過。代價從 10-18 的每題 5.46 美元、905 秒變成 10.02 美元、1884 秒。
-4. Fable 5.2 high（61.8、每題 9.08 美元）已高過 Opus max（59.1、10.04 美元）；但同檔比，Briefcase 與 GDPval 是 Opus 高。
+4. Fable 5.2 high（61.8、每題 9.08 美元）已高過 Opus max（59.1、10.04 美元）；同檔比，Briefcase 與 GDPval 要到 xhigh、max 才是 Opus 高；low 與 medium 是 Fable 5.2 持平或較高，high 互有輸贏（Briefcase 1677 對 1682、GDPval 1718 對 1709）。
 5. Fable 5.2 medium → high 是它最大的一跳（+5.4，成本 2.4 倍）；high → xhigh 只 +0.4；xhigh → max 的 Terminal-Bench 從 61.6 退到 59.6。
 
 **FrontierCode 2.0（Cognition 排行榜）**（https://cognition.com/frontiercode，2026-11-23 讀，資料檔 Last-Modified 2026-11-21；所有結果 2026-11-11 重算過，五個模型都跑 claude-code harness；分數是 rubric 加權總分，每 rollout 美元依官方價。跟 Fable 5.2 card SC pdf 209 的數字不同，card 是重算前的版本）

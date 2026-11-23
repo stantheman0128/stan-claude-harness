@@ -50,16 +50,22 @@ Opus 5 降為 legacy（$5/$25、預設 high、thinking 可關到 high、fast mod
 - effort 解析順序（主 session，model-config 文件）：`CLAUDE_CODE_EFFORT_LEVEL` ＞ session 裡選的檔位 ＞ `--effort` ＞ 存檔設定（`modelSettings` 逐模型，或頂層 `effortLevel`）＞ 模型預設。**CC 模型預設**：Fable 5.2、Opus 5.5、Sonnet 5.5、Haiku 5.5 是 medium；Opus 4.7 是 xhigh；其他模型 high。
 - **頂層 `effortLevel`**：文件寫它對 Opus 5、Fable 5.1 與更早的模型仍有效，Opus 5.5 不吃、從 medium 起。這段沒點名 Fable 5.2，所以 Fable 5.2 吃不吃頂層 `effortLevel` 查不到。`effortLevel` 收 low、medium、high、xhigh，`max` 兩個鍵都不收，ultracode 有自己的鍵。
 - **Fable 5.2 要跑 high**：切到 Fable 5.2 後打 `/effort high`（或開 `/effort` 滑桿按 Enter），會存到 `modelSettings["claude-fable-5-2"]`；只想這個 session 用就開滑桿按 `s`。CC 預設是 medium，不設就跑 medium。
-- effort 解析順序（subagent）：`CLAUDE_CODE_EFFORT_LEVEL` ＞ Agent 工具派工時帶的 `effort`（v2.1.292 起，resume 也保留）＞ 定義檔 frontmatter 的 `effort:` ＞ 沒寫時大概跟 session 走（文件只暗示）。skill frontmatter 的 `effort:` 在該 skill 執行時生效，同樣蓋不過環境變數。`maxEffortLevel` 對以上全部設上限。
+- effort 解析順序（subagent）：`CLAUDE_CODE_EFFORT_LEVEL` ＞ Agent 工具派工時帶的 `effort`（v2.1.292 起，resume 也保留）＞ 定義檔 frontmatter 的 `effort:` ＞ 都沒寫時：v2.1.317 起，跟主 session 不同模型的 subagent 與 teammate 用該模型的存檔檔位或模型預設，不再用 session 的檔位；同模型時沒查到明文。v2.1.316 新增環境變數 `CLAUDE_CODE_SUBAGENT_EFFORT`，作用與優先順序沒讀到（兩條都只讀到 changelog 摘要，https://code.claude.com/docs/en/changelog ，2026-11-14 讀）。skill frontmatter 的 `effort:` 在該 skill 執行時生效，同樣蓋不過環境變數。`maxEffortLevel` 對以上全部設上限。
 - `/effort` 的存與不存：不帶參數開滑桿（v2.1.257 起），按 `s` 只套這個 session、按 Enter 存；直接打 `/effort high` 也會存。存的位置是 user settings 的 `modelSettings`，每個模型各一份；`/effort auto` 清掉這個模型的存檔；`/effort status` 印出目前檔位。`/model` 選模型時按左右鍵調 effort，Enter 存、`s` 不存。`--effort` 只管這次啟動。`max` 只能當次 session，`modelSettings` 只收 low 到 xhigh。
 - 換 effort 的 cache：model-config 文件沒寫換 effort 或換模型會不會保 cache，只連到 prompt-caching 文件（沒抓）。Fable 5.2 在 CC 中途換 effort 是否保 cache 未驗證。v2.1.312 修了 `/model` 與 `/effort` 的 cache 警告文字。
 - 自動 fallback 時，被標記那則請求的 effort 會帶到 fallback 模型。
-- `ultrathink` 寫在 prompt 裡：這一回合加一段想深一點的指示，送給 API 的 effort 不變。`/tasks` 列出每個 subagent 實際的模型與 effort。
+- `ultrathink` 寫在 prompt 裡：v2.1.311 起在互動終端機，Opus 5.5、Sonnet 5.5、Haiku 5.5、Fable 5.1 走 Anthropic API 時這一回合改跑 xhigh（changelog 摘要，Fable 5.2 沒點名）；其他情況照 model-config 文件，只加一段想深一點的指示，送給 API 的 effort 不變。`/tasks` 列出每個 subagent 實際的模型與 effort。
 - Stan 現況（2026-10-13 查 `~/.claude/settings.json`）：頂層 `effortLevel: "high"`、沒有 `modelSettings`、沒設 `CLAUDE_CODE_EFFORT_LEVEL`。2026-10-14 更新：桌面版打 `/effort high` 沒存檔，已手動寫入 `modelSettings["claude-opus-5-5"].effortLevel: "high"`（commit `5d2c28a`）；另有 `switchModelsOnFlag: false`（CLI 設定說明：訊息被 safeguard 標記時 session 暫停，不自動換模型），所以 Stan 的 CC 不會自動 fallback 到 Opus 4.8。頂層 `effortLevel: "high"` 確定只有 Fable 5.1 吃得到；Fable 5.2 吃不吃查不到，要 high 就在 Fable 5.2 上打 `/effort high`。2026-11-23 沒有再查 settings 檔。
 - 不支援的檔位自動退到該模型最高可用檔（xhigh 在 Opus 4.6 跑成 high）。
 - **fast mode**：`/fast` 預設模型 Opus 5.5；目前模型不支援 fast 時會自動切到 Opus。Fable 5.2 的 fast mode 只有 `fastMode` 設定沒用，要在用 Fable 5.2 時打 `/fast` 打開（v2.1.321 起）；切到 Fable 5.2 時，除非是在 Fable 5.2 上開的，fast mode 會關掉。價格 Fable 5.2 16/80、Opus 5.5 8/40、Opus 5 與 Opus 4.8 10/50 美元（https://code.claude.com/docs/en/fast-mode ，2026-11-14 讀）。同一頁也寫 fast 與標準速度各用一份 cache，之後每次切換都會重讀部分或全部對話，跟 SKILL.md 硬規則 11「之後切換都保 cache」的舊說法不一致，見 `sources.md` 未驗證項。
 - Haiku 5.5（model ID `claude-haiku-5-5`，2026-10-07 發佈）v2.1.293 起是 Anthropic API 上的預設 Haiku，`haiku` 別名指向它；1M context、$0.10/$0.50（prompt 超過 100K 變 $0.50/$2.50）、五檔 effort、預設 medium。Haiku 4.5（$1/$5、200K、不支援 effort）退役日不早於 2026-10-15，不再使用。Stan 2026-10-13 解禁 Haiku 5.5（硬規則 14）。
 - `/checkup prompt-audit [路徑]`（v2.1.283 起，`/doctor` 的別名）：掃 CLAUDE.md、rules、skills、commands、subagents、output styles，找過時路徑、互相矛盾、「CRITICAL/MUST」施壓語氣、「think harder」這類對永遠開 thinking 的模型無效的句子、寫死的模型名。只提案不改檔；不讀 settings/hooks/MCP 設定。兩份官方文件對預設是否掃 `~/.claude/` 說法不一，路徑要自己給。
+
+## API breaking change 與換檔 cache 例外（2026-11-23 從 SKILL.md 硬規則 2、7 移來）
+
+- **API breaking change**：Opus 5.5 四條：thinking 關不掉、`tool_choice: any/tool` 回 400（改 `auto` + `strict: true`）、`computer_20251124` 在 API/GCP 回 400（改 `computer_toolset_20260801`）、thinking block 綁模型與對話（2026-08-31 後建立的帳號改動 prefix 直接 400；對話要 append-only，改指令用 mid-conversation system message）。前三條 Fable 5.1 也一樣。**Fable 5.2 / Mythos 5.2**：prefix 檢查失敗 400；它的 thinking block 只有 5.2 家族讀得懂；`computer_20251124` 除 Bedrock 外 400；executor 的 advisor 只能是 Fable 5.2 或 Mythos 5.2；強制 tool use 400；`temperature`/`top_p`/`top_k` 在 API 版本 2026-10-21 移除，送了 400；要 30 天資料保留、沒有 ZDR。Sonnet 5.5 四條全中，另有：關 thinking 改送 `between_tools`（xhigh/max 下 400、開了就不能中途換 effort）、`temperature`/`top_p`/`top_k` 非預設值 400、advisor 工具不收 Opus 4.8/4.7、Sonnet 5 與 Haiku 5.5。Haiku 5.5 同樣不要送 `temperature`/`top_p`/`top_k`。
+- **換 effort 保 cache 的例外**（CC 裡 Opus 5.5、Sonnet 5.5、Haiku 5.5、Fable 5.1 平常保 cache）：例外照樣重讀：Bedrock、Google Cloud Agent Platform、Claude apps gateway、設了 `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS`、HIPAA 組織。
+- API 端 per-message effort（beta `mid-conversation-output-config-2026-07-01`）支援 Fable 5.2 與 Mythos 5.2，會保 cache；改頂層 effort 會讓 cache 部分或全部失效。
 
 ## Advisor 搭配（含未採用的提案）
 

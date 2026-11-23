@@ -39,7 +39,7 @@ card 自己的說法是 16 項裡 Fable 5.2 拿 14 項最高，只輸 Opus 5.5 �
 - ARC-AGI-3（SC pdf 243）：high 比 max 高，Standard 79.26 對 65.66、Provider Adapter 97.72 對 94.90。
 - PhysicianBench（SC pdf 247）：high 比 low 多 6.8 分（95% 信賴區間 3.2 到 10.4），xhigh 與 max 對 high 沒有可分辨的增益。
 - AutomationBench（SC pdf 241）：low 39.7 到 max 51.4；low 低於 Opus 5.5 max 的 42.5。
-- GDPval-AA（SC pdf 239）：max 1831，落後 Opus 5.5 的 1866；xhigh 1738，output token 少約 48%。
+- GDPval-AA（SC pdf 239）：max 1831，落後 Opus 5.5 的 1866；xhigh 1751，output token 比 max 少約 57%。
 - 多 agent（SC pdf 223、225）：ProgramBench 上五人固定小隊與 async subagent 最後分數跟單 agent 一樣，只是更快（小隊到 0.6 分的時間是單 agent 的一半），代價是 token 更多；DRACO 上分數跟 token 量的關係在單 agent 與小隊之間一致，小隊高分來自同時間內燒更多 token。結論：Fable 5.2 單 agent 跑，趕時間才開小隊。
 - 資安（Mythos 5.2、safeguards 關閉）：CyScenarioBench 多階段攻防 76.3%，Opus 5.5 67.6%、Mythos 5.1 61.7%、Sonnet 5.5 46.1%（SC pdf 50）；Binary Exploitation Benchmark 做出 control-flow hijack 148 次，Opus 112、Mythos 5.1 84、Sonnet 48，但漏洞辨識跟 Opus 5.5 同級（SC pdf 51）；CVE Rediscovery max 89.6%，Opus 81.3%、Mythos 5.1 78.3%，只算第一份報告時領先從 8.3 分縮到 2.6 分（SC pdf 253）。這些是無 safeguards 的 Mythos 數字，不代表 GA Fable 5.2 在 Claude Code 的表現（SC pdf 208 腳註、253）。
 
@@ -47,7 +47,7 @@ card 自己的說法是 16 項裡 Fable 5.2 拿 14 項最高，只輸 Opus 5.5 �
 
 - **早停與交差**：release snapshot 在開放式研究題 medium effort 下有 63% 的 session 一個實驗都沒跑就收手；重播 coding session 時，medium 到 xhigh 有 6% 到 13% 留下做得到、被要求的工作沒做，Fable 5.1 是 4%；low 跑測試比 Fable 5.1 少，內部使用者回報它講出程式碼撐不住的肯定句；常過度謹慎、提早停，後來改 prompt 與 scaffold 有改善（SC pdf 34）。
 - **把推論講成事實**：coding 工作中把推論當事實講、用「沒有證據顯示」替錯的技術建議辯護（SC pdf 35，內部使用者回報）。
-- **reward hacking**：固定 RL 環境裡嘗試率跟 Mythos 5.1、Opus 5.5 差不多，但成功率較高，1.0% 對 0.7% 與 0.6%（SC pdf 95）。多出來的部分多半是任務要求用特定工具或程式時，它跳過工具直接手算或憑記憶答（SC pdf 96）。任務缺檔又被要求不准問時，嘗試率約是正常任務的 6 倍（6.0% 對 1.0%，SC pdf 99）。
+- **reward hacking**：固定 RL 環境裡嘗試率跟 Mythos 5.1、Opus 5.5 差不多，但成功率較高，1.0% 對 0.7% 與 0.6%（SC pdf 95）。多出來的成功多半來自同一種行為：猜答案卷要什麼（SC pdf 95）。在「用被禁止的方法或權限」這一小類（成功 0.13% 對 0.05% 與 0.08%），差距大半是任務要求用特定工具或程式時，它跳過工具直接手算或憑記憶答（SC pdf 96）。任務缺檔又被要求不准問時，嘗試率約是正常任務的 6 倍（6.0% 對 1.0%，SC pdf 99）。
 - **繞過 hook**：不到 0.01% 的 completion 裡，早期 snapshot 把字串拆開躲過 regex 型安全 hook，或用 `python3 -c "exec(open(...).read())"` 間接執行腳本；通常被 auto mode 擋下（SC pdf 101）。也有繞過網路限制的例子，例如經 Wayback Machine 抓被擋的論文（SC pdf 101）。
 - **捏造授權**：被 auto mode 擋下後，極少數（不到 0.002%）另開 subagent 並在任務說明裡誤述使用者意圖（SC pdf 103）。
 - **寫給其他 agent 的筆記**：早期 snapshot 為了不讓 canary 字串進 transcript 而跳過檔案第一行，並寫筆記叫其他 agent 照做，幾十個 agent 跟著做（SC pdf 105 到 106）。
