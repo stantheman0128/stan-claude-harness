@@ -20,6 +20,7 @@ export const meta = {
 //   } })
 // 每一格做完都由 verifier 獨立跑 check；沒過才升一格，前一格改過的檔案留在原地，交接寫進下一格的派工單。
 // worker 回報 blocked（缺輸入、規格不清）就停在那一格，不升級：換大模型解決不了規格問題。
+// verifier 回報 inconclusive（check 跑不了：環境壞、缺輸入、要跑超過 10 分鐘）也停在那一格，不升級，理由相同（2026-11-24 verifier 加了 INCONCLUSIVE）。
 // 到頂還沒過就停，max 不在梯子上，要不要開由 Stan 決定。
 // Opus high 之後直接換 Fable high、不走 Opus xhigh：官方「If you're past high, test the next model up at a lower effort instead.」
 // （claude.dev which-claude-model-should-you-build-with，2026-11-09），而且 Fable 5.2 high 在 AA v5.0.1 已高過 Opus max。
@@ -61,9 +62,10 @@ const VERDICT = {
   type: 'object',
   properties: {
     pass: { type: 'boolean' },
+    inconclusive: { type: 'boolean', description: 'true only when the check could not be run or evaluated (broken environment, missing input, needs more than 10 minutes); pass must then be false' },
     evidence: { type: 'string', description: 'commands you ran and the decisive output lines' },
   },
-  required: ['pass', 'evidence'],
+  required: ['pass', 'inconclusive', 'evidence'],
 }
 
 function clip(s, n) {
@@ -95,7 +97,7 @@ Check to run: ${t.check}
 The worker reported:
 ${clip(JSON.stringify(report, null, 1), 4000)}
 
-Run the check yourself; do not rely on the worker's output. pass=true only if the check really passes and the task as written is done. If it fails, put the failing command and output lines in evidence.`
+Run the check yourself; do not rely on the worker's output. pass=true only if the check really passes and the task as written is done. If it fails, put the failing command and output lines in evidence. If you could not run or evaluate the check at all (broken environment, missing input, or it needs more than 10 minutes), set inconclusive=true and pass=false, and say in evidence what is missing and what would let a rerun decide. A check that runs and fails is not inconclusive.`
 }
 
 async function runTask(t, args) {
@@ -129,7 +131,12 @@ async function runTask(t, args) {
       log(`${t.id}: verifier returned nothing after ${rung.name}, stopping this task unverified`)
       return { id: t.id, result: 'unverified', rung: rung.name, attempts }
     }
-    attempts.push({ rung: rung.name, status: report.status, changed: report.changed, pass: verdict.pass, evidence: clip(verdict.evidence, 1500) })
+    attempts.push({ rung: rung.name, status: report.status, changed: report.changed, pass: verdict.pass, inconclusive: !!verdict.inconclusive, evidence: clip(verdict.evidence, 1500) })
+    if (verdict.inconclusive) {
+      // inconclusive wins even if pass came back true: a check nobody could evaluate is not a pass.
+      log(`${t.id}: check could not be evaluated after ${rung.name}, not escalating (environment, input, or time limit)`)
+      return { id: t.id, result: 'inconclusive', rung: rung.name, attempts }
+    }
     if (verdict.pass) {
       log(`${t.id}: passed at ${rung.name}`)
       return { id: t.id, result: 'passed', rung: rung.name, attempts }
@@ -159,6 +166,6 @@ results = results.map((r, i) => r || { id: args.tasks[i].id, result: 'error', at
 
 const count = k => results.filter(r => r.result === k).length
 return {
-  summary: `${count('passed')} passed, ${count('failed')} failed at the top rung, ${count('blocked')} blocked, ${count('unverified')} unverified, ${count('error')} errors`,
+  summary: `${count('passed')} passed, ${count('failed')} failed at the top rung, ${count('blocked')} blocked, ${count('inconclusive')} inconclusive, ${count('unverified')} unverified, ${count('error')} errors`,
   results,
 }
