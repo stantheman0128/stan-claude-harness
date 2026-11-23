@@ -4,13 +4,14 @@
 
 ## 檔案
 
-- `C:/Users/stans/.claude/quota-pacer/active.json`：開工設定，`start_pace.py` 寫、`end_pace.py` 刪。
+- `C:/Users/stans/.claude/quota-pacer/sessions/<session 編號>.json`：開工設定，一個 session 一個檔，`start_pace.py` 寫、`end_pace.py` 刪（只刪自己的）。腳本從環境變數 `CLAUDE_CODE_SESSION_ID` 知道自己是哪個 session，跟 hook 收到的 `session_id` 是同一個值。
+- `C:/Users/stans/.claude/quota-pacer/active.json`：舊的共用檔。只有腳本不知道自己是哪個 session 時（手動在終端機跑）才會寫它。有寫 `session` 的只管那個 session，沒寫的管所有 session。下面的格式兩種檔都一樣。
   ```json
   { "mode": "both", "started": 1794551688, "session": "<session id>", "minutes": 30,
     "u0": { "seven_day": 49, "scoped": { "fable": 52 } },
     "ceiling": { "seven_day": 54, "scoped": { "fable": 57 } } }
   ```
-  `u0` 是開工時的用量。`ceiling` 沒寫的那條上限就是 100。`session` 由 hook 在看到 `start_pace.py` 時先記在 `.starting-session`，再由 `start_pace.py` 抄進來。
+  `u0` 是開工時的用量。`ceiling` 沒寫的那條上限就是 100。`session` 來自環境變數；環境變數沒有時，才用 hook 在看到 `start_pace.py` 時記在 `.starting-session` 的值。
 - `C:/Users/stans/.claude/usage-state.json`：最後一次讀到的用量。`source` 是 `app`（`write_usage.py` 寫的）或 `oauth`（腳本自己拉的）。
 - `C:/Users/stans/.claude/quota-pacer/refresh.log`：每次去 endpoint 拉用量的結果，一行一筆 JSON。
 
@@ -68,7 +69,7 @@
 
 ## hook（`hooks/hardstop_guard.py`）
 
-每次工具呼叫前跑，先看全機規則，再看單一 session 的 pacer。下面講的是後者：只在 EMERGENCY 擋，停手那層刻意不擋，留給寫交接。這一層只讀檔、不去拉用量，所以用的是最後一次寫進檔的數字；檔案超過 90 秒沒更新就只看時間盒。放行的情況：`active.json` 的 `session` 不是這個 session、開工超過 24 小時、指令是 pacer 自己的腳本、工具是 `get_usage` 或 `ToolSearch`。「pacer 自己的腳本」指整行剛好是一次呼叫（`py "<scripts 資料夾>/<腳本>.py" 參數`），後面接別的指令、換行、或別的資料夾的同名檔都不算，所以 SKILL 裡的指令要一行一個、照完整路徑寫。
+每次工具呼叫前跑，先看全機規則，再看單一 session 的 pacer。下面講的是後者：只在 EMERGENCY 擋，停手那層刻意不擋，留給寫交接。這一層只讀檔、不去拉用量，所以用的是最後一次寫進檔的數字；檔案超過 90 秒沒更新就只看時間盒。它讀這個 session 自己的檔，加上舊共用檔。hook 收不到 session 編號時從嚴，把每個 session 的檔都算進來。放行的情況：設定檔的 `session` 不是這個 session、開工超過 24 小時、指令是 pacer 自己的腳本、工具是 `get_usage` 或 `ToolSearch`。「pacer 自己的腳本」指整行剛好是一次呼叫（`py "<scripts 資料夾>/<腳本>.py" 參數`），後面接別的指令、換行、或別的資料夾的同名檔都不算，所以 SKILL 裡的指令要一行一個、照完整路徑寫。
 
 ## 環境變數
 

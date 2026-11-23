@@ -10,12 +10,16 @@ import sys
 import pace_core as pc
 
 def main():
-    active_path = sys.argv[1] if len(sys.argv) > 1 else pc.ACTIVE_FILE
+    active_path = sys.argv[1] if len(sys.argv) > 1 else None
     g = pc.load_global()
-    try:
-        active = pc.load_active(active_path)
-    except (OSError, ValueError):
-        active = None
+    if active_path:
+        try:
+            active = pc.load_active(active_path)
+        except (OSError, ValueError):
+            active = None
+    else:  # 這個 session 自己的檔優先，沒有才看舊的共用檔
+        found = pc.find_active(pc.env_sid())
+        active_path, active = found[0] if found else (None, None)
     if active is None and g is None:
         print("CONTINUE none | pacer 未啟用（無 active.json，也沒有全機規則）")
         return

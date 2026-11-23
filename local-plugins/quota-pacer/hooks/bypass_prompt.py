@@ -56,7 +56,7 @@ def main():
     sid = data.get("session_id") or ""
     if not prompt or not sid or any(t in prompt for t in NOT_HUMAN):
         return
-    if pc.load_global() is None and not os.path.exists(pc.ACTIVE_FILE):
+    if not pc.has_limit(sid):
         return  # 沒有東西可以豁免
     if not wants_bypass(prompt):
         return

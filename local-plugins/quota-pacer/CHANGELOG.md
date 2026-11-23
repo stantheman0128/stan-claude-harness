@@ -1,5 +1,15 @@
 # Quota Pacer CHANGELOG
 
+## 0.7.1 — 2026-11-23
+每個 session 各用各的設定檔。起因：11-14 凌晨兩個 session 先後開 pacer，寫進同一個 `active.json`，後開的蓋掉先開的；先做完的那個收工時把檔刪掉，另一個的上限跟著消失。
+
+- 設定檔改成 `sessions/<session 編號>.json`。`start_pace.py` 只寫自己的，`end_pace.py` 只刪自己的，`eval_pace.py` 只看自己的。
+- 腳本從環境變數 `CLAUDE_CODE_SESSION_ID` 認出自己是哪個 session（實測跟 hook 收到的 `session_id` 同值）。沒有這個變數才退回 hook 留的 `.starting-session` 記號；兩個都沒有就寫舊的共用檔並印警告。
+- 舊共用檔照認：寫明 `session` 的只有那個 session 能收，沒寫的誰收都行。
+- hook 收不到 session 編號時從嚴，所有 session 的設定都拿來檢查。
+- `end_pace.py` 順手清掉別人忘了收、開工超過 24 小時的設定檔。
+- 隔離測試 121 項全過，新增一節重演 11-14 的順序：A 開工、B 開工、B 收工，A 的上限還在而且照擋。
+
 ## 0.7.0 — 2026-11-23
 Stan 定案：只有他本人親口說才豁免，其餘一律不放行；用量到線的收尾放行到 99%。
 

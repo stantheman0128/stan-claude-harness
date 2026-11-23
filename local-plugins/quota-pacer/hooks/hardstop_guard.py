@@ -10,8 +10,9 @@
 - 用量超過 GLOBAL_STALE 沒更新就自己去 endpoint 拉（有冷卻）；拉不到就擋一次，
   請 session 用 get_usage 把讀數寫進來（同一 session NAG_GAP 內只擋一次）。
 
-二、單一 session 的 pacer（active.json，start_pace.py 設的）
-- 只擋開工的那個 session；開工超過 24 小時的殘留檔不理。
+二、單一 session 的 pacer（sessions/<session>.json，start_pace.py 設的）
+- 一個 session 一個檔，只擋開工的那個 session；開工超過 24 小時的殘留檔不理。
+- 舊的共用檔 active.json 還認：有寫 session 的只管那個 session，沒寫的管所有 session。
 - 只在 EMERGENCY 擋，停手那層留給 skill 寫交接。
 
 pacer 自己的腳本、get_usage、ToolSearch 永遠放行，到線之後才收得了工、補得了讀數。
@@ -28,7 +29,8 @@ import pace_core as pc  # noqa: E402
 OWN = ("start_pace.py", "eval_pace.py", "write_usage.py", "read_usage.py", "end_pace.py",
        "global_pace.py")
 SCRIPTS = "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts"
-STATE_FILES = ("quota-pacer/global.json", "quota-pacer/active.json", "quota-pacer/wrap")
+STATE_FILES = ("quota-pacer/global.json", "quota-pacer/active.json", "quota-pacer/wrap",
+               "quota-pacer/sessions")
 
 # 放行只給「整行就是一次 pacer 腳本呼叫」的指令：直譯器、這個資料夾裡的腳本、簡單參數。
 # 只比對檔名的話，在任何指令後面加一句 echo eval_pace.py 就能繞過整個 hook。
@@ -145,18 +147,10 @@ def global_gate(g, sid):
               % (stopped.get("text"), "：" + hard if hard else "", ONLY_STAN))
 
 def session_gate(sid):
-    try:
-        active = pc.load_active()
-    except (OSError, ValueError):
-        return
-    if not isinstance(active, dict):
-        return
-    # 別的 session 開的 → 不關這個 session 的事
-    if active.get("session") and sid and active["session"] != sid:
-        return
-    # 開工超過一天還在 → 當成沒收工的殘留檔
-    started = pc._num(active.get("started"))
-    if started and time.time() - started > pc.ACTIVE_MAX_AGE:
+    # 這個 session 自己的設定檔，加上管得到它的舊共用檔。
+    # 別的 session 開的、開工超過一天的殘留檔，find_active 已經濾掉。
+    found = pc.find_active(sid, all_if_unknown=True)
+    if not found:
         return
 
     usage = None
@@ -167,9 +161,10 @@ def session_gate(sid):
     except (OSError, ValueError):
         usage = None
 
-    verdict, trigger = pc.evaluate(usage, active)
-    if verdict == "EMERGENCY":
-        block("EMERGENCY：%s 死線已到，停止一切工具呼叫，立刻結束本輪。" % trigger)
+    for _path, active in found:
+        verdict, trigger = pc.evaluate(usage, active)
+        if verdict == "EMERGENCY":
+            block("EMERGENCY：%s 死線已到，停止一切工具呼叫，立刻結束本輪。" % trigger)
 
 def main():
     try:
@@ -202,8 +197,7 @@ def main():
     # 這只擋得住直接寫出路徑的做法，是減速丘不是保險箱：session 跟 Stan 是同一個帳號。
     if tool in ("Bash", "PowerShell", "Write", "Edit", "NotebookEdit") and not own and isinstance(ti, dict):
         blob = json.dumps(ti, ensure_ascii=False).replace("\\\\", "/").lower()
-        if any(x in blob for x in STATE_FILES) and (
-                pc.load_global() is not None or os.path.exists(pc.ACTIVE_FILE)):
+        if any(x in blob for x in STATE_FILES) and pc.has_limit(sid):
             block("pacer 的狀態檔不能直接改或刪。收工用 end_pace.py；全機" + ONLY_STAN)
 
     # 解除或改寫全機規則：到線之後不行，還沒到線時 --clear 也不行。只有 --status 隨時可以看。
@@ -219,8 +213,7 @@ def main():
     g = pc.load_global()
     if g is not None:
         global_gate(g, sid)
-    if os.path.exists(pc.ACTIVE_FILE):
-        session_gate(sid)
+    session_gate(sid)
     sys.exit(0)
 
 if __name__ == "__main__":

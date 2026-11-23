@@ -69,16 +69,19 @@ def main():
             fail("用量讀不到，也沒給 --minutes，沒有任何 guard。%s" % advice, 4)
 
     active = {"mode": mode, "started": time.time()}
-    # 綁定 session：hook 只擋開工的這個 session，殘留檔不會卡到別的 session
+    # 這份設定屬於哪個 session：先看環境變數，沒有才看 hook 留的記號（舊版 Claude Code）。
+    # 知道是誰就寫進它自己的檔，不碰別的 session 的設定。
+    sid = pc.env_sid()
     try:
-        if time.time() - os.path.getmtime(pc.START_MARK) < 120:
+        if not sid and time.time() - os.path.getmtime(pc.START_MARK) < 120:
             with open(pc.START_MARK, encoding="utf-8") as fh:
                 sid = fh.read().strip()
-            if sid:
-                active["session"] = sid
         os.remove(pc.START_MARK)
     except OSError:
         pass
+    if sid:
+        active["session"] = sid
+    path = pc.session_file(sid)
     lines = []
     if "minutes" in nums:
         active["minutes"] = nums["minutes"]
@@ -138,12 +141,10 @@ def main():
             lines.append("%s 現在 %g%%，上限 %g%%：%g%% 開始收尾，%g%% 停手寫交接，%g%% 硬擋工具" % (
                 label, cur, top, top - wd, top - hs, top - emg))
 
-    os.makedirs(os.path.dirname(pc.ACTIVE_FILE), exist_ok=True)
-    tmp = pc.ACTIVE_FILE + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(active, fh, ensure_ascii=False)
-    os.replace(tmp, pc.ACTIVE_FILE)
-    print("已開工（%s）" % pc.ACTIVE_FILE)
+    pc.save_json(path, active)
+    print("已開工（%s）" % path)
+    if not sid:
+        print("  ⚠不知道是哪個 session 開的，用的是共用檔：會管到所有 session，別的 session 也可能蓋掉它")
     for ln in lines:
         print("  " + ln)
 

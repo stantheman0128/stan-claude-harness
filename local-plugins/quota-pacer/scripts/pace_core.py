@@ -580,6 +580,63 @@ def global_hard(usage, g):
             return "%s 已用 %g%%，到了硬擋線 %g%%" % (label, cur, line)
     return ""
 
+# ---------- 每個 session 各用各的設定檔 ----------
+# 0.7.0 以前所有 session 共用一個 active.json：後開工的蓋掉先開工的，先收工的把檔刪掉，
+# 另一個 session 的上限就跟著沒了（11-14 實際發生）。現在一個 session 一個檔。
+SESS_DIR = os.path.join(os.path.dirname(ACTIVE_FILE), "sessions")
+
+def env_sid():
+    """這支腳本是哪個 session 叫的。Claude Code 會把 session 編號放進工具的環境變數。"""
+    if "QP_SESSION" in os.environ:  # 測試用，設成空字串代表「不知道是誰」
+        return os.environ["QP_SESSION"].strip()
+    return (os.environ.get("CLAUDE_CODE_SESSION_ID") or "").strip()
+
+def session_file(sid):
+    """這個 session 的設定檔。不知道是誰（手動在終端機跑）就用舊的共用檔。"""
+    if not sid:
+        return ACTIVE_FILE
+    return os.path.join(SESS_DIR, os.path.basename(mark_path(sid, "s"))[2:] + ".json")
+
+def _live(path, sid):
+    """讀一個設定檔；不存在、壞掉、過期（開工超過 ACTIVE_MAX_AGE）、或明寫是別的 session 的，回 None。"""
+    try:
+        a = load_active(path)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(a, dict):
+        return None
+    if a.get("session") and sid and a["session"] != sid:
+        return None
+    started = _num(a.get("started"))
+    if started and time.time() - started > ACTIVE_MAX_AGE:
+        return None
+    return a
+
+def find_active(sid, all_if_unknown=False):
+    """回 [(路徑, 設定)]：這個 session 自己的檔，加上管得到它的舊共用檔。
+
+    all_if_unknown：不知道呼叫者是誰時把每個 session 的檔都算進來。hook 用這個，
+    認不出人就從嚴，不能因為少了編號就整層放行。
+    """
+    out = []
+    paths = [session_file(sid)] if sid else []
+    if not sid and all_if_unknown:
+        try:
+            paths += [os.path.join(SESS_DIR, n) for n in sorted(os.listdir(SESS_DIR))
+                      if n.endswith(".json")]
+        except OSError:
+            pass
+    paths.append(ACTIVE_FILE)
+    for p in paths:
+        a = _live(p, sid)
+        if a is not None:
+            out.append((p, a))
+    return out
+
+def has_limit(sid):
+    """這個 session 現在有沒有任何限制生效（全機規則或它自己的 pacer）。"""
+    return load_global() is not None or bool(find_active(sid))
+
 def describe_global(g):
     """一句話講這條規則：什麼情況會停。"""
     conds = []

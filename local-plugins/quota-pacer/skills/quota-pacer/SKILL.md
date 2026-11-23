@@ -154,7 +154,7 @@ py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/global_pace.py" [--
 - 工具呼叫被擋，訊息開頭是 `[quota-pacer] EMERGENCY`：上限到了。照步驟 4 收工（交接寫在回覆裡），不要換別的工具繞，收工後也不要繼續做。
 - 讀數看起來不對：看 `C:/Users/stans/.claude/quota-pacer/refresh.log` 最後幾行，每次去 endpoint 拉用量的結果都記在那。
 - 預算只有 1 到 2 個百分點：用量是整數百分比，所以只分得出「還沒到」和「到了」，不會有收尾的緩衝。開工時跟 Stan 講一聲。
-- 一次只有一個 session 能開 pacer。hook 只擋開工的那個 session，但 `active.json` 是共用的，第二個 session 開工會蓋掉第一個的設定。
+- 好幾個 session 可以同時各開各的 pacer，設定檔一個 session 一個，互不影響。`end_pace.py` 只收自己的。
 - 開工超過 24 小時沒收工的設定會被 hook 當成殘留，不再生效。
 
 門檻的算法、`active.json` 格式、可調的環境變數在 `C:/Users/stans/.claude/local-plugins/quota-pacer/skills/quota-pacer/references/internals.md`，除錯或測試時才需要讀。
