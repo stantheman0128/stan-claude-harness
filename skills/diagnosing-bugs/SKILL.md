@@ -1,6 +1,6 @@
 ---
 name: diagnosing-bugs
-description: 硬 bug 的診斷紀律（mattpocock vendor）：先建一個會紅、跑得快、agent 能自己跑的 repro loop，再縮小、列假設、量測、修、加回歸測試。適用 flaky／間歇、效能退化、跨多元件、或第一次猜因就錯的 bug；一般 web bug 的快速 triage 走 agent-skills:debugging-and-error-recovery。
+description: 硬 bug 的診斷紀律（mattpocock vendor）：先建一個會紅、跑得快、agent 能自己跑的 repro loop，再縮小、列假設、量測、修、加回歸測試。適用 flaky／間歇、效能退化、跨多元件、或第一次猜因就錯的 bug；一般 bug 直接修、先重現，不必載本 skill。
 ---
 
 # Diagnosing Bugs
