@@ -78,6 +78,7 @@ s4a 跑的時候 lenses 沒裝，是真正的「沒有它」。s4b 執行時如�
 - 寫入偵測是用 regex 判斷 shell 指令，偏保守：`node -e "x > 1"` 裡的比較號也會被當成重導。誤判會讓 s1 變 FAIL，看 evidence 那一欄就知道是哪一條。
 - guard 不管清單上的測試指令跑起來做什麼：`node --test`、`npm test` 和 `python -m unittest` 都會執行程式碼，那些程式碼自己開檔、開程序都不經過 hook。s4 能改測試檔再跑，模型真要寫到 repo 外面做得到。連檔都不用改也行：repo 裡只要有測試檔，`node --test "--import=data:text/javascript,import fs from 'node:fs';fs.writeFileSync('../x','x')"` 就會在 repo 外寫出 `x`，guard 會放行，2026-11-24 實測過。這裡刻意不加沙箱，效果跟改測試檔一樣。s1 清單裡的測試指令只有 `python -m unittest`，verifier 又沒有 Edit/Write，只能跑 repo 裡原本的測試。
 - guard 只管寫入和執行，不管讀取：Read、Glob、Grep 和清單上的 `cat`、`grep` 這類唯讀指令都讀得到 repo 外的檔案。
+- Job Object 只收得到 claude 自己開出來的程序樹。透過 WMI 或工作排程器啟動的程序不在 job 裡，job 關掉之後仍可能改到 `.git`，這條沒有實測。
 - guard 寧可誤擋：雙引號裡的 `$`、`HEAD@{1}` 的大括號、沒加引號就給 git 或測試指令的萬用字元、指令後面接的 `# 註解`，都會整條擋下。s1 實跑時 verifier 的 `echo "exit=$?"` 被擋，它改用清單內的寫法照樣做完。被擋的次數看 permission denials 那一行。
 - s1 的 shell 清單沒有 `mktemp`、`git archive`，`$` 也一律擋，所以 `T=$(mktemp -d)` 這類寫法和 verifier.md 要求的「在暫時目錄重現修改前失敗」都做不了，它會列進未驗證。
 - 單次跑的結果只代表那一次。要看穩定度得換 `--out` 多跑幾次，再比對結果。
