@@ -44,6 +44,9 @@ A 30-second flaky loop is barely better than no loop; a 2-second deterministic o
 
 The goal is not a clean repro but a **higher reproduction rate**. Loop the trigger 100×, parallelise, add stress, narrow timing windows, inject sleeps. A 50%-flake bug is debuggable; 1% is not — keep raising the rate until it's debuggable.
 
+<!-- Stan 2026-11-24：flaky 規則取自 claude.dev 驗證那篇（2026-11-16） -->
+Flaky tests are never fixed by skipping them, adding sleeps, or retrying until green. Injected sleeps are for reproducing the bug, not for fixing it. If the root cause can't be found, delete the test and record why in the commit message.
+
 ### When you genuinely cannot build a loop
 
 Stop and say so explicitly. List what you tried. Ask the user for: (a) access to whatever environment reproduces it, (b) a captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. Do **not** proceed to hypothesise without a loop.
