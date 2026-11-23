@@ -8,7 +8,7 @@ SKILL.md 決策表與「Fable 5.2、Mythos 5.2、Sonnet 5.5、Haiku 5.5 的界�
 
 **它贏 Opus 5.5 的地方**（Fable 5.2 card 與第三方）
 1. **coding**：SWE-bench Pro 93.0 對 89.9（SC pdf 207 到 208）。FrontierCode 2.0：card 版 high 45.3 跟 Opus 最佳 45.5 差不多，每題 6.72 對 12.82 美元，約一半成本；xhigh 49.1 是最高（SC pdf 209）。Cognition 2026-11-11 重算後的排行榜是 high 46.2（8.40 美元）對 Opus 最佳 47.3（12.82 美元），xhigh 50.2 全榜第一（https://cognition.com/frontiercode ，2026-11-23 讀）。
-2. **多小時自主工程**：FrontierSWE v2（34 題、每題約 20 小時的超長程工程）69.9 對 62.3，效能優化、科學計算、視覺推理拉開最多（SC pdf 212）。Remote Labor Index（用 240 個真實外包案測 agent）41.3 對 21.3，兩邊都用預設 high（SC pdf 242）。
+2. **多小時自主工程**：FrontierSWE v2（34 題、每題時限 20 小時的超長程工程）69.9 對 62.3，效能優化、科學計算、視覺推理拉開最多（SC pdf 212）。Remote Labor Index（用 240 個真實外包案測 agent）41.3 對 21.3，兩邊都用預設 high（SC pdf 242）。
 3. **AA 總分**：Fable 5.2 high 61.8（每題 9.08 美元）已高過 Opus max 59.1（10.04 美元）（AA v5.0.1，2026-11-23 讀）。
 4. **有可爬坡訊號的難題**：第三方評測機構 METR 認為它在可驗證任務上比 Fable 5.1 明顯進步（SC pdf 40）；ARC-AGI-3（沒給規則、要自己摸出目標的回合制遊戲）high 79.26%（SC pdf 243）。
 5. **讀圖不給工具**：Chartography 沒工具 73.4 對 64.4，給容器與裁圖工具後只差 2.6 分（SC pdf 229）。

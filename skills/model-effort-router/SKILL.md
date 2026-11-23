@@ -48,7 +48,7 @@ description: Use when 需要決定一個任務該用哪個 Claude 模型與哪�
 | 電腦操作、vision、圖表/簡報/試算表知識工作 | Opus 5.5 @ high；長交付物 xhigh | GDPval-AA 與 AA-Briefcase 都是 Opus 贏 Fable 5.2；AA 自己的表上 GDPval 仍是 Opus max 最高，Briefcase 則是 Sonnet max 1813 略高於 Opus max 1797 |
 | 要求準確、怕幻覺的知識型長交付物（研究報告、分析文件），Opus 5.5 @ xhigh 仍不夠 | 回報 Stan，建議 Opus 5.5 @ max（只開當次 session） | AA xhigh → max：Briefcase +39、GDPval +30、HLE +3.9、AutomationBench +4.6，幻覺率 0.65 → 0.50；每題成本約 1.7 倍 |
 | coding 卡關（Opus 5.5 @ xhigh 試 2 次仍同一失敗） | 回報 Stan，建議 Opus 5.5 @ max（只開當次 session）；以終端機、CLI 操作為主的 agent 任務，並列建議 Sonnet 5.5 @ max；長程 agentic coding 看下一列 | 證據偏弱：xhigh → max 只有 CursorBench +1.8、FrontierCode 2.0 +2.6（成本 2.5 倍），AA Terminal-Bench 持平。Sonnet max 的 AA Terminal-Bench 63.6 仍是全系列最高，每題 10.02 美元、1884 秒；代價見硬規則 3 |
-| 模糊根因、架構決策、多小時自主工程與長程 agentic coding、Opus 修不好的弱點、研究級深推理（Opus 高檔試過仍不行） | 回報 Stan，建議 Fable 5.2 @ high；長程 agentic coding 用 xhigh | SWE-bench Pro 93.0 對 Opus 89.9；FrontierCode 2.0 xhigh 全榜最高；AA high 已高過 Opus max；FrontierSWE v2（每題約 20 小時的工程題）、Remote Labor Index（真實外包案）大幅領先；弱點修補只有 Fable 5.1 的數據；派工照硬規則 16 |
+| 模糊根因、架構決策、多小時自主工程與長程 agentic coding、Opus 修不好的弱點、研究級深推理（Opus 高檔試過仍不行） | 回報 Stan，建議 Fable 5.2 @ high；長程 agentic coding 用 xhigh | SWE-bench Pro 93.0 對 Opus 89.9；FrontierCode 2.0 xhigh 全榜最高；AA high 已高過 Opus max；FrontierSWE v2（每題時限 20 小時的工程題）、Remote Labor Index（真實外包案）大幅領先；弱點修補只有 Fable 5.1 的數據；派工照硬規則 16 |
 | 互動式 live debug 要快 | Opus 5.5 + `/fast` | 同模型同品質、輸出快 2.5x；每百萬 token 8/40 美元，訂閱方案只能走 usage credits |
 | 大規模平行（稽核全 repo、遷移、多視角驗證） | ultracode 或明講「用 workflow」 | 這是編排方式不是檔位；引擎上限 16 併發 / 1000 agent |
 
