@@ -14,6 +14,34 @@
 - `C:/Users/stans/.claude/usage-state.json`：最後一次讀到的用量。`source` 是 `app`（`write_usage.py` 寫的）或 `oauth`（腳本自己拉的）。
 - `C:/Users/stans/.claude/quota-pacer/refresh.log`：每次去 endpoint 拉用量的結果，一行一筆 JSON。
 
+- `C:/Users/stans/.claude/quota-pacer/global.json`：全機規則，`global_pace.py` 寫。
+  ```json
+  { "set": 1794551688, "until": 1794574800,
+    "u0": { "seven_day": 49, "scoped": { "fable": 52 } },
+    "resets": { "seven_day": 1794700000 },
+    "ceiling": { "seven_day": 80 },
+    "peak": { "seven_day": 61 },
+    "stopped": { "reason": "time", "text": "已到截止時間 11-24 05:00", "t": 1794574801 } }
+  ```
+  `peak` 是看過的最高用量，`stopped` 一寫下去就維持到規則失效。`active.json` 也有 `resets`、`peak`，重置後多一個 `reset`。
+- `C:/Users/stans/.claude/quota-pacer/wrap/`：`wrap-<session>` 記這個 session 在到線後用了幾次工具，`nag-<session>` 記上次提醒補讀數的時間。
+
+## 重置怎麼認
+
+週用量平常只升不降。兩個訊號擇一就當成已重置：
+
+- 現在的用量比看過的最高點低 `QP_RESET_DROP_PP`（3）個百分點以上。
+- 開工時記下的重置時刻已經過了 `QP_RESET_LATE_SEC`（3600 秒）。多等一小時是因為 `get_usage` 給的「17 小時後」只準到小時。起點很低、看不出掉的時候靠這條。
+
+只看週限額，5 小時限額重置不算。單一 session 的 pacer 看到重置回 `HARDSTOP reset`，全機規則看到重置就到線。
+
+## 全機規則的生命週期
+
+- 到線：截止時刻到、任一條週限額的裁決到 HARDSTOP、或重置。
+- 到線後每個 session 第一次工具呼叫被擋（附說明），接著放行 `QP_WRAP_CALLS`（10）次，之後全擋。subagent 的工具呼叫算在同一個 session 的額度裡。
+- 失效：到線後 `QP_GLOBAL_HOLD_HOURS`（3）小時，從截止時刻和到線時刻較晚的那個起算；一直沒到線的規則最多活 `QP_GLOBAL_MAX_HOURS`（48）小時。
+- 用量超過 `QP_GLOBAL_STALE_SEC`（300）沒更新，hook 會自己去 endpoint 拉（4 秒逾時，60 秒冷卻）。拉不到就擋一次請 session 補讀數，同一 session `QP_NAG_GAP_SEC`（600）內只擋一次。
+
 ## 三條線怎麼算
 
 對每條限制：`avail = 上限 − 起點`，`rem = 上限 − 現在`。
@@ -28,7 +56,7 @@
 
 ## hook（`hooks/hardstop_guard.py`）
 
-每次工具呼叫前跑。只在 EMERGENCY 擋，停手那層刻意不擋，留給寫交接。它只讀檔、不去拉用量，所以用的是最後一次寫進檔的數字；檔案超過 90 秒沒更新就只看時間盒。放行的情況：`active.json` 的 `session` 不是這個 session、開工超過 24 小時、指令是 pacer 自己的腳本、工具是 `get_usage` 或 `ToolSearch`。
+每次工具呼叫前跑，先看全機規則，再看單一 session 的 pacer。下面講的是後者：只在 EMERGENCY 擋，停手那層刻意不擋，留給寫交接。這一層只讀檔、不去拉用量，所以用的是最後一次寫進檔的數字；檔案超過 90 秒沒更新就只看時間盒。放行的情況：`active.json` 的 `session` 不是這個 session、開工超過 24 小時、指令是 pacer 自己的腳本、工具是 `get_usage` 或 `ToolSearch`。
 
 ## 環境變數
 
@@ -41,4 +69,7 @@
 ## 已知限制
 
 - 互動 CLI 下 statusline 會用沒有 per-model 資料的版本蓋掉 `usage-state.json`。`eval_pace.py` 發現開工時有 per-model 基準、檔案裡卻沒有時會補拉一次（60 秒冷卻），拉不到就在行尾印 `⚠`。
-- 每段之間的檢查靠 agent 自律，hook 只是最後一層。
+- 單一 session 的 pacer，每段之間的檢查靠 agent 自律，hook 只是最後一層。全機規則不靠自律。
+- hook 是 session 開啟時載入的。plugin 裝上之前就開著的 session 不受全機規則管，要重開。
+- 被全機規則擋下的 session 如果掛著會自動叫它繼續的機制（Stop hook 之類），會一直被叫起來又被擋，白燒用量。
+- 全機規則擋不住 session 自己跑 `global_pace.py --clear`，只靠訊息裡的交代。

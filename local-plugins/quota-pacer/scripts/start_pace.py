@@ -5,6 +5,7 @@
   py start_pace.py --budget 5           這次最多再用 5 個百分點（weekly 和每條 per-model weekly 各自起點 +5）
   py start_pace.py --cap 60             weekly（全部模型）到 60% 就停
   py start_pace.py --minutes 30         時間盒，可跟上面併用
+  py start_pace.py --until 05:00        做到這個時刻為止（下一個 05:00；也接受 2026-11-24T05:00），跟 --minutes 擇一
   py start_pace.py --mode 5h-override   忽略 5h，只管 weekly
 
 先用 write_usage.py 把 get_usage 的數字寫進檔，再跑這支；不然它會自己打 endpoint。
@@ -28,7 +29,7 @@ def main():
     if len(args) % 2:
         fail("參數要成對")
     for flag, val in zip(args[0::2], args[1::2]):
-        if flag not in ("--budget", "--cap", "--minutes", "--mode"):
+        if flag not in ("--budget", "--cap", "--minutes", "--until", "--mode"):
             fail("不認得的參數：%r" % flag)
         opt[flag[2:]] = val
     mode = opt.get("mode", "both")
@@ -43,6 +44,14 @@ def main():
             nums[k] = n
     if "budget" in nums and "cap" in nums:
         fail("--budget 和 --cap 擇一")
+    until = None
+    if "until" in opt:
+        if "minutes" in nums:
+            fail("--until 和 --minutes 擇一")
+        until = pc.parse_until(opt["until"])
+        if until is None:
+            fail("--until 看不懂或已經過了：%r（寫 05:00 或 2026-11-24T05:00）" % opt["until"])
+        nums["minutes"] = (until - time.time()) / 60.0
 
     usage = None
     try:
@@ -73,8 +82,14 @@ def main():
     lines = []
     if "minutes" in nums:
         active["minutes"] = nums["minutes"]
-        lines.append("時間盒 %g 分：第 %g 分收手寫交接，第 %g 分硬停" % (
-            nums["minutes"], max(0, nums["minutes"] - pc.GRACE_MIN), nums["minutes"]))
+        if until is not None:
+            active["until"] = until
+            lines.append("截止 %s（%.0f 分後）：%s 收手寫交接，到點硬停" % (
+                pc.fmt_clock(until), nums["minutes"],
+                pc.fmt_clock(until - pc.GRACE_MIN * 60)))
+        else:
+            lines.append("時間盒 %g 分：第 %g 分收手寫交接，第 %g 分硬停" % (
+                nums["minutes"], max(0, nums["minutes"] - pc.GRACE_MIN), nums["minutes"]))
 
     if usage is not None:
         u0, ceiling = {}, {}
@@ -114,6 +129,10 @@ def main():
         active["u0"] = u0
         if ceiling:
             active["ceiling"] = ceiling
+        resets = pc.snapshot(usage)[1]  # 有重置時刻就記下，之後用來認出「已經換週」
+        if resets:
+            active["resets"] = resets
+        lines.append("weekly 重置的話也會停手：新一週的額度不算在這次任務裡")
         for label, cur, top in rows:
             wd, hs, emg = pc.thresholds(cur, top)
             lines.append("%s 現在 %g%%，上限 %g%%：%g%% 開始收尾，%g%% 停手寫交接，%g%% 硬擋工具" % (

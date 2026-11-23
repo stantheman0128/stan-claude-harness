@@ -1,5 +1,20 @@
 # Quota Pacer CHANGELOG
 
+## 0.6.0 — 2026-11-23
+全機規則、重置偵測、截止時刻。起因：11-14 Stan 睡前叫幾個 session「做到 weekly 用完或早上 5 點」，多數 session 沒載入 skill，weekly 重置後還繼續用新一週的額度。
+
+- **全機規則**（新 `scripts/global_pace.py`）：一條停手條件管所有 session，寫在 `global.json`，由 hook 強制，session 有沒有載入 skill 都會被擋。條件是截止時刻、週用量到停手線、週用量重置，先到的就停。可加 `--cap`、`--budget`、`--time-only`；`--status` 看現況，`--clear` 解除。
+  - 到線後每個 session 第一次工具呼叫被擋並收到說明，接著有 10 次工具呼叫收尾，之後全擋。
+  - 到線後 3 小時自動失效，沒到線的規則最多活 48 小時。
+  - 用量 5 分鐘沒更新，hook 自己去拉；拉不到就擋一次，請 session 用 `get_usage` 補讀數（同一 session 10 分鐘一次）。
+- **重置偵測**：週用量比看過的最高點低 3 個百分點以上，或記下的重置時刻過了一小時，就當成已換週。單一 session 的 pacer 回 `HARDSTOP reset`（記進 `active.json`，之後用量再爬高也維持），全機規則直接到線。以前重置後數字掉回去會被判成「還很多，繼續」。
+- **截止時刻**：`start_pace.py --until 05:00`（下一個這個時刻，也接受 ISO 日期時間），跟 `--minutes` 擇一。
+- `write_usage.py` 的重置時間接受 `@+17h`、`@+2d5h` 這種相對寫法，對得上 `get_usage` 的「17 小時後重置」。
+- `eval_pace.py` 一併報全機規則；沒開單一 session 的 pacer、只有全機規則時也能跑。
+- hook 改寫成兩層（全機規則、單一 session），pacer 自己的腳本、`get_usage`、`ToolSearch` 在兩層都放行。
+- 隔離測試 63 項全過，含一個對照組：把重置偵測關掉，同樣的讀數會被判成 CONTINUE。
+- 沒實測的：真的跨一次 weekly 重置；真的好幾個 session 同時被擋。
+
 ## 0.5.3 — 2026-11-17
 hook 改成 exec form，每次工具呼叫少開幾個行程。
 

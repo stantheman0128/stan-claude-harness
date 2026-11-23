@@ -3,8 +3,10 @@
 get_usage 走 App 自己的登入，不受 ~/.claude/.credentials.json 的 token 過期影響，
 但只有模型叫得到，所以由 skill 叫完工具後把數字交給這支腳本。
 
-用法（百分比是「已用」；@後面的重置時間可省，接受 ISO 8601 或 epoch 秒）：
-  py write_usage.py --weekly 47@2026-11-13T21:00:00+00:00 --five-hour 12 --scoped fable=49
+用法（百分比是「已用」；@後面的重置時間可省，接受「+多久之後」、ISO 8601 或 epoch 秒）：
+  py write_usage.py --weekly 47@+2d5h --five-hour 12 --scoped fable=49@+17h
+  py write_usage.py --weekly 47@2026-11-13T21:00:00+00:00
+  有給重置時間，pacer 才認得出「已經換週」；get_usage 寫「17 小時後重置」就給 @+17h。
   沒有的那條就不要給（例如目前沒有 5h 視窗就省略 --five-hour）。
 
 exit code：0 = 已寫入；2 = 參數不對，沒寫檔
@@ -24,6 +26,13 @@ def parse(val):
     reset = None
     reset_s = reset_s.strip()
     if reset_s:
+        import re
+        import time
+        m = re.fullmatch("[+](?:([0-9]+)d)?(?:([0-9]+)h)?(?:([0-9]+)m)?", reset_s.replace(" ", ""))
+        if m and any(m.groups()):
+            d, h, mi = (int(x or 0) for x in m.groups())
+            reset = int(time.time()) + d * 86400 + h * 3600 + mi * 60
+            return {"pct": pc._pct(pct), "resets_at": reset}
         n = pc._num(reset_s)
         reset = int(n) if n else pc._iso_to_epoch(reset_s)
         if reset is None:

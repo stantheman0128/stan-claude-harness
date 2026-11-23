@@ -1,22 +1,142 @@
-"""Quota Pacer PreToolUse 硬保險（最後一層）。
+"""Quota Pacer PreToolUse 硬保險。每次工具呼叫前跑，兩層：
 
-active.json 存在時：
-- 時間 guard 一律評（只靠牆鐘）：超過 minutes 死線 → EMERGENCY → 擋。
-- 用量 guard 只在用量可讀且不過舊時才評：燒穿到 EMERGENCY 層 → 擋。
-刻意不擋在 hard-stop（那層留給 skill 寫交接，否則會把 Write 一起擋掉）。
-只擋開工的那個 session（active.json 的 session）；開工超過 24 小時的殘留檔不理。
-pacer 自己的腳本（含 end_pace.py）和 get_usage 永遠放行，到線之後才收得了工。
-讀不到用量不影響時間 guard；沒有任一有效 guard 時放行（交給 skill 判斷）。
+一、全機規則（global.json，global_pace.py 設的）
+- 管這台機器上所有 session，session 有沒有載入 skill 都一樣。
+- 到線（截止時刻到了、週用量到停手線、或週用量重置）就記下 stopped，之後數字怎麼變都維持。
+- 到線後每個 session 第一次工具呼叫被擋並收到說明，接著有 WRAP_CALLS 次可以收尾，之後全擋。
+- 用量超過 GLOBAL_STALE 沒更新就自己去 endpoint 拉（有冷卻）；拉不到就擋一次，
+  請 session 用 get_usage 把讀數寫進來（同一 session NAG_GAP 內只擋一次）。
+
+二、單一 session 的 pacer（active.json，start_pace.py 設的）
+- 只擋開工的那個 session；開工超過 24 小時的殘留檔不理。
+- 只在 EMERGENCY 擋，停手那層留給 skill 寫交接。
+
+pacer 自己的腳本、get_usage、ToolSearch 永遠放行，到線之後才收得了工、補得了讀數。
 """
 import json
 import os
+import re
 import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
 import pace_core as pc  # noqa: E402
 
-OWN = ("start_pace.py", "eval_pace.py", "write_usage.py", "read_usage.py", "end_pace.py")
+OWN = ("start_pace.py", "eval_pace.py", "write_usage.py", "read_usage.py", "end_pace.py",
+       "global_pace.py")
+SCRIPTS = "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts"
+
+def block(msg):
+    print("[quota-pacer] " + msg, file=sys.stderr)
+    sys.exit(2)
+
+def _mark(sid, kind):
+    safe = re.sub("[^A-Za-z0-9_-]", "", sid)[:64] or "nosid"
+    return os.path.join(pc.WRAP_DIR, "%s-%s" % (kind, safe))
+
+def _wrap_count(sid, rule_id, bump):
+    """這個 session 在這條規則到線後已經被算了幾次工具呼叫。bump=True 就加一並寫回。"""
+    path = _mark(sid, "wrap")
+    count = 0
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rid, _, n = fh.read().partition(" ")
+        if rid == rule_id:
+            count = int(n)
+    except (OSError, ValueError):
+        pass
+    if bump:
+        try:
+            os.makedirs(pc.WRAP_DIR, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("%s %d" % (rule_id, count + 1))
+        except OSError:
+            pass
+    return count
+
+def read_usage_file():
+    """讀檔裡的用量，不管多舊；沒有或沒數字回 None。"""
+    try:
+        u = pc.load_usage()
+    except (OSError, ValueError):
+        return None
+    return u if pc.usable(u) else None
+
+def global_gate(g, sid):
+    need_usage = not g.get("time_only")
+    usage = None
+    stale = False
+    if not isinstance(g.get("stopped"), dict) and need_usage:
+        usage = read_usage_file()
+        if usage is None or usage.get("_age", 0) > pc.GLOBAL_STALE:
+            usage = pc.refresh_usage(timeout=4) or usage
+        stale = usage is None or usage.get("_age", 0) > pc.GLOBAL_STALE
+    stopped = pc.global_trip(g, usage)
+
+    if not stopped:
+        if stale:
+            path = _mark(sid, "nag")
+            try:
+                recent = time.time() - os.path.getmtime(path) < pc.NAG_GAP
+            except OSError:
+                recent = False
+            if not recent:
+                try:
+                    os.makedirs(pc.WRAP_DIR, exist_ok=True)
+                    with open(path, "w"):
+                        pass
+                except OSError:
+                    pass
+                block("Stan 設了全機停手規則（%s），但用量讀數太舊或讀不到，沒辦法判斷到線了沒。"
+                      "這次工具呼叫先擋下。請先呼叫 mcp__ccd_session_mgmt__get_usage"
+                      "（列在 deferred tools 就先用 ToolSearch 載入），把每條週限額的已用百分比寫進檔："
+                      'py "%s/write_usage.py" --weekly <數字> --scoped <模型英文小寫>=<數字>'
+                      "，然後重試剛才的工具。沒有 get_usage 工具就直接重試。"
+                      "這個提醒同一個 session %d 分鐘內只出現一次。"
+                      % (pc.describe_global(g), SCRIPTS, pc.NAG_GAP // 60))
+        return
+
+    rule_id = "%d" % (pc._num(g.get("set")) or 0)
+    used = _wrap_count(sid, rule_id, bump=True)
+    clear = '只有 Stan 明講要解除才跑：py "%s/global_pace.py" --clear' % SCRIPTS
+    if used == 0:
+        block("全機停手規則到線：%s。Stan 設的規則是：%s。"
+              "現在停止原本的任務，不要開始新的工作。你還有 %d 次工具呼叫可以收尾"
+              "（存檔、把做到一半的東西收到乾淨的狀態、寫交接），之後所有工具都會被擋。"
+              "收尾後在回覆裡寫清楚：做到哪、還沒做什麼、下次怎麼接，然後結束這一輪。"
+              "不要為了繼續工作去解除規則。%s"
+              % (stopped.get("text"), pc.describe_global(g), pc.WRAP_CALLS, clear))
+    if used > pc.WRAP_CALLS:
+        block("全機停手規則到線（%s），收尾的工具額度也用完了。不要再呼叫工具，"
+              "把進度、還沒做的、下次怎麼接寫在回覆裡，結束這一輪。%s"
+              % (stopped.get("text"), clear))
+
+def session_gate(sid):
+    try:
+        active = pc.load_active()
+    except (OSError, ValueError):
+        return
+    if not isinstance(active, dict):
+        return
+    # 別的 session 開的 → 不關這個 session 的事
+    if active.get("session") and sid and active["session"] != sid:
+        return
+    # 開工超過一天還在 → 當成沒收工的殘留檔
+    started = pc._num(active.get("started"))
+    if started and time.time() - started > pc.ACTIVE_MAX_AGE:
+        return
+
+    usage = None
+    try:
+        u = pc.load_usage()
+        if u.get("_age", 0) <= pc.STALE:
+            usage = u  # 過舊就當讀不到，時間 guard 仍生效
+    except (OSError, ValueError):
+        usage = None
+
+    verdict, trigger = pc.evaluate(usage, active)
+    if verdict == "EMERGENCY":
+        block("EMERGENCY：%s 死線已到，停止一切工具呼叫，立刻結束本輪。" % trigger)
 
 def main():
     try:
@@ -40,40 +160,15 @@ def main():
         except OSError:
             pass
 
-    if not os.path.exists(pc.ACTIVE_FILE):
-        sys.exit(0)  # pacer 未啟用
-
-    try:
-        active = pc.load_active()
-    except (OSError, ValueError):
-        sys.exit(0)
-    if not isinstance(active, dict):
-        sys.exit(0)
-
-    # 別的 session 開的 → 不關這個 session 的事
-    if active.get("session") and sid and active["session"] != sid:
-        sys.exit(0)
-    # 開工超過一天還在 → 當成沒收工的殘留檔
-    started = pc._num(active.get("started"))
-    if started and time.time() - started > pc.ACTIVE_MAX_AGE:
-        sys.exit(0)
-    # pacer 自己的腳本與讀用量的工具永遠放行，不然到線之後連收工都做不了
+    # pacer 自己的腳本與讀用量的工具永遠放行，不然到線之後連收工、補讀數都做不了
     if own or tool.endswith("get_usage") or tool == "ToolSearch":
         sys.exit(0)
 
-    usage = None
-    try:
-        u = pc.load_usage()
-        if u.get("_age", 0) <= pc.STALE:
-            usage = u  # 過舊就當讀不到，時間 guard 仍生效
-    except (OSError, ValueError):
-        usage = None
-
-    verdict, trigger = pc.evaluate(usage, active)
-    if verdict == "EMERGENCY":
-        print(f"[quota-pacer] EMERGENCY：{trigger} 死線已到，停止一切工具呼叫，立刻結束本輪。",
-              file=sys.stderr)
-        sys.exit(2)  # 擋這次工具呼叫
+    g = pc.load_global()
+    if g is not None:
+        global_gate(g, sid)
+    if os.path.exists(pc.ACTIVE_FILE):
+        session_gate(sid)
     sys.exit(0)
 
 if __name__ == "__main__":

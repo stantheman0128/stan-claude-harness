@@ -1,6 +1,6 @@
 ---
 name: quota-pacer
-description: 額度感知的任務節奏器。Stan 用白話給這個 session 設用量上限時就載入，不用等他打斜線指令：例如「不要用超過 5% 的 weekly」「這次最多用 X%」「weekly 到 60% 就停」「別把額度燒光」「用量省著點、快到就收手」。也用於在有限用量下跑較長任務、要邊做邊看用量、接近限制前主動收手並寫交接。觸發詞：不要用超過、最多用、用量上限、額度上限、到 X% 就停、quota pacer、額度感知、邊做邊看用量、燒到快沒之前收手、pace against quota、5h-override、在 weekly 見底前收手。
+description: 額度感知的任務節奏器。Stan 用白話給這個 session 設用量上限時就載入，不用等他打斜線指令：例如「不要用超過 5% 的 weekly」「這次最多用 X%」「weekly 到 60% 就停」「別把額度燒光」「用量省著點、快到就收手」。Stan 交代所有 session 或無人看管的夜間工作何時停（「做到 weekly 用完或早上 5 點」「我去睡了，5 點前都停」「所有 session 到 80% 就停」）時也載入，那種要設全機規則。也用於在有限用量下跑較長任務、要邊做邊看用量、接近限制前主動收手並寫交接。觸發詞：不要用超過、最多用、用量上限、額度上限、到 X% 就停、做到幾點、用完為止、所有 session、全機規則、quota pacer、額度感知、邊做邊看用量、燒到快沒之前收手、pace against quota、5h-override、在 weekly 見底前收手。
 ---
 
 # Quota Pacer
@@ -8,6 +8,13 @@ description: 額度感知的任務節奏器。Stan 用白話給這個 session �
 Stan 的用量是每週重置的固定額度，一個 session 燒太多，其他專案就沒得用。這個 skill 讓你在他給的上限內工作：開工記下起點，每做完一段看一次用量，快到線就收手，沒做完就留交接。
 
 Stan 多半不打 `/quota-pace`，而是交代任務時順口講一句上限。聽到就照這份做，不用請他改用指令。
+
+## 先分清楚是哪一種
+
+- **只管這個 session**（「這次最多用 5%」「這個任務 weekly 到 60% 就停」）：走下面的「四個步驟」。停不停靠你每段檢查，hook 只在最後一層擋。
+- **管所有 session，或 Stan 不在場**（「所有 session」「大家」「我去睡了」「今晚」「做到 weekly 用完或早上 5 點」）：設全機規則，看最後的「全機規則」一節。它由 hook 強制，別的 session 就算沒載入這份 skill 也會被擋。
+
+分不出來就看 Stan 會不會盯著：他要離開、或同時有好幾個 session 在跑，就設全機規則。兩種可以並用。不管選哪種，在回報裡講明，Stan 看一眼就能糾正。
 
 ## 先判斷要不要開
 
@@ -31,13 +38,14 @@ Stan 多半不打 `/quota-pace`，而是交代任務時順口講一句上限。�
    - `--weekly`：全部模型的週限額。
    - `--scoped 名稱=數字`：某個模型專用的週限額，每條一個。名稱用模型的英文名、全小寫（`fable`、`opus`），整個 session 都用同一個名稱，不然開工時記的那條後面會對不上。
    - `--five-hour`：5 小時限額。回傳裡沒有這條就不要給。
-   - 工具給的是「剩餘」就先換成已用（100 減它）。重置時間不用給，裁決不看它。
+   - 工具給的是「剩餘」就先換成已用（100 減它）。
+   - 回傳裡有寫多久後重置，就接在數字後面：`--weekly 49@+2d5h --scoped fable=52@+17h`（`+17h`、`+2d5h`、`+45m` 都行）。pacer 靠它認出「已經換週」。沒寫就不用給。
 3. 工具不存在、被權限擋、或回報用量不可用：跳過這一步繼續往下。後面的腳本發現檔案過舊會自己去官方 endpoint 拉。
 
 ### 2. 開工
 
 ```
-py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/start_pace.py" [--budget 數字 | --cap 數字] [--minutes 數字] [--mode 5h-override]
+py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/start_pace.py" [--budget 數字 | --cap 數字] [--minutes 數字 | --until 時刻] [--mode 5h-override]
 ```
 
 | Stan 的說法 | 意思 | 參數 |
@@ -45,6 +53,7 @@ py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/start_pace.py" [--b
 | 「不要用超過 5%」「這次最多用 5%」「只給你 5% 的額度」 | 這個 session 最多再花 5 個百分點 | `--budget 5` |
 | 「weekly 到 60% 就停」「不要讓 weekly 超過 60%」「停在 60%」 | weekly 的絕對水位 | `--cap 60` |
 | 「跑 30 分鐘就停」 | 時間上限，可跟上面併用 | `--minutes 30` |
+| 「做到 5 點」「3 點半前收工」 | 截止時刻（下一個這個時刻），可跟上面併用 | `--until 05:00` |
 | 沒講數字，只說「別燒光」「省著點」 | 只防撞到 100% | 都不帶 |
 | 「5h 不用管」「只看 weekly」 | 忽略 5 小時限額 | `--mode 5h-override` |
 
@@ -76,6 +85,8 @@ py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/eval_pace.py"
 - `CONTINUE`：做下一段。
 - `WINDDOWN`：不開新的大段落，把手上的收到一個乾淨的停點。
 - `HARDSTOP`：不接新工作，進步驟 4。
+- `HARDSTOP reset`：weekly 已經重置。數字掉回很低不代表可以繼續：Stan 給的額度是舊的那一週，新一週的不算在這次任務裡。進步驟 4，等他說要不要用新額度。
+- `HARDSTOP global`：全機規則到線，進步驟 4。這時 hook 只再放行十次工具呼叫，收尾要快。
 - `EMERGENCY`：已到上限，hook 會擋掉 pacer 腳本以外的所有工具。直接進步驟 4，這時不寫交接檔，交接內容寫在回覆裡。
 
 段落大小跟著預算走，因為兩次檢查之間沒有任何東西攔你：
@@ -97,8 +108,39 @@ py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/eval_pace.py"
    這支在 `EMERGENCY` 時也跑得動。忘了跑的話，hook 會繼續用舊的上限擋這個 session 的工具。
 4. 因為到線而收工的話，這一輪到此為止。`end_pace.py` 跑完 hook 就不擋了，但 Stan 給的上限還在，不要接著做原本的任務，等他說要不要加預算。
 
+## 全機規則
+
+Stan 要所有 session 在同一個條件下停手時用。一條規則管整台機器，寫在 `C:/Users/stans/.claude/quota-pacer/global.json`，hook 每次工具呼叫前檢查。
+
+設定前先做步驟 1 讀用量，再跑：
+
+```
+py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/global_pace.py" [--until 時刻] [--cap 數字 | --budget 數字] [--time-only]
+```
+
+| Stan 的說法 | 參數 |
+|---|---|
+| 「做到 weekly 用完或早上 5 點」 | `--until 05:00` |
+| 「做到 weekly 用完為止」 | 都不帶 |
+| 「所有 session weekly 到 80% 就停」 | `--cap 80` |
+| 「今晚大家加起來最多再用 10%」 | `--budget 10` |
+| 「5 點一律停，用量不用管」 | `--until 05:00 --time-only` |
+
+三種情況先到的就停：到了截止時刻；weekly 或某條模型專用的週限額到了停手線（上限前 3 個百分點左右）；weekly 重置。重置也算，是因為「用完為止」指的是舊的那一週，新一週的額度 Stan 沒說可以動。
+
+把腳本印的那幾行濃縮轉給 Stan，然後照常工作。設了全機規則之後：
+
+- 你自己也受它管。做長任務時照步驟 3 每段跑 `eval_pace.py`，它會一併報全機規則的狀態，比等 hook 擋下來從容。
+- 到線後，每個 session 的下一次工具呼叫會被擋並收到說明，接著有十次工具呼叫可以收尾，之後全擋。
+- 規則在到線後 3 小時自動失效。Stan 回來想提早繼續，他明講了才跑 `global_pace.py --clear`。不要為了把任務做完自己去解除。
+- 看現況：`global_pace.py --status`。
+- 再設一次會蓋掉前一條。Stan 對好幾個 session 講同一句話時，每個都設一次沒關係。
+
+工具被擋且訊息寫「用量讀數太舊或讀不到」：照訊息做步驟 1 補讀數，再重試。這是 hook 自己拉不到用量時請你幫忙，同一個 session 十分鐘內只會出現一次。
+
 ## 出狀況時
 
+- 工具呼叫被擋，訊息開頭是 `[quota-pacer] 全機停手規則到線`：照訊息收尾，交接寫在回覆裡，結束這一輪。
 - 工具呼叫被擋，訊息開頭是 `[quota-pacer] EMERGENCY`：上限到了。照步驟 4 收工（交接寫在回覆裡），不要換別的工具繞，收工後也不要繼續做。
 - 讀數看起來不對：看 `C:/Users/stans/.claude/quota-pacer/refresh.log` 最後幾行，每次去 endpoint 拉用量的結果都記在那。
 - 預算只有 1 到 2 個百分點：用量是整數百分比，所以只分得出「還沒到」和「到了」，不會有收尾的緩衝。開工時跟 Stan 講一聲。
