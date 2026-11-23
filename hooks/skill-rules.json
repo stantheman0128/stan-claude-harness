@@ -20,9 +20,8 @@
     },
     {
       "skills": [
-        "superpowers:brainstorming",
         "guided-dev",
-        "agent-skills:spec-driven-development"
+        "grilling"
       ],
       "priority": "high",
       "enforce": "soft",
@@ -58,12 +57,12 @@
         "壞掉",
         "fix the"
       ],
-      "why": "預設 brainstorming（先釐清意圖再動手）；整個功能請 Claude 主導、產品決策留給人 → guided-dev；要正式規格 → spec-driven-development"
+      "why": "整個功能、app 或新專案請 Claude 主導 → guided-dev（產品決策問人、技術自己下、切可驗證 slice）；需求講不清（缺 who/why/成功標準）→ grilling 的「還沒有計畫」段"
     },
     {
       "skills": [
-        "agent-skills:spec-driven-development",
-        "superpowers:writing-plans"
+        "guided-dev",
+        "grilling"
       ],
       "priority": "high",
       "enforce": "soft",
@@ -83,13 +82,11 @@
         "respect",
         "inspect"
       ],
-      "why": "預設 spec-driven-development（先寫結構化規格）；大型高風險要可執行 runbook → writing-plans（原 /to-prd 已於 2026-07-10 冰凍）"
+      "why": "寫規格走 guided-dev；需求還模糊 → grilling 的「還沒有計畫」段先挖意圖"
     },
     {
       "skills": [
-        "guided-dev",
-        "superpowers:writing-plans",
-        "agent-skills:planning-and-task-breakdown"
+        "guided-dev"
       ],
       "priority": "high",
       "enforce": "soft",
@@ -108,93 +105,41 @@
         "(規劃|安排|拆).{0,6}(步驟|任務|計畫|流程)"
       ],
       "excludePatterns": [],
-      "why": "預設 guided-dev（產品決策給人、技術給 Claude）；大型高風險要可執行 runbook → writing-plans；拆可驗收小任務/估 scope → planning-and-task-breakdown；每個 slice 的實作紀律 → incremental-implementation"
+      "why": "預設 guided-dev（產品決策給人、技術給 Claude、切可驗證 slice）；多步任務步驟寫進 tasks/todo.md 邊做邊勾"
     },
     {
       "skills": [
-        "superpowers:test-driven-development",
-        "agent-skills:test-driven-development"
+        "diagnosing-bugs"
       ],
       "priority": "high",
       "enforce": "soft",
       "keywords": [
-        "tdd",
-        "寫測試",
-        "單元測試",
-        "test-first",
-        "unit test",
-        "加測試",
-        "補測試",
-        "測試覆蓋"
-      ],
-      "intentPatterns": [
-        "(寫|加|補|跑).{0,4}測試",
-        "write (a |the )?test"
-      ],
-      "excludePatterns": [
-        "測試看看",
-        "測一下",
-        "測試版",
-        "壓力測試計畫"
-      ],
-      "why": "預設 superpowers:TDD（鐵律 test-first，一次一個 vertical slice）；要選測試種類/金字塔/test double/瀏覽器驗證 → agent-skills:TDD"
-    },
-    {
-      "skills": [
-        "agent-skills:debugging-and-error-recovery",
-        "diagnosing-bugs",
-        "superpowers:systematic-debugging"
-      ],
-      "priority": "high",
-      "enforce": "soft",
-      "keywords": [
-        "bug",
-        "debug",
-        "壞了",
-        "報錯",
-        "error",
-        "失敗",
-        "failing",
-        "crash",
-        "當掉",
-        "不會動",
-        "跑不起來",
-        "噴錯",
-        "exception",
-        "壞掉",
+        "flaky",
+        "間歇",
+        "偶爾",
+        "時好時壞",
+        "有時候會",
+        "intermittent",
+        "regression",
+        "回歸",
+        "修不好",
+        "又壞了",
+        "還是壞",
+        "still broken",
+        "race condition",
+        "找不到原因",
         "怎麼會這樣"
       ],
       "intentPatterns": [
-        "(修|解|查|找).{0,4}(bug|錯|問題|原因)",
-        "(?-i:[a-z](?:Error|Exception)(?:Id)?\\b)"
+        "(修|改)了.{0,6}(還是|又).{0,4}(壞|錯|失敗)",
+        "(第[二三四]次|好幾次).{0,6}(修|試)"
       ],
       "excludePatterns": [],
-      "why": "預設 debugging-and-error-recovery（快速 web/runtime bug triage，錯誤輸出當不可信資料）；flaky/間歇、效能回歸、多元件、第一次就猜錯 → diagnosing-bugs（先建可重現紅燈迴圈）；連 3 次修不好 → systematic-debugging 並質疑架構"
+      "why": "硬 bug（flaky/間歇、效能回歸、跨多元件、第一次猜錯、修了又壞）→ diagnosing-bugs 先建會紅的重現迴圈；一般 bug 直接修、先重現，不必載；連 3 次修不好就停下回報"
     },
     {
       "skills": [
-        "superpowers:verification-before-completion"
-      ],
-      "priority": "high",
-      "enforce": "soft",
-      "keywords": [
-        "完成了",
-        "做好了",
-        "應該可以了",
-        "搞定",
-        "驗證一下",
-        "確認沒問題",
-        "可以了嗎",
-        "ready to commit",
-        "都好了"
-      ],
-      "intentPatterns": [],
-      "excludePatterns": [],
-      "why": "宣稱完成前必跑指令拿證據；任務中途高風險決策要被反方審 → doubt-driven-development"
-    },
-    {
-      "skills": [
-        "agent-skills:code-simplification"
+        "simplify"
       ],
       "priority": "medium",
       "keywords": [
@@ -209,50 +154,24 @@
       ],
       "intentPatterns": [],
       "excludePatterns": [],
-      "why": "預設 code-simplification（不改行為降複雜度，Chesterton's Fence）"
+      "why": "不改行為降複雜度 → 內建 /simplify；既有測試要不改就過，要改測試才過＝行為變了"
     },
     {
       "skills": [
-        "agent-skills:api-and-interface-design"
-      ],
-      "priority": "medium",
-      "keywords": [
-        "模組",
-        "seam",
-        "介面設計",
-        "interface",
-        "api 設計",
-        "抽象",
-        "拆檔",
-        "deep module",
-        "邊界",
-        "module boundary"
-      ],
-      "intentPatterns": [],
-      "excludePatterns": [],
-      "why": "預設 api-and-interface-design（API/合約表面：error shape/版本相容/驗證位置）；deep-module/seam 深度方法論的 codebase-design 已冷藏、要用先復原"
-    },
-    {
-      "skills": [
-        "agent-skills:git-workflow-and-versioning",
         "resolving-merge-conflicts"
       ],
       "priority": "medium",
       "keywords": [
-        "commit",
-        "branch",
-        "分支",
         "merge conflict",
         "衝突",
         "rebase",
-        "git log",
-        "版本控制",
         "撞衝突",
-        "衝突解不開"
+        "衝突解不開",
+        "conflict marker"
       ],
       "intentPatterns": [],
       "excludePatterns": [],
-      "why": "預設 git-workflow-and-versioning（commit/branch/訊息準則）；卡在 merge/rebase 衝突中 → resolving-merge-conflicts（mattpocock vendor，2026-07-14）；要開隔離 worktree/收尾分支 → using-git-worktrees/finishing-a-development-branch"
+      "why": "卡在 merge/rebase 衝突 → resolving-merge-conflicts（找原始意圖、逐 hunk 解、跑專案檢查、絕不 --abort）；commit 與版本號照 CLAUDE.md 第 5 條"
     },
     {
       "skills": [
@@ -308,8 +227,7 @@
     },
     {
       "skills": [
-        "grilling",
-        "agent-skills:interview-me"
+        "grilling"
       ],
       "priority": "low",
       "keywords": [
@@ -323,7 +241,7 @@
       ],
       "intentPatterns": [],
       "excludePatterns": [],
-      "why": "有粗略計畫 → grilling（一次一題逼問決策樹）；還沒計畫、要先挖意圖 who/why/success → interview-me"
+      "why": "有粗略計畫 → grilling（一次一題逼問決策樹）；還沒計畫、要先挖 who/why/success → 同一支的「還沒有計畫」段"
     },
     {
       "skills": [
@@ -359,8 +277,7 @@
     },
     {
       "skills": [
-        "impeccable",
-        "agent-skills:frontend-ui-engineering"
+        "impeccable"
       ],
       "priority": "high",
       "keywords": [
@@ -388,12 +305,11 @@
         "系統設計",
         "架構設計"
       ],
-      "why": "預設 impeccable（視覺/設計品質，硬規則+slop test）；純元件架構/狀態/React 寫法 → frontend-ui-engineering"
+      "why": "視覺/設計品質 → impeccable（硬規則＋slop test）"
     },
     {
       "skills": [
-        "security-audit",
-        "agent-skills:security-and-hardening"
+        "security-audit"
       ],
       "priority": "medium",
       "keywords": [
@@ -414,7 +330,7 @@
         "安全帶",
         "安全起見"
       ],
-      "why": "深度稽核找可利用漏洞 → security-audit（吃 token、subagent 帶 opus、小改動別用）；設計期威脅建模/供應鏈/LLM 安全 → security-and-hardening"
+      "why": "深度稽核找可利用漏洞 → security-audit（吃 token、subagent 帶 opus、小改動別用）；安全敏感實作派 security-executor agent"
     },
     {
       "skills": [
@@ -465,30 +381,6 @@
     },
     {
       "skills": [
-        "agent-skills:performance-optimization"
-      ],
-      "priority": "medium",
-      "keywords": [
-        "效能",
-        "變慢",
-        "太慢",
-        "好慢",
-        "卡頓",
-        "很lag",
-        "performance",
-        "optimize",
-        "跑很久",
-        "加速程式"
-      ],
-      "intentPatterns": [
-        "(變|太|好)慢",
-        "效能.{0,4}(問題|優化|調)"
-      ],
-      "excludePatterns": [],
-      "why": "預設 performance-optimization（量到改到守，含後端/CI）；線上單頁深度稽核+有 Chrome DevTools MCP → cloudflare:web-perf；若是「改壞才變慢」的效能回歸 → diagnosing-bugs"
-    },
-    {
-      "skills": [
         "skill-routing"
       ],
       "priority": "low",
@@ -506,8 +398,7 @@
     },
     {
       "skills": [
-        "adhd",
-        "superpowers:brainstorming"
+        "adhd"
       ],
       "priority": "low",
       "keywords": [
@@ -539,7 +430,7 @@
         "textbook",
         "just "
       ],
-      "why": "發散型發想（命名/API 表面/架構有多組可行解）→ adhd（平行 5 框架＋剪枝，約 10 個 Agent、成本 5-10x，靠它自己的 pre-flight gate 把關）；只是要釐清需求意圖、一次一題收斂 → superpowers:brainstorming。2026-08-10 Stan 拍板加入自動觸發"
+      "why": "發散型發想（命名/API 表面/架構有多組可行解）→ adhd（平行 5 框架＋剪枝，約 10 個 Agent、成本 5-10x，靠它自己的 pre-flight gate 把關）；只是要釐清需求、一次一題收斂 → grilling 的「還沒有計畫」段。2026-08-10 Stan 拍板加入自動觸發"
     },
     {
       "skills": [

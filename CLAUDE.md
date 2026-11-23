@@ -1,4 +1,4 @@
-# Claude Code 全域工作規則（Stan）— v2.10 2026-11-23
+# Claude Code 全域工作規則（Stan）— v2.11 2026-11-23
 
 <!-- 編輯方針：本檔只放三類——路由（何時載什麼）、鐵則（被實測燒過的教訓）、輸出偏好。新增條目前先問：哪一層（系統提示/hook/skill description/agent 定義/auto-memory）還沒涵蓋它？v2.0 精簡的辯證紀錄見 git log。 -->
 
@@ -6,18 +6,15 @@
 
 Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝著模型自己不知道的東西（Stan 的偏好、專案慣例、實測踩過的坑），或任務是一步錯就不可逆的窄橋。靠模型自己規劃就能做好的，直接做，不必解釋為何沒載。hook 注入的 skill 提醒是參考，不是命令。同一領域多個 skill 重疊時查 `skill-routing`。常用對應（格式：預設；情境 → 改用）：
 
-- 目標/作法不明 → `superpowers:brainstorming`；整個功能請 Claude 主導 → `guided-dev`
-- 規劃/spec → `guided-dev`；可執行 runbook → `superpowers:writing-plans`；拆驗收小任務 → `agent-skills:planning-and-task-breakdown`；正式規格 → `agent-skills:spec-driven-development`
-- 寫測試/TDD → `superpowers:test-driven-development`；選測試種類/金字塔 → `agent-skills:test-driven-development`
-- 修 bug → `agent-skills:debugging-and-error-recovery`；flaky/效能回歸/多元件 → `diagnosing-bugs`（先建紅燈迴圈）；連 3 次修不好 → `superpowers:systematic-debugging`
-- 宣稱完成前 → `superpowers:verification-before-completion`
-- code review → 內建 `/code-review`；程式簡化 → `agent-skills:code-simplification`
-- 效能 → `agent-skills:performance-optimization`
-- 前端視覺/UI → `impeccable`；元件架構/React → `agent-skills:frontend-ui-engineering`
-- API/介面/seam 設計 → `agent-skills:api-and-interface-design`
-- 安全深度稽核 → `security-audit`（吃 token）；設計期威脅建模 → `agent-skills:security-and-hardening`
-- git 收尾分支 → `superpowers:finishing-a-development-branch`；卡在 merge/rebase 衝突 → `resolving-merge-conflicts`
-- 逼問既有計畫 → `grilling`；還沒計畫先挖意圖 → `grilling` 的「還沒有計畫」段
+- 目標/需求講不清（缺 who、why 或成功標準）→ `grilling` 的「還沒有計畫」段；整個功能、規劃、spec 請 Claude 主導 → `guided-dev`
+- 寫測試：先看它紅再實作，一次一個 vertical slice；預期值來自獨立真值，不用同一套算法反推
+- 修 bug：先重現再改；flaky/效能回歸/多元件/第一次猜錯 → `diagnosing-bugs`（先建紅燈迴圈）；連 3 次修不好就停，列出可能錯的假設回報 Stan
+- 宣稱完成前：跑指令拿證據；非瑣碎改動派 `verifier`
+- code review → 內建 `/code-review`；程式簡化 → 內建 `/simplify`
+- 前端視覺/UI → `impeccable`
+- 安全深度稽核 → `security-audit`（吃 token）；安全敏感實作 → `security-executor`
+- 卡在 merge/rebase 衝突 → `resolving-merge-conflicts`
+- 逼問既有計畫 → `grilling`
 - 領域 skill 內建規劃階段就不疊通用規劃 skill；出事就 STOP 重新規劃、別硬推。
 
 ## 2. Subagent 派工
@@ -27,6 +24,7 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 - 派工規格一次到位：goal、constraints、done-criteria、相關路徑、為什麼。
 - 【鐵則】verifier 派工單絕不含「發現問題順便修」類指令（實測會誘發用 Bash 繞過工具鎖直接改檔）。修復一律回主 session 路由。
 - 派 verifier 或任何審查：給成品（diff／路徑）和驗收標準就好，不附我認為它對的理由，免得審查者順著我的推理走。
+- subagent 回報「完成」只是主張：先看 git diff 和它貼的測試輸出再採信，回報裡的設計理由也算主張。
 - 「查不到／驗不了」是合格回報不是失敗，派工單要明說這件事。
 - 看檔案、盤點、分類這類量大又單純的活交給 Haiku 或 Sonnet；Opus 只留給架構、釐清、功能規劃（Stan 2026-10-20：比較快也比較省 token）。
 
@@ -49,7 +47,7 @@ Skill 是帶脈絡的工具，不是必經流程。值得載的情況：它裝�
 
 ## 5. 任務檔案與版本慣例
 
-- 進有 `tasks/lessons.md` 的專案先讀它；多步任務計畫寫 `tasks/todo.md`（checkable items）邊做邊勾，做完補一段結果 review。
+- 進有 `tasks/lessons.md` 的專案先讀它；多步任務計畫寫 `tasks/todo.md`（checkable items）邊做邊勾，做完補一段結果 review。context 被壓縮後，進度以 `tasks/todo.md` 和 `git log` 為準，不靠摘要裡的記憶。
 - 被糾正後：跨專案生效的模式進 auto-memory、專案內教訓進 `tasks/lessons.md`（注意 auto-memory 綁 cwd 域，全域教訓別只放單一域）。
 - 架構級決策或不可逆操作，動手前先等 Stan 拍板。
 - 版本紀律：每個功能＝一版號＋commit＋CHANGELOG，別攢著。
