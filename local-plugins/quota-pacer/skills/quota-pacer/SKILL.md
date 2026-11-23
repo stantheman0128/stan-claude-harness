@@ -106,7 +106,7 @@ py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/eval_pace.py"
    py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/end_pace.py"
    ```
    這支在 `EMERGENCY` 時也跑得動。忘了跑的話，hook 會繼續用舊的上限擋這個 session 的工具。
-4. 因為到線而收工的話，這一輪到此為止。`end_pace.py` 跑完 hook 就不擋了，但 Stan 給的上限還在，不要接著做原本的任務，等他說要不要加預算。
+4. 因為到線而收工的話，這一輪到此為止。到線後跑 `end_pace.py` 會把這個 session 的工具鎖住（最多 12 小時），重新開工也解不開。只有 Stan 本人說「豁免」「bypass」「繞過用量限制」這類的話才放行；他只說「繼續」或「再給 3%」時，直接告訴他要講豁免。任務做完、還沒到線就收工的不會鎖。
 
 ## 全機規則
 
@@ -151,7 +151,7 @@ py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/global_pace.py" [--
 
 - 工具呼叫被擋，訊息開頭是 `[quota-pacer] 全機停手規則到線`：照訊息收尾，交接寫在回覆裡，結束這一輪。
 - 工具呼叫被擋，訊息說「規則只有 Stan 本人能解除或豁免」或「狀態檔不能直接改或刪」：你在做只有 Stan 能授權的事，停手，照上面「只有 Stan 本人能豁免」處理。
-- 工具呼叫被擋，訊息開頭是 `[quota-pacer] EMERGENCY`：上限到了。照步驟 4 收工（交接寫在回覆裡），不要換別的工具繞，收工後也不要繼續做。
+- 工具呼叫被擋，訊息開頭是 `[quota-pacer] EMERGENCY`：上限到了。照步驟 4 收工（交接寫在回覆裡），不要換別的工具繞。這時工具已經鎖住，收工也不會解開。訊息寫「工具鎖住了」的也一樣：寫交接、結束這一輪。
 - 讀數看起來不對：重做步驟 1。`eval_pace.py` 那一行印的就是它讀到的數字，跟 `get_usage` 的回傳對一下，多半是 `write_usage.py` 的數字填錯或 `--scoped` 名稱不一致。
 - 預算只有 1 到 2 個百分點：用量是整數百分比，所以只分得出「還沒到」和「到了」，不會有收尾的緩衝。開工時跟 Stan 講一聲。
 - 好幾個 session 可以同時各開各的 pacer，設定檔一個 session 一個，互不影響。`end_pace.py` 只收自己的。

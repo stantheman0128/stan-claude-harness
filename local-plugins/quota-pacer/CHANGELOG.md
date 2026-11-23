@@ -1,5 +1,16 @@
 # Quota Pacer CHANGELOG
 
+## 0.8.2 — 2026-11-23
+單一 session 到線後鎖住，收工也解不開。Stan 定案要堵。
+
+起因：0.8.1 的實測裡，session 到線被擋後跑 `end_pace.py`，設定檔一刪 hook 就不再擋它。那次它有停手，但靠的是 skill 的文字。另外讀數超過 90 秒沒更新時 hook 會當成讀不到，到線的 session 等一下也會被放行。
+
+- hook 在 `EMERGENCY` 擋下工具時、`end_pace.py` 在 `HARDSTOP` 以上收工時，都會寫一個 `wrap/lock-<session>`。
+- 有鎖就擋這個 session 的所有工具，跟讀數新舊、有沒有設定檔、有沒有重新開工都無關。pacer 腳本、`get_usage`、ToolSearch 照樣放行。
+- 只有 Stan 親口豁免才解鎖，跟全機規則同一套說法。鎖最多維持 12 小時（`QP_LOCK_HOURS`）。
+- 任務做完、還沒到線就收工的不會鎖。別的 session 不受影響。
+- 鎖檔算進狀態檔保護：有鎖的時候不能直接刪 `wrap/` 底下的檔。
+
 ## 0.8.1 — 2026-11-23
 到線後放行串在一行的 pacer 指令。起因：開新 session 實測時看到它把指令寫成 `write_usage.py … && start_pace.py …`、`write_usage.py …; eval_pace.py; end_pace.py`。0.6.1 起 hook 只放行單一指令，到線之後這種寫法會整行被擋，session 連檢查和收工都要多試一次。
 

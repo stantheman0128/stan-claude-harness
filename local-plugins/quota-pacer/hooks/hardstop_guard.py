@@ -14,6 +14,8 @@
 - 一個 session 一個檔，只擋開工的那個 session；開工超過 24 小時的殘留檔不理。
 - 舊的共用檔 active.json 還認：有寫 session 的只管那個 session，沒寫的管所有 session。
 - 只在 EMERGENCY 擋，停手那層留給 skill 寫交接。
+- 擋過一次，或到線後才收工，就留下一個鎖（wrap/lock-<session>）：之後收工、讀數變舊、
+  重新開工都解不開，只有 Stan 親口豁免或過了 LOCK_AGE 才解。
 
 pacer 自己的腳本、get_usage、ToolSearch 永遠放行，到線之後才收得了工、補得了讀數。
 """
@@ -158,7 +160,15 @@ def global_gate(g, sid):
               "把進度、還沒做的、下次怎麼接寫在回覆裡，結束這一輪。%s"
               % (stopped.get("text"), "：" + hard if hard else "", ONLY_STAN))
 
+LOCKED = ("這個 session 的用量上限已經到了（%s），工具鎖住了。不要再呼叫工具，也不要換別的方法繞。"
+          "把做到哪、還沒做什麼、下次怎麼接寫在回覆裡，結束這一輪。"
+          "只有 Stan 本人能解鎖：他要在對話裡親口說「豁免」「bypass」「繞過用量限制」這類的話。"
+          "他只說「繼續」不算，這時請直接告訴他要講豁免才會放行。")
+
 def session_gate(sid):
+    why = pc.locked(sid)
+    if why is not None:
+        block(LOCKED % (why or "已收工"))
     # 這個 session 自己的設定檔，加上管得到它的舊共用檔。
     # 別的 session 開的、開工超過一天的殘留檔，find_active 已經濾掉。
     found = pc.find_active(sid, all_if_unknown=True)
@@ -176,7 +186,9 @@ def session_gate(sid):
     for _path, active in found:
         verdict, trigger = pc.evaluate(usage, active)
         if verdict == "EMERGENCY":
-            block("EMERGENCY：%s 死線已到，停止一切工具呼叫，立刻結束本輪。" % trigger)
+            pc.lock(sid, trigger)
+            block("EMERGENCY：%s 死線已到，停止一切工具呼叫，立刻結束本輪。這個 session 的工具已鎖住，"
+                  "跑 end_pace.py 也不會解開，只有 Stan 本人說豁免才放行。" % trigger)
 
 def main():
     try:
@@ -212,7 +224,7 @@ def main():
         # 看的是「機器上有沒有任何限制」，不是「這個 session 有沒有」：
         # 不然沒開 pacer 的 session 可以去刪別的 session 的設定檔
         if any(x in blob for x in STATE_FILES) and pc.any_limit():
-            block("pacer 的狀態檔不能直接改或刪。收工用 end_pace.py；全機" + ONLY_STAN)
+            block("pacer 的狀態檔不能直接改或刪。收工用 end_pace.py；" + ONLY_STAN)
 
     # 解除或改寫全機規則：到線之後不行，還沒到線時 --clear 也不行。只有 --status 隨時可以看。
     if any(n == "global_pace.py" and "--status" not in part for n, part in own):

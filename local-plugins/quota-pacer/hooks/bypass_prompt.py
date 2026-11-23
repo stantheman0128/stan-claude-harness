@@ -66,6 +66,7 @@ def main():
             pass
     except OSError:
         return
+    pc.unlock(sid)  # 到線留下的鎖一起解掉，豁免過期後不會又被舊鎖擋
     print("[quota-pacer] Stan 本人在這則訊息豁免了用量限制：這個 session 接下來 %g 小時不受全機規則和 "
           "pacer 的擋，照他說的做。其他 session 不受影響。他如果是要解除整條全機規則，跑 "
           'py "C:/Users/stans/.claude/local-plugins/quota-pacer/scripts/global_pace.py" --clear。'

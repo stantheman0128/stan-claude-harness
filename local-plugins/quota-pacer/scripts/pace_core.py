@@ -66,6 +66,7 @@ GLOBAL_MAX = _f("QP_GLOBAL_MAX_HOURS", 48) * 3600    # 一直沒到線的規則�
 WRAP_CALLS = int(_f("QP_WRAP_CALLS", 10))            # 到線後每個 session 還能用幾次工具收尾
 NAG_GAP = _f("QP_NAG_GAP_SEC", 600)                  # 「用量讀不到」的提醒，同一 session 多久一次
 BYPASS_AGE = _f("QP_BYPASS_HOURS", 12) * 3600        # Stan 親口豁免後，這個 session 放行多久
+LOCK_AGE = _f("QP_LOCK_HOURS", 12) * 3600            # 單一 session 到線後鎖多久（Stan 豁免才提前解）
 RESET_DROP = _f("QP_RESET_DROP_PP", 3)               # 週用量比最高點低這麼多就當成已重置
 RESET_LATE = _f("QP_RESET_LATE_SEC", 3600)           # 記下的重置時刻過了這麼久，沒讀數也當成已重置
 
@@ -571,6 +572,49 @@ def bypassed(sid):
     except OSError:
         return False
 
+def lock(sid, text):
+    """這個 session 自己的上限到線了：寫一個鎖，收工、讀數變舊、重新開工都解不開。
+
+    只有 Stan 親口豁免（bypass_prompt.py）或過了 LOCK_AGE 才解除。
+    """
+    try:
+        os.makedirs(WRAP_DIR, exist_ok=True)
+        with open(mark_path(sid, "lock"), "w", encoding="utf-8") as fh:
+            fh.write(text or "")
+        return True
+    except OSError:
+        return False
+
+def locked(sid):
+    """這個 session 有沒有被鎖。有就回當初到線的原因（可能是空字串），沒有回 None。"""
+    path = mark_path(sid, "lock")
+    try:
+        if time.time() - os.path.getmtime(path) >= LOCK_AGE:
+            return None
+        with open(path, encoding="utf-8") as fh:
+            return fh.read().strip()
+    except OSError:
+        return None
+
+def unlock(sid):
+    try:
+        os.remove(mark_path(sid, "lock"))
+    except OSError:
+        pass
+
+def any_lock():
+    try:
+        names = [n for n in os.listdir(WRAP_DIR) if n.startswith("lock-")]
+    except OSError:
+        return False
+    for n in names:
+        try:
+            if time.time() - os.path.getmtime(os.path.join(WRAP_DIR, n)) < LOCK_AGE:
+                return True
+        except OSError:
+            pass
+    return False
+
 def hard_lines(g):
     """用量到線後還能收尾到哪：[(顯示名, 路徑, 硬擋線%)]，每條有記起點的週限額一筆。"""
     out = []
@@ -647,11 +691,11 @@ def find_active(sid, all_if_unknown=False):
 
 def has_limit(sid):
     """這個 session 現在有沒有任何限制生效（全機規則或它自己的 pacer）。"""
-    return load_global() is not None or bool(find_active(sid))
+    return load_global() is not None or bool(find_active(sid)) or locked(sid) is not None
 
 def any_limit():
     """這台機器上現在有沒有任何限制生效，不管是誰的。保護狀態檔用這個判斷。"""
-    return load_global() is not None or bool(find_active("", all_if_unknown=True))
+    return load_global() is not None or bool(find_active("", all_if_unknown=True)) or any_lock()
 
 def describe_global(g):
     """一句話講這條規則：什麼情況會停。"""

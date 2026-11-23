@@ -25,7 +25,7 @@
     "stopped": { "reason": "time", "text": "已到截止時間 11-24 05:00", "t": 1794574801 } }
   ```
   `peak` 是看過的最高用量，`stopped` 一寫下去就維持到規則失效。`active.json` 也有 `resets`、`peak`，重置後多一個 `reset`。
-- `C:/Users/stans/.claude/quota-pacer/wrap/`：`wrap-<session>` 記這個 session 在到線後用了幾次工具，`nag-<session>` 記上次提醒補讀數的時間。
+- `C:/Users/stans/.claude/quota-pacer/wrap/`：`wrap-<session>` 記這個 session 在到線後用了幾次工具，`nag-<session>` 記上次提醒補讀數的時間，`lock-<session>` 是單一 session 到線後的鎖（內容是到線的原因）。鎖有兩個來源：hook 在 `EMERGENCY` 擋下工具時、`end_pace.py` 在 `HARDSTOP` 以上收工時。有鎖就擋這個 session 的所有工具（pacer 腳本、`get_usage`、ToolSearch 除外），`QP_LOCK_HOURS`（12）後失效，Stan 親口豁免時 `bypass_prompt.py` 會把鎖刪掉。
 
 ## 重置怎麼認
 
