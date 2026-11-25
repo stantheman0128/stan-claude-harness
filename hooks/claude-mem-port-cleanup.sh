@@ -4,15 +4,15 @@
 # If the configured port is held by a dead/ghost process, try to free it.
 # If the ghost socket can't be cleared, auto-increment port in settings.json.
 
+# shellcheck source=port-owner.sh
+. "$(dirname "$0")/port-owner.sh"
+
 SETTINGS_FILE="$HOME/.claude-mem/settings.json"
 PORT=$(grep -o '"CLAUDE_MEM_WORKER_PORT"[[:space:]]*:[[:space:]]*"[0-9]*"' "$SETTINGS_FILE" 2>/dev/null | grep -o '[0-9]*')
 PORT=${PORT:-37778}
 
 # Check if port is in use
-OWNER=$(powershell -NoProfile -Command "
-  \$c = Get-NetTCPConnection -LocalPort $PORT -ErrorAction SilentlyContinue
-  if (\$c) { \$c.OwningProcess } else { '' }
-" 2>/dev/null | tr -d '[:space:]')
+OWNER=$(port_owner "$PORT")
 
 [ -z "$OWNER" ] && exit 0
 
@@ -23,14 +23,11 @@ fi
 
 # Port is bound but worker is not responding — zombie or ghost
 # Try to kill the owning process
-taskkill //PID "$OWNER" //T //F >/dev/null 2>&1
-sleep 2
+kill_pid_tree "$OWNER"
+sleep 1
 
 # Check if port was freed
-STILL_HELD=$(powershell -NoProfile -Command "
-  \$c = Get-NetTCPConnection -LocalPort $PORT -ErrorAction SilentlyContinue
-  if (\$c) { 'yes' } else { '' }
-" 2>/dev/null | tr -d '[:space:]')
+STILL_HELD=$(port_owner "$PORT")
 
 if [ -n "$STILL_HELD" ]; then
   # Ghost socket — can't be freed without reboot. Auto-increment port.
